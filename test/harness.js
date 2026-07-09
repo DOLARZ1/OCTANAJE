@@ -259,6 +259,12 @@ N.CalExport.open({ title: "Meta demo", details: "d", dateKey: "2026-07-20" });
 if (!document.getElementById("modal-body").children.length) throw new Error("Modal de calendario vacío");
 console.log("✔ CalExport: URL de Google OK y modal construido");
 
+// probar extrasFn en formularios (botón de calendario dentro del form)
+const fNo = N.UI.form([{ name: "title" }], () => {}, "ok");
+const fYes = N.UI.form([{ name: "title" }], () => {}, "ok", (i) => N.CalExport.formRow(i.title, i.title, "x"));
+if (fYes.children.length !== fNo.children.length + 1) throw new Error("extrasFn no añadió contenido al formulario");
+console.log("✔ Botón de calendario dentro del formulario (extrasFn) OK");
+
 // persistencia
 if (!storage["nexus.state.v1"]) throw new Error("No persistió en localStorage");
 console.log("✔ Persistencia en localStorage OK");

@@ -62,7 +62,8 @@
       Store.commit();
       UI.closeModal();
       render(document.getElementById("view-tasks"));
-    }, existing ? "Guardar" : "Crear tarea");
+    }, existing ? "Guardar" : "Crear tarea",
+      (inputs) => N.CalExport.formRow(inputs.title, inputs.due, "Tarea en NEXUS"));
     UI.openModal(existing ? "Editar tarea" : "Nueva tarea", body);
   }
 
@@ -152,7 +153,8 @@
     const due = dueLabel(t);
     const subDone = t.subtasks.filter((s) => s.done).length;
 
-    const item = el("div", { class: "item" + (t.done ? " done" : ""), style: "flex-direction:column;align-items:stretch" });
+    const overdue = !t.done && t.due && t.due < DateUtil.todayKey();
+    const item = el("div", { class: "item" + (t.done ? " done" : "") + (overdue ? " overdue" : ""), style: "flex-direction:column;align-items:stretch" });
     const topRow = el("div", { class: "flex items-center gap-12" }, [
       el("button", { class: "check" + (t.done ? " on" : ""), html: t.done ? "✓" : "", onclick: () => completeTask(t) }),
       el("div", { class: "item-main" }, [

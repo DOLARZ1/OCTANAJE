@@ -438,6 +438,26 @@ canvas { display: block; width: 100%; }
 .cal-day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
 @media (max-width: 560px) { .cal-day { font-size: 11px; border-radius: 8px; } .cal { gap: 4px; } }
 
+
+/* =====================================================================
+   ESTADO VENCIDO (tareas y metas atrasadas)
+   ===================================================================== */
+.item.overdue {
+  border-color: color-mix(in srgb, var(--bad) 55%, transparent);
+  background: color-mix(in srgb, var(--bad) 9%, var(--panel-2));
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+.card.overdue {
+  border-color: color-mix(in srgb, var(--bad) 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 35%, transparent), var(--shadow);
+}
+.card.overdue::before { background: linear-gradient(90deg, transparent, var(--bad), transparent); opacity: .8; }
+.overdue .chip.bad { animation: pulseBad 1.6s ease-in-out infinite; }
+@keyframes pulseBad {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bad) 45%, transparent); }
+  50% { box-shadow: 0 0 9px 1px color-mix(in srgb, var(--bad) 60%, transparent); }
+}
+
 </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='64' y2='64'><stop offset='0' stop-color='%2300e5ff'/><stop offset='.5' stop-color='%237c5cff'/><stop offset='1' stop-color='%23ff2fb0'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='%23060814'/><polygon points='32,9 51,20 51,44 32,55 13,44 13,20' fill='none' stroke='url(%23g)' stroke-width='4'/><circle cx='32' cy='32' r='6' fill='url(%23g)'/></svg>" />
   <!-- PWA -->
@@ -1117,7 +1137,7 @@ canvas { display: block; width: 100%; }
 
   // ---------- form builder ----------
   // fields: [{name,label,type,value,options,placeholder,required,min,step}]
-  function form(fields, onSubmit, submitLabel) {
+  function form(fields, onSubmit, submitLabel, extrasFn) {
     const inputs = {};
     const wrap = el("form", { class: "nexus-form" });
     fields.forEach((f) => {
@@ -1129,6 +1149,8 @@ canvas { display: block; width: 100%; }
       }
       wrap.appendChild(buildField(f, inputs));
     });
+    // contenido extra opcional (recibe el mapa de inputs para leer valores en vivo)
+    if (typeof extrasFn === "function") { try { const ex = extrasFn(inputs); if (ex) wrap.appendChild(ex); } catch (e) {} }
     const submit = el("button", { class: "btn primary block mt-8", type: "submit", text: submitLabel || "Guardar" });
     wrap.appendChild(submit);
     wrap.addEventListener("submit", (e) => {
@@ -2186,7 +2208,8 @@ canvas { display: block; width: 100%; }
       Store.commit();
       UI.closeModal();
       render(document.getElementById("view-tasks"));
-    }, existing ? "Guardar" : "Crear tarea");
+    }, existing ? "Guardar" : "Crear tarea",
+      (inputs) => N.CalExport.formRow(inputs.title, inputs.due, "Tarea en NEXUS"));
     UI.openModal(existing ? "Editar tarea" : "Nueva tarea", body);
   }
 
@@ -2276,7 +2299,8 @@ canvas { display: block; width: 100%; }
     const due = dueLabel(t);
     const subDone = t.subtasks.filter((s) => s.done).length;
 
-    const item = el("div", { class: "item" + (t.done ? " done" : ""), style: "flex-direction:column;align-items:stretch" });
+    const overdue = !t.done && t.due && t.due < DateUtil.todayKey();
+    const item = el("div", { class: "item" + (t.done ? " done" : "") + (overdue ? " overdue" : ""), style: "flex-direction:column;align-items:stretch" });
     const topRow = el("div", { class: "flex items-center gap-12" }, [
       el("button", { class: "check" + (t.done ? " on" : ""), html: t.done ? "✓" : "", onclick: () => completeTask(t) }),
       el("div", { class: "item-main" }, [
@@ -2512,7 +2536,8 @@ canvas { display: block; width: 100%; }
       UI.closeModal();
       render(document.getElementById("view-goals"));
       N.App && N.App.refreshTop();
-    }, existing ? "Guardar" : "Crear meta");
+    }, existing ? "Guardar" : "Crear meta",
+      (inputs) => N.CalExport.formRow(inputs.title, inputs.deadline, "Meta en NEXUS"));
     UI.openModal(existing ? "Editar meta" : "Nueva meta", body);
   }
 
@@ -2603,11 +2628,12 @@ canvas { display: block; width: 100%; }
     const dl = deadlineInfo(g);
     const msDone = g.milestones.filter((m) => m.done).length;
 
+    const overdue = dl && dl.cls === "bad" && !done;
     const ring = el("canvas");
     const ringWrap = el("div", { class: "ring-wrap" }, [ring, el("div", { class: "ring-val", text: p + "%" })]);
     setTimeout(() => Charts.ring(ring, p, { size: 84, color: done ? "--good" : "--accent" }), 30);
 
-    const card = el("div", { class: "card" }, [
+    const card = el("div", { class: "card" + (overdue ? " overdue" : "") }, [
       el("div", { class: "flex items-center gap-12" }, [
         ringWrap,
         el("div", { class: "item-main" }, [
@@ -3121,7 +3147,24 @@ canvas { display: block; width: 100%; }
     UI.openModal("Añadir recordatorio", body);
   }
 
-  N.CalExport = { open, googleUrl, downloadIcs };
+  // Fila para insertar dentro de un formulario: lee el título y la fecha en vivo
+  function formRow(titleInput, dateInput, detailText) {
+    const run = (fn) => {
+      const t = (titleInput && titleInput.value || "").trim();
+      const d = dateInput && dateInput.value;
+      if (!d) { toast({ icon: "⚠️", msg: "Primero elige una fecha arriba." }); return; }
+      fn(t || "Recordatorio", detailText || "", d);
+    };
+    return el("div", { style: "margin:2px 0 8px;padding:12px;border:1px dashed var(--border-strong);border-radius:12px" }, [
+      el("div", { class: "fs-12 text-dim", style: "margin-bottom:8px", text: "📅 Añadir recordatorio a tu calendario (usa la fecha de arriba):" }),
+      el("div", { class: "row" }, [
+        el("button", { type: "button", class: "btn sm", html: "🗓️ Google", onclick: () => run((t, de, d) => { Audio.play("coin"); window.open(googleUrl(t, de, d), "_blank", "noopener"); }) }),
+        el("button", { type: "button", class: "btn sm", html: "📆 .ics", onclick: () => run((t, de, d) => { Audio.play("tap"); downloadIcs(t, de, d); }) })
+      ])
+    ]);
+  }
+
+  N.CalExport = { open, googleUrl, downloadIcs, formRow };
 })();
 
 

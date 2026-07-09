@@ -428,3 +428,23 @@ canvas { display: block; width: 100%; }
 }
 .cal-day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
 @media (max-width: 560px) { .cal-day { font-size: 11px; border-radius: 8px; } .cal { gap: 4px; } }
+
+
+/* =====================================================================
+   ESTADO VENCIDO (tareas y metas atrasadas)
+   ===================================================================== */
+.item.overdue {
+  border-color: color-mix(in srgb, var(--bad) 55%, transparent);
+  background: color-mix(in srgb, var(--bad) 9%, var(--panel-2));
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+.card.overdue {
+  border-color: color-mix(in srgb, var(--bad) 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 35%, transparent), var(--shadow);
+}
+.card.overdue::before { background: linear-gradient(90deg, transparent, var(--bad), transparent); opacity: .8; }
+.overdue .chip.bad { animation: pulseBad 1.6s ease-in-out infinite; }
+@keyframes pulseBad {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bad) 45%, transparent); }
+  50% { box-shadow: 0 0 9px 1px color-mix(in srgb, var(--bad) 60%, transparent); }
+}

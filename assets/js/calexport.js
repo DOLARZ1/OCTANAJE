@@ -85,5 +85,22 @@
     UI.openModal("Añadir recordatorio", body);
   }
 
-  N.CalExport = { open, googleUrl, downloadIcs };
+  // Fila para insertar dentro de un formulario: lee el título y la fecha en vivo
+  function formRow(titleInput, dateInput, detailText) {
+    const run = (fn) => {
+      const t = (titleInput && titleInput.value || "").trim();
+      const d = dateInput && dateInput.value;
+      if (!d) { toast({ icon: "⚠️", msg: "Primero elige una fecha arriba." }); return; }
+      fn(t || "Recordatorio", detailText || "", d);
+    };
+    return el("div", { style: "margin:2px 0 8px;padding:12px;border:1px dashed var(--border-strong);border-radius:12px" }, [
+      el("div", { class: "fs-12 text-dim", style: "margin-bottom:8px", text: "📅 Añadir recordatorio a tu calendario (usa la fecha de arriba):" }),
+      el("div", { class: "row" }, [
+        el("button", { type: "button", class: "btn sm", html: "🗓️ Google", onclick: () => run((t, de, d) => { Audio.play("coin"); window.open(googleUrl(t, de, d), "_blank", "noopener"); }) }),
+        el("button", { type: "button", class: "btn sm", html: "📆 .ics", onclick: () => run((t, de, d) => { Audio.play("tap"); downloadIcs(t, de, d); }) })
+      ])
+    ]);
+  }
+
+  N.CalExport = { open, googleUrl, downloadIcs, formRow };
 })();

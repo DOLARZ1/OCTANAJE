@@ -84,7 +84,7 @@
 
   // ---------- form builder ----------
   // fields: [{name,label,type,value,options,placeholder,required,min,step}]
-  function form(fields, onSubmit, submitLabel) {
+  function form(fields, onSubmit, submitLabel, extrasFn) {
     const inputs = {};
     const wrap = el("form", { class: "nexus-form" });
     fields.forEach((f) => {
@@ -96,6 +96,8 @@
       }
       wrap.appendChild(buildField(f, inputs));
     });
+    // contenido extra opcional (recibe el mapa de inputs para leer valores en vivo)
+    if (typeof extrasFn === "function") { try { const ex = extrasFn(inputs); if (ex) wrap.appendChild(ex); } catch (e) {} }
     const submit = el("button", { class: "btn primary block mt-8", type: "submit", text: submitLabel || "Guardar" });
     wrap.appendChild(submit);
     wrap.addEventListener("submit", (e) => {

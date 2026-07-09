@@ -41,7 +41,8 @@
       UI.closeModal();
       render(document.getElementById("view-goals"));
       N.App && N.App.refreshTop();
-    }, existing ? "Guardar" : "Crear meta");
+    }, existing ? "Guardar" : "Crear meta",
+      (inputs) => N.CalExport.formRow(inputs.title, inputs.deadline, "Meta en NEXUS"));
     UI.openModal(existing ? "Editar meta" : "Nueva meta", body);
   }
 
@@ -132,11 +133,12 @@
     const dl = deadlineInfo(g);
     const msDone = g.milestones.filter((m) => m.done).length;
 
+    const overdue = dl && dl.cls === "bad" && !done;
     const ring = el("canvas");
     const ringWrap = el("div", { class: "ring-wrap" }, [ring, el("div", { class: "ring-val", text: p + "%" })]);
     setTimeout(() => Charts.ring(ring, p, { size: 84, color: done ? "--good" : "--accent" }), 30);
 
-    const card = el("div", { class: "card" }, [
+    const card = el("div", { class: "card" + (overdue ? " overdue" : "") }, [
       el("div", { class: "flex items-center gap-12" }, [
         ringWrap,
         el("div", { class: "item-main" }, [
