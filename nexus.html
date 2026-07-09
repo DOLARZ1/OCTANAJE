@@ -1,0 +1,2538 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="NEXUS - Sistema futurista de productividad personal: hábitos, finanzas con IA, tareas, entrenamientos y metas." />
+  <title>NEXUS · Productividad Futurista</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <style>
+/* =====================================================================
+   NEXUS · Hoja de estilos futurista
+   Temas: dark (oscuro), light (claro), gray (gris)
+   ===================================================================== */
+
+/* ------------------- Reset ------------------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Segoe UI", "SF Pro Display", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--txt);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background .5s ease, color .4s ease;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
+
+/* =====================================================================
+   TEMAS
+   ===================================================================== */
+:root, [data-theme="dark"] {
+  --bg: #060814;
+  --bg-2: #0b1024;
+  --panel: rgba(20, 27, 54, .55);
+  --panel-solid: #121a38;
+  --panel-2: rgba(28, 37, 71, .6);
+  --txt: #e8ecff;
+  --txt-dim: #93a0cc;
+  --txt-faint: #5e6a94;
+  --border: rgba(120, 140, 220, .16);
+  --border-strong: rgba(120, 140, 220, .32);
+  --accent: #00e5ff;
+  --accent-2: #7c5cff;
+  --accent-3: #ff2fb0;
+  --good: #21e6a4;
+  --warn: #ffb020;
+  --bad: #ff5470;
+  --glow: 0 0 22px rgba(0, 229, 255, .35);
+  --shadow: 0 18px 50px rgba(0, 0, 0, .55);
+  --grid-line: rgba(90, 120, 220, .09);
+  --blur: 16px;
+}
+
+[data-theme="light"] {
+  --bg: #eef2fb;
+  --bg-2: #e2e8f7;
+  --panel: rgba(255, 255, 255, .75);
+  --panel-solid: #ffffff;
+  --panel-2: rgba(255, 255, 255, .9);
+  --txt: #14203f;
+  --txt-dim: #556084;
+  --txt-faint: #8b95b5;
+  --border: rgba(40, 70, 160, .14);
+  --border-strong: rgba(40, 70, 160, .26);
+  --accent: #0091ff;
+  --accent-2: #7c5cff;
+  --accent-3: #ff2f9e;
+  --good: #06b981;
+  --warn: #e08600;
+  --bad: #f0416a;
+  --glow: 0 0 18px rgba(0, 145, 255, .28);
+  --shadow: 0 16px 40px rgba(50, 80, 160, .18);
+  --grid-line: rgba(40, 70, 160, .06);
+  --blur: 14px;
+}
+
+[data-theme="gray"] {
+  --bg: #1c1e22;
+  --bg-2: #24272c;
+  --panel: rgba(48, 52, 59, .6);
+  --panel-solid: #2b2f35;
+  --panel-2: rgba(58, 63, 71, .6);
+  --txt: #e9ebef;
+  --txt-dim: #a7adba;
+  --txt-faint: #71767f;
+  --border: rgba(180, 190, 205, .12);
+  --border-strong: rgba(180, 190, 205, .26);
+  --accent: #63d2ff;
+  --accent-2: #b39bff;
+  --accent-3: #ff8fc4;
+  --good: #4fd6a8;
+  --warn: #ffbe4d;
+  --bad: #ff7a90;
+  --glow: 0 0 18px rgba(99, 210, 255, .22);
+  --shadow: 0 16px 42px rgba(0, 0, 0, .4);
+  --grid-line: rgba(180, 190, 205, .06);
+  --blur: 14px;
+}
+
+/* =====================================================================
+   FONDO
+   ===================================================================== */
+.bg-grid {
+  position: fixed; inset: 0; z-index: -2;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 40%, transparent 100%);
+  animation: gridpan 40s linear infinite;
+}
+@keyframes gridpan { from { background-position: 0 0; } to { background-position: 46px 46px; } }
+.bg-glow {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(600px circle at 12% 6%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+    radial-gradient(700px circle at 92% 12%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 62%),
+    radial-gradient(600px circle at 60% 100%, color-mix(in srgb, var(--accent-3) 10%, transparent), transparent 60%);
+}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+.boot-screen {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  background: var(--bg);
+  transition: opacity .6s ease;
+}
+.boot-screen.hide { opacity: 0; pointer-events: none; }
+.boot-logo { font-size: 64px; filter: drop-shadow(var(--glow)); animation: spin 3s ease-in-out infinite; }
+@keyframes spin { 0%,100% { transform: rotate(0) scale(1);} 50% { transform: rotate(180deg) scale(1.1);} }
+.boot-title { font-size: 40px; font-weight: 800; letter-spacing: 12px; color: var(--accent); text-shadow: var(--glow); }
+.boot-sub { color: var(--txt-dim); letter-spacing: 3px; font-size: 12px; text-transform: uppercase; }
+.boot-bar { width: 220px; height: 4px; border-radius: 4px; background: var(--border); overflow: hidden; }
+.boot-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); animation: load 1.4s ease forwards; }
+@keyframes load { to { width: 100%; } }
+
+/* =====================================================================
+   APP LAYOUT
+   ===================================================================== */
+.app { max-width: 1180px; margin: 0 auto; padding: 18px clamp(12px, 3vw, 26px) 40px; }
+
+/* ---------- Topbar ---------- */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 16px; border-radius: 18px;
+  background: var(--panel); backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-hex { font-size: 30px; color: var(--accent); text-shadow: var(--glow); animation: pulse 4s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.6;} }
+.brand-text { display: flex; flex-direction: column; line-height: 1; }
+.brand-name { font-weight: 800; letter-spacing: 4px; font-size: 18px; }
+.brand-tag { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--txt-faint); }
+
+.topbar-center { flex: 1; display: flex; justify-content: center; }
+.level-wrap { display: flex; align-items: center; gap: 12px; min-width: 260px; max-width: 340px; width: 100%; }
+.level-badge {
+  width: 42px; height: 42px; flex: none; border-radius: 12px;
+  display: grid; place-items: center; font-weight: 800; font-size: 18px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #04122b;
+  box-shadow: var(--glow);
+}
+.xp-block { flex: 1; }
+.xp-meta { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
+.xp-meta span:first-child { color: var(--accent); font-weight: 700; letter-spacing: 1px; }
+.xp-meta span:last-child { color: var(--txt-dim); }
+.xp-bar { height: 8px; border-radius: 8px; background: var(--border); overflow: hidden; }
+.xp-fill { height: 100%; width: 0; border-radius: 8px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .6s cubic-bezier(.2,.9,.3,1); box-shadow: var(--glow); }
+
+.topbar-actions { display: flex; align-items: center; gap: 10px; }
+.streak-chip {
+  display: flex; align-items: center; gap: 5px; padding: 7px 11px; border-radius: 12px;
+  background: var(--panel-2); border: 1px solid var(--border); font-weight: 700; font-size: 14px;
+}
+.streak-chip .flame { filter: drop-shadow(0 0 6px var(--warn)); }
+.theme-switch { display: flex; gap: 3px; padding: 4px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border); }
+.th-btn { width: 30px; height: 30px; border-radius: 9px; font-size: 15px; display: grid; place-items: center; transition: .2s; }
+.th-btn:hover { background: var(--border); }
+.th-btn.is-active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--glow); }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border); font-size: 17px; display: grid; place-items: center; transition: .2s; }
+.icon-btn:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+
+/* ---------- Tabs ---------- */
+.tabs { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+.tab {
+  display: flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 14px;
+  background: var(--panel); border: 1px solid var(--border); color: var(--txt-dim);
+  font-weight: 600; font-size: 14px; letter-spacing: .5px; transition: .22s; backdrop-filter: blur(var(--blur));
+}
+.tab .tab-ico { font-size: 15px; opacity: .8; }
+.tab:hover { color: var(--txt); border-color: var(--border-strong); transform: translateY(-2px); }
+.tab.is-active {
+  color: #04122b; background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent; box-shadow: var(--glow); font-weight: 700;
+}
+.tab.is-active .tab-ico { opacity: 1; }
+
+/* ---------- Views ---------- */
+.view { display: none; animation: fadeUp .45s ease; }
+.view.is-active { display: block; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* =====================================================================
+   COMPONENTES
+   ===================================================================== */
+.card {
+  background: var(--panel); backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--border); border-radius: 18px; padding: 18px;
+  box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.card::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: .5;
+}
+.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 10px; }
+.card-title { font-size: 14px; font-weight: 700; letter-spacing: .5px; display: flex; align-items: center; gap: 8px; }
+.card-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: var(--glow); }
+.card-sub { font-size: 12px; color: var(--txt-faint); }
+
+.grid { display: grid; gap: 16px; }
+.grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 860px) { .grid.cols-3, .grid.cols-4 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .grid.cols-2, .grid.cols-3, .grid.cols-4 { grid-template-columns: 1fr; } }
+
+.view-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+.view-title { font-size: 26px; font-weight: 800; letter-spacing: .5px; display: flex; align-items: center; gap: 12px; }
+.view-title .ico { font-size: 24px; color: var(--accent); text-shadow: var(--glow); }
+.view-desc { color: var(--txt-dim); font-size: 13px; margin-top: 4px; }
+
+/* KPIs */
+.kpi { display: flex; flex-direction: column; gap: 6px; }
+.kpi-val { font-size: 30px; font-weight: 800; letter-spacing: .5px; }
+.kpi-lbl { font-size: 12px; color: var(--txt-dim); text-transform: uppercase; letter-spacing: 1.5px; }
+.kpi-sub { font-size: 11px; color: var(--txt-faint); }
+.kpi-val.accent { color: var(--accent); }
+.kpi-val.good { color: var(--good); }
+.kpi-val.bad { color: var(--bad); }
+.kpi-val.warn { color: var(--warn); }
+
+/* Botones */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 12px;
+  background: var(--panel-2); border: 1px solid var(--border-strong); color: var(--txt);
+  font-weight: 600; font-size: 14px; transition: .2s;
+}
+.btn:hover { transform: translateY(-2px); border-color: var(--accent); }
+.btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #04122b; border-color: transparent; box-shadow: var(--glow); }
+.btn.ghost { background: transparent; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.sm { padding: 6px 12px; font-size: 12px; border-radius: 10px; }
+.btn.block { width: 100%; justify-content: center; }
+
+/* Inputs */
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field label { font-size: 12px; color: var(--txt-dim); letter-spacing: .5px; }
+.input, .select, .textarea {
+  width: 100%; padding: 11px 13px; border-radius: 11px; background: var(--panel-2);
+  border: 1px solid var(--border-strong); color: var(--txt); font-size: 14px; transition: .2s;
+}
+.input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--glow); }
+.textarea { resize: vertical; min-height: 70px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row > * { flex: 1; min-width: 120px; }
+
+/* Chips / tags */
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--panel-2); border: 1px solid var(--border); }
+.chip.good { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
+.chip.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.chip.bad { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+.chip.accent { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* Listas de ítems */
+.item {
+  display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 14px;
+  background: var(--panel-2); border: 1px solid var(--border); margin-bottom: 10px; transition: .2s;
+}
+.item:hover { border-color: var(--border-strong); transform: translateX(3px); }
+.item .item-main { flex: 1; min-width: 0; }
+.item .item-title { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.item .item-meta { font-size: 12px; color: var(--txt-dim); margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap; }
+.item.done .item-title { text-decoration: line-through; color: var(--txt-faint); }
+
+.check {
+  width: 30px; height: 30px; flex: none; border-radius: 10px; border: 2px solid var(--border-strong);
+  display: grid; place-items: center; font-size: 15px; transition: .2s; background: transparent;
+}
+.check:hover { border-color: var(--accent); }
+.check.on { background: linear-gradient(135deg, var(--good), var(--accent)); border-color: transparent; color: #04122b; box-shadow: 0 0 14px color-mix(in srgb, var(--good) 50%, transparent); }
+
+.empty { text-align: center; color: var(--txt-faint); padding: 30px 10px; font-size: 13px; }
+.empty .big { font-size: 40px; display: block; margin-bottom: 8px; opacity: .5; }
+
+/* Progreso lineal */
+.progress { height: 9px; border-radius: 8px; background: var(--border); overflow: hidden; }
+.progress > span { display: block; height: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .6s ease; }
+.progress.good > span { background: linear-gradient(90deg, var(--good), var(--accent)); }
+
+/* Anillo de progreso */
+.ring-wrap { display: inline-grid; place-items: center; position: relative; }
+.ring-wrap .ring-val { position: absolute; font-weight: 800; font-size: 15px; }
+
+/* Canvas contenedor */
+.chart-box { position: relative; width: 100%; }
+canvas { display: block; width: 100%; }
+
+/* Heatmap hábitos */
+.heat { display: grid; grid-template-columns: repeat(auto-fill, 15px); gap: 4px; }
+.heat i { width: 15px; height: 15px; border-radius: 4px; background: var(--border); }
+.heat i.l1 { background: color-mix(in srgb, var(--accent) 30%, var(--border)); }
+.heat i.l2 { background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.heat i.l3 { background: color-mix(in srgb, var(--accent) 80%, transparent); box-shadow: var(--glow); }
+
+/* Insight IA */
+.insight { display: flex; gap: 12px; padding: 13px; border-radius: 13px; background: var(--panel-2); border: 1px solid var(--border); margin-bottom: 10px; }
+.insight .ico { font-size: 20px; flex: none; }
+.insight .txt { font-size: 13px; line-height: 1.5; }
+.insight.good { border-left: 3px solid var(--good); }
+.insight.warn { border-left: 3px solid var(--warn); }
+.insight.bad { border-left: 3px solid var(--bad); }
+.insight.info { border-left: 3px solid var(--accent); }
+
+/* Segment control */
+.seg { display: inline-flex; padding: 4px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border); gap: 3px; }
+.seg button { padding: 6px 14px; border-radius: 9px; font-size: 13px; color: var(--txt-dim); font-weight: 600; transition: .2s; }
+.seg button.on { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #04122b; }
+
+/* =====================================================================
+   TOASTS
+   ===================================================================== */
+.toast-stack { position: fixed; top: 18px; right: 18px; z-index: 200; display: flex; flex-direction: column; gap: 10px; max-width: 340px; }
+.toast {
+  display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-radius: 14px;
+  background: var(--panel-solid); border: 1px solid var(--border-strong); box-shadow: var(--shadow);
+  animation: toastIn .4s cubic-bezier(.2,.9,.3,1); backdrop-filter: blur(var(--blur));
+}
+.toast.out { animation: toastOut .4s ease forwards; }
+@keyframes toastIn { from { transform: translateX(120%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes toastOut { to { transform: translateX(120%); opacity: 0; } }
+.toast .t-ico { font-size: 22px; }
+.toast .t-body { font-size: 13px; }
+.toast .t-title { font-weight: 700; margin-bottom: 2px; }
+.toast .t-msg { color: var(--txt-dim); font-size: 12px; }
+.toast.level { border-color: var(--accent); box-shadow: var(--glow); }
+
+/* =====================================================================
+   MODAL
+   ===================================================================== */
+.modal-overlay { position: fixed; inset: 0; z-index: 150; background: rgba(2,4,12,.6); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 20px; animation: fadeUp .25s ease; }
+.modal { width: 100%; max-width: 460px; background: var(--panel-solid); border: 1px solid var(--border-strong); border-radius: 20px; box-shadow: var(--shadow); overflow: hidden; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+.modal-head h3 { font-size: 17px; font-weight: 700; }
+.modal-body { padding: 18px; max-height: 70vh; overflow-y: auto; }
+
+/* Footer */
+.foot { display: flex; align-items: center; justify-content: space-between; margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--txt-faint); flex-wrap: wrap; gap: 10px; }
+.link-btn { color: var(--txt-dim); text-decoration: underline; font-size: 12px; }
+.link-btn:hover { color: var(--bad); }
+
+/* Utilidades */
+.mt-8 { margin-top: 8px; } .mt-16 { margin-top: 16px; } .mb-16 { margin-bottom: 16px; }
+.flex { display: flex; } .items-center { align-items: center; } .justify-between { justify-content: space-between; } .gap-8 { gap: 8px; } .gap-12 { gap: 12px; }
+.text-dim { color: var(--txt-dim); } .text-faint { color: var(--txt-faint); }
+.text-good { color: var(--good); } .text-bad { color: var(--bad); } .text-warn { color: var(--warn); } .text-accent { color: var(--accent); }
+.fw-700 { font-weight: 700; } .fs-12 { font-size: 12px; } .fs-13 { font-size: 13px; } .fs-20 { font-size: 20px; }
+.hidden { display: none !important; }
+
+@media (max-width: 640px) {
+  .topbar { flex-wrap: wrap; }
+  .topbar-center { order: 3; width: 100%; }
+  .tab-lbl { display: none; }
+  .tab { padding: 11px 15px; }
+  .view-title { font-size: 22px; }
+}
+
+</style>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬡</text></svg>" />
+</head>
+<body>
+  <!-- Fondo animado -->
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <!-- Pantalla de bienvenida -->
+  <div id="boot-screen" class="boot-screen">
+    <div class="boot-logo">⬡</div>
+    <div class="boot-title">NEXUS</div>
+    <div class="boot-sub">Inicializando sistema…</div>
+    <div class="boot-bar"><span></span></div>
+  </div>
+
+  <div class="app" id="app" hidden>
+    <!-- ====================== TOPBAR ====================== -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-hex">⬡</span>
+        <div class="brand-text">
+          <span class="brand-name">NEXUS</span>
+          <span class="brand-tag">personal OS</span>
+        </div>
+      </div>
+
+      <div class="topbar-center">
+        <div class="level-wrap" title="Tu nivel y experiencia">
+          <div class="level-badge" id="level-badge">1</div>
+          <div class="xp-block">
+            <div class="xp-meta">
+              <span id="rank-name">Iniciado</span>
+              <span id="xp-text">0 / 100 XP</span>
+            </div>
+            <div class="xp-bar"><div class="xp-fill" id="xp-fill"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="streak-chip" id="global-streak" title="Racha global de días activos">
+          <span class="flame">🔥</span><span id="streak-days">0</span>
+        </div>
+
+        <div class="theme-switch" role="group" aria-label="Selector de tema">
+          <button class="th-btn" data-theme-set="light" title="Tema claro">☀️</button>
+          <button class="th-btn" data-theme-set="gray" title="Tema gris">◐</button>
+          <button class="th-btn is-active" data-theme-set="dark" title="Tema oscuro">🌙</button>
+        </div>
+
+        <button class="icon-btn" id="sound-toggle" title="Activar / silenciar sonidos">🔊</button>
+      </div>
+    </header>
+
+    <!-- ====================== TABS ====================== -->
+    <nav class="tabs" id="tabs" role="tablist">
+      <button class="tab is-active" data-view="dashboard" role="tab"><span class="tab-ico">◎</span><span class="tab-lbl">Panel</span></button>
+      <button class="tab" data-view="habits" role="tab"><span class="tab-ico">✦</span><span class="tab-lbl">Hábitos</span></button>
+      <button class="tab" data-view="finance" role="tab"><span class="tab-ico">◈</span><span class="tab-lbl">Finanzas IA</span></button>
+      <button class="tab" data-view="tasks" role="tab"><span class="tab-ico">✓</span><span class="tab-lbl">Tareas</span></button>
+      <button class="tab" data-view="workouts" role="tab"><span class="tab-ico">⚡</span><span class="tab-lbl">Entreno</span></button>
+      <button class="tab" data-view="goals" role="tab"><span class="tab-ico">◉</span><span class="tab-lbl">Metas</span></button>
+    </nav>
+
+    <!-- ====================== VIEWS ====================== -->
+    <main class="views" id="views">
+      <section class="view is-active" id="view-dashboard" role="tabpanel"></section>
+      <section class="view" id="view-habits" role="tabpanel"></section>
+      <section class="view" id="view-finance" role="tabpanel"></section>
+      <section class="view" id="view-tasks" role="tabpanel"></section>
+      <section class="view" id="view-workouts" role="tabpanel"></section>
+      <section class="view" id="view-goals" role="tabpanel"></section>
+    </main>
+
+    <footer class="foot">
+      <span>NEXUS · datos guardados localmente en tu navegador</span>
+      <button class="link-btn" id="reset-data">Reiniciar datos</button>
+    </footer>
+  </div>
+
+  <!-- Contenedor de notificaciones -->
+  <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
+  <!-- Modal genérico -->
+  <div class="modal-overlay" id="modal-overlay" hidden>
+    <div class="modal" id="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3 id="modal-title">Título</h3>
+        <button class="icon-btn" id="modal-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ====================== SCRIPTS ====================== -->
+  <script>
+/* ===== assets/js/store.js ===== */
+/* =====================================================================
+   NEXUS · Store — estado global + persistencia en localStorage
+   ===================================================================== */
+(function () {
+  "use strict";
+
+  const KEY = "nexus.state.v1";
+
+  // ---------- utilidades de fecha ----------
+  const DateUtil = {
+    todayKey() { return this.key(new Date()); },
+    key(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    },
+    parse(key) { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d); },
+    addDays(key, n) { const d = this.parse(key); d.setDate(d.getDate() + n); return this.key(d); },
+    diffDays(a, b) { return Math.round((this.parse(a) - this.parse(b)) / 86400000); },
+    isYesterday(key) { return key === this.addDays(this.todayKey(), -1); },
+    lastNDays(n) {
+      const out = [];
+      for (let i = n - 1; i >= 0; i--) out.push(this.addDays(this.todayKey(), -i));
+      return out;
+    },
+    monthKey(d) { d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; },
+    label(key) {
+      const d = this.parse(key);
+      return d.toLocaleDateString("es", { day: "2-digit", month: "short" });
+    },
+    weekday(key) {
+      return this.parse(key).toLocaleDateString("es", { weekday: "short" });
+    }
+  };
+
+  // ---------- estado por defecto ----------
+  function defaultState() {
+    return {
+      profile: { xp: 0, level: 1, createdAt: DateUtil.todayKey() },
+      settings: { theme: "dark", sound: true },
+      activity: {},            // { "YYYY-MM-DD": true }  días con alguna acción
+      xpLog: {},               // { "YYYY-MM-DD": xpGanado }
+      achievements: [],        // ids de logros desbloqueados
+      habits: [],              // {id,name,icon,color,history:{date:true},created}
+      finance: {
+        transactions: [],      // {id,type:'income'|'expense',amount,category,note,date}
+        budget: 0,             // presupuesto mensual objetivo de gasto
+        savingGoal: 0          // meta de ahorro mensual
+      },
+      tasks: [],               // {id,title,priority,due,done,subtasks:[{t,done}],created}
+      workouts: [],            // {id,name,type,duration,calories,volume,date}
+      goals: []                // {id,title,target,current,unit,deadline,milestones:[{t,done}],created}
+    };
+  }
+
+  // ---------- carga / guardado ----------
+  let state = load();
+  const subscribers = [];
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return defaultState();
+      const parsed = JSON.parse(raw);
+      return deepMerge(defaultState(), parsed);
+    } catch (e) {
+      console.warn("No se pudo cargar el estado, usando por defecto", e);
+      return defaultState();
+    }
+  }
+
+  function deepMerge(base, override) {
+    if (Array.isArray(base)) return Array.isArray(override) ? override : base;
+    if (base && typeof base === "object") {
+      const out = { ...base };
+      for (const k in override) {
+        out[k] = (k in base) ? deepMerge(base[k], override[k]) : override[k];
+      }
+      return out;
+    }
+    return override === undefined ? base : override;
+  }
+
+  let saveTimer = null;
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); }
+      catch (e) { console.error("Error al guardar", e); }
+    }, 120);
+  }
+
+  function notify() { subscribers.forEach((fn) => { try { fn(state); } catch (e) { console.error(e); } }); }
+
+  // ---------- API pública ----------
+  const Store = {
+    DateUtil,
+    get() { return state; },
+    subscribe(fn) { subscribers.push(fn); return () => { const i = subscribers.indexOf(fn); if (i >= 0) subscribers.splice(i, 1); }; },
+
+    // guardar + notificar (usar tras mutar el estado)
+    commit(silent) { save(); if (!silent) notify(); },
+
+    // registra actividad del día (para racha global)
+    markActive() {
+      state.activity[DateUtil.todayKey()] = true;
+    },
+
+    reset() {
+      state = defaultState();
+      save(); notify();
+    },
+
+    uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  };
+
+  window.NEXUS = window.NEXUS || {};
+  window.NEXUS.Store = Store;
+})();
+
+
+/* ===== assets/js/audio.js ===== */
+/* =====================================================================
+   NEXUS · Audio — sonidos sintetizados con Web Audio API (sin archivos)
+   ===================================================================== */
+(function () {
+  "use strict";
+  const Store = window.NEXUS.Store;
+
+  let ctx = null;
+  let master = null;
+  let enabled = Store.get().settings.sound !== false;
+
+  function ensure() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = 0.22;
+      master.connect(ctx.destination);
+    }
+    if (ctx.state === "suspended") ctx.resume();
+    return true;
+  }
+
+  // Genera un tono con envolvente
+  function tone(freq, start, dur, type, vol) {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+    const t0 = ctx.currentTime + start;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol == null ? 1 : vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+    osc.connect(g); g.connect(master);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+
+  function sweep(f1, f2, start, dur, type, vol) {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type || "sawtooth";
+    const t0 = ctx.currentTime + start;
+    osc.frequency.setValueAtTime(f1, t0);
+    osc.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol == null ? 0.8 : vol, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+    osc.connect(g); g.connect(master);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+
+  // Biblioteca de sonidos
+  const sounds = {
+    tap()      { tone(520, 0, 0.08, "sine", 0.5); },
+    tab()      { tone(680, 0, 0.09, "triangle", 0.5); tone(880, 0.04, 0.09, "triangle", 0.35); },
+    toggleOn() { tone(660, 0, 0.09, "square", 0.35); tone(990, 0.06, 0.12, "square", 0.3); },
+    complete() { tone(587, 0, 0.1, "sine", 0.5); tone(784, 0.08, 0.12, "sine", 0.5); tone(1175, 0.16, 0.18, "sine", 0.4); },
+    add()      { tone(440, 0, 0.09, "triangle", 0.45); tone(660, 0.06, 0.12, "triangle", 0.4); },
+    coin()     { tone(988, 0, 0.06, "square", 0.3); tone(1319, 0.05, 0.14, "square", 0.28); },
+    money()    { tone(784, 0, 0.08, "sine", 0.4); tone(1047, 0.07, 0.12, "sine", 0.4); tone(1319, 0.14, 0.16, "sine", 0.35); },
+    delete()   { sweep(400, 120, 0, 0.22, "sawtooth", 0.35); },
+    error()    { tone(200, 0, 0.16, "square", 0.4); tone(160, 0.1, 0.18, "square", 0.35); },
+    levelup()  {
+      const notes = [523, 659, 784, 1047, 1319];
+      notes.forEach((f, i) => tone(f, i * 0.09, 0.28, "triangle", 0.42));
+      sweep(300, 1400, 0.1, 0.6, "sine", 0.2);
+    },
+    achieve()  { tone(784, 0, 0.12, "sine", 0.4); tone(1047, 0.1, 0.14, "sine", 0.4); tone(1568, 0.22, 0.24, "sine", 0.35); }
+  };
+
+  const Audio = {
+    play(name) {
+      if (!enabled) return;
+      if (!ensure()) return;
+      const fn = sounds[name];
+      if (fn) { try { fn(); } catch (e) {} }
+    },
+    isEnabled() { return enabled; },
+    toggle() {
+      enabled = !enabled;
+      Store.get().settings.sound = enabled;
+      Store.commit(true);
+      if (enabled) { ensure(); this.play("toggleOn"); }
+      return enabled;
+    },
+    // desbloquea el contexto tras el primer gesto del usuario
+    unlock() { ensure(); }
+  };
+
+  window.NEXUS.Audio = Audio;
+})();
+
+
+/* ===== assets/js/charts.js ===== */
+/* =====================================================================
+   NEXUS · Charts — motor de gráficas propio sobre Canvas (sin librerías)
+   Soporta: line, area, bar, doughnut, sparkline, ring
+   ===================================================================== */
+(function () {
+  "use strict";
+
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#00e5ff";
+  }
+
+  // Prepara el canvas para pantallas retina
+  function setup(canvas, height) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || canvas.parentElement.clientWidth || 300;
+    const h = height || canvas.clientHeight || 160;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.height = h + "px";
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w, h };
+  }
+
+  function niceMax(v) {
+    if (v <= 0) return 10;
+    const mag = Math.pow(10, Math.floor(Math.log10(v)));
+    const n = v / mag;
+    let f;
+    if (n <= 1) f = 1; else if (n <= 2) f = 2; else if (n <= 5) f = 5; else f = 10;
+    return f * mag;
+  }
+
+  function animate(draw) {
+    const start = performance.now();
+    const dur = 650;
+    function frame(now) {
+      let t = Math.min(1, (now - start) / dur);
+      t = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      draw(t);
+      if (t < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  const Charts = {
+    // ---------- Línea / Área ----------
+    line(canvas, data, opts) {
+      opts = opts || {};
+      const { ctx, w, h } = setup(canvas, opts.height || 180);
+      const values = data.values || [];
+      const labels = data.labels || [];
+      const pad = { l: 34, r: 12, t: 14, b: 22 };
+      const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
+      const maxV = niceMax(Math.max(1, ...values));
+      const color = opts.color ? cssVar(opts.color) : cssVar("--accent");
+      const color2 = cssVar("--accent-2");
+      const grid = cssVar("--border");
+      const dim = cssVar("--txt-faint");
+      const n = values.length;
+      const x = (i) => pad.l + (n <= 1 ? cw / 2 : (cw * i) / (n - 1));
+      const y = (v) => pad.t + ch - (v / maxV) * ch;
+
+      animate((prog) => {
+        ctx.clearRect(0, 0, w, h);
+        // grid + etiquetas Y
+        ctx.strokeStyle = grid; ctx.fillStyle = dim; ctx.lineWidth = 1;
+        ctx.font = "10px system-ui"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+        for (let g = 0; g <= 4; g++) {
+          const gy = pad.t + (ch * g) / 4;
+          ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(w - pad.r, gy); ctx.stroke();
+          ctx.fillText(Math.round(maxV - (maxV * g) / 4), pad.l - 6, gy);
+        }
+        // etiquetas X
+        ctx.textAlign = "center"; ctx.textBaseline = "top";
+        const step = Math.ceil(n / 7);
+        labels.forEach((lb, i) => { if (i % step === 0) ctx.fillText(lb, x(i), h - pad.b + 5); });
+
+        if (n === 0) return;
+        // área
+        const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + ch);
+        grad.addColorStop(0, color + "55"); grad.addColorStop(1, color + "00");
+        ctx.beginPath(); ctx.moveTo(x(0), pad.t + ch);
+        values.forEach((v, i) => ctx.lineTo(x(i), y(v * prog)));
+        ctx.lineTo(x(n - 1), pad.t + ch); ctx.closePath();
+        ctx.fillStyle = grad; ctx.fill();
+        // línea
+        const lg = ctx.createLinearGradient(pad.l, 0, w - pad.r, 0);
+        lg.addColorStop(0, color); lg.addColorStop(1, color2);
+        ctx.beginPath();
+        values.forEach((v, i) => { const px = x(i), py = y(v * prog); i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); });
+        ctx.strokeStyle = lg; ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.shadowColor = color; ctx.shadowBlur = 8; ctx.stroke();
+        ctx.shadowBlur = 0;
+        // puntos
+        values.forEach((v, i) => {
+          ctx.beginPath(); ctx.arc(x(i), y(v * prog), 2.8, 0, Math.PI * 2);
+          ctx.fillStyle = color; ctx.fill();
+        });
+      });
+    },
+
+    // ---------- Barras (soporta apiladas ingreso/gasto) ----------
+    bars(canvas, data, opts) {
+      opts = opts || {};
+      const { ctx, w, h } = setup(canvas, opts.height || 180);
+      const labels = data.labels || [];
+      const series = data.series || [{ values: data.values || [], color: "--accent" }];
+      const pad = { l: 34, r: 12, t: 14, b: 22 };
+      const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
+      let maxV = 1;
+      series.forEach((s) => s.values.forEach((v) => { if (v > maxV) maxV = v; }));
+      maxV = niceMax(maxV);
+      const grid = cssVar("--border"); const dim = cssVar("--txt-faint");
+      const n = labels.length;
+      const groupW = cw / Math.max(1, n);
+      const barW = Math.min(26, (groupW * 0.6) / series.length);
+
+      animate((prog) => {
+        ctx.clearRect(0, 0, w, h);
+        ctx.strokeStyle = grid; ctx.fillStyle = dim; ctx.lineWidth = 1;
+        ctx.font = "10px system-ui"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+        for (let g = 0; g <= 4; g++) {
+          const gy = pad.t + (ch * g) / 4;
+          ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(w - pad.r, gy); ctx.stroke();
+          ctx.fillText(Math.round(maxV - (maxV * g) / 4), pad.l - 6, gy);
+        }
+        ctx.textAlign = "center"; ctx.textBaseline = "top";
+        for (let i = 0; i < n; i++) {
+          const gx = pad.l + groupW * i + groupW / 2;
+          const totalW = barW * series.length + (series.length - 1) * 3;
+          series.forEach((s, si) => {
+            const v = (s.values[i] || 0) * prog;
+            const bh = (v / maxV) * ch;
+            const bx = gx - totalW / 2 + si * (barW + 3);
+            const by = pad.t + ch - bh;
+            const col = cssVar(s.color || "--accent");
+            const grad = ctx.createLinearGradient(0, by, 0, pad.t + ch);
+            grad.addColorStop(0, col); grad.addColorStop(1, col + "66");
+            ctx.fillStyle = grad;
+            roundRect(ctx, bx, by, barW, bh, 4); ctx.fill();
+          });
+          if (i % Math.ceil(n / 8) === 0 || n <= 8) ctx.fillText(labels[i], gx, h - pad.b + 5);
+        }
+      });
+    },
+
+    // ---------- Doughnut ----------
+    doughnut(canvas, data, opts) {
+      opts = opts || {};
+      const { ctx, w, h } = setup(canvas, opts.height || 190);
+      const items = (data || []).filter((d) => d.value > 0);
+      const total = items.reduce((s, d) => s + d.value, 0);
+      const cx = w / 2, cy = h / 2;
+      const r = Math.min(cx, cy) - 8, rin = r * 0.62;
+      const palette = ["--accent", "--accent-2", "--accent-3", "--good", "--warn", "--bad"];
+
+      animate((prog) => {
+        ctx.clearRect(0, 0, w, h);
+        if (total === 0) {
+          ctx.strokeStyle = cssVar("--border"); ctx.lineWidth = r - rin;
+          ctx.beginPath(); ctx.arc(cx, cy, (r + rin) / 2, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = cssVar("--txt-faint"); ctx.font = "12px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText("Sin datos", cx, cy);
+          return;
+        }
+        let a = -Math.PI / 2;
+        items.forEach((d, i) => {
+          const slice = (d.value / total) * Math.PI * 2 * prog;
+          const col = cssVar(d.color || palette[i % palette.length]);
+          ctx.beginPath(); ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, r, a, a + slice); ctx.closePath();
+          ctx.fillStyle = col; ctx.fill();
+          a += slice;
+        });
+        // agujero central
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath(); ctx.arc(cx, cy, rin, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+        // total al centro
+        ctx.fillStyle = cssVar("--txt"); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = "700 18px system-ui";
+        ctx.fillText(opts.centerLabel || items.length + "", cx, cy - 6);
+        ctx.font = "10px system-ui"; ctx.fillStyle = cssVar("--txt-faint");
+        ctx.fillText(opts.centerSub || "categorías", cx, cy + 12);
+      });
+    },
+
+    // ---------- Sparkline (mini línea sin ejes) ----------
+    sparkline(canvas, values, opts) {
+      opts = opts || {};
+      const { ctx, w, h } = setup(canvas, opts.height || 40);
+      if (!values.length) return;
+      const max = Math.max(...values, 1), min = Math.min(...values, 0);
+      const range = max - min || 1;
+      const x = (i) => (w * i) / (values.length - 1 || 1);
+      const y = (v) => h - 4 - ((v - min) / range) * (h - 8);
+      const color = cssVar(opts.color || "--accent");
+      ctx.clearRect(0, 0, w, h);
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, color + "44"); grad.addColorStop(1, color + "00");
+      ctx.beginPath(); ctx.moveTo(0, h);
+      values.forEach((v, i) => ctx.lineTo(x(i), y(v)));
+      ctx.lineTo(w, h); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+      ctx.beginPath();
+      values.forEach((v, i) => { i === 0 ? ctx.moveTo(x(i), y(v)) : ctx.lineTo(x(i), y(v)); });
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
+    },
+
+    // ---------- Ring (anillo de progreso) ----------
+    ring(canvas, pct, opts) {
+      opts = opts || {};
+      const size = opts.size || 90;
+      canvas.style.width = size + "px";
+      const { ctx, w, h } = setup(canvas, size);
+      canvas.style.width = size + "px";
+      const cx = w / 2, cy = h / 2, r = Math.min(cx, cy) - 6;
+      const color = cssVar(opts.color || "--accent");
+      const color2 = cssVar("--accent-2");
+      pct = Math.max(0, Math.min(100, pct));
+      animate((prog) => {
+        ctx.clearRect(0, 0, w, h);
+        ctx.lineWidth = opts.thickness || 8; ctx.lineCap = "round";
+        ctx.strokeStyle = cssVar("--border");
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, color); grad.addColorStop(1, color2);
+        ctx.strokeStyle = grad; ctx.shadowColor = color; ctx.shadowBlur = 10;
+        const end = -Math.PI / 2 + (Math.PI * 2 * pct / 100) * prog;
+        ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, end); ctx.stroke();
+        ctx.shadowBlur = 0;
+      });
+    }
+  };
+
+  function roundRect(ctx, x, y, w, h, r) {
+    if (h < 0) { y += h; h = -h; }
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  window.NEXUS.Charts = Charts;
+})();
+
+
+/* ===== assets/js/ui.js ===== */
+/* =====================================================================
+   NEXUS · UI — helpers de DOM, toasts y modal
+   ===================================================================== */
+(function () {
+  "use strict";
+  const Audio = window.NEXUS.Audio;
+
+  // ---------- helpers DOM ----------
+  function el(tag, attrs, children) {
+    const node = document.createElement(tag);
+    if (attrs) {
+      for (const k in attrs) {
+        if (k === "class") node.className = attrs[k];
+        else if (k === "html") node.innerHTML = attrs[k];
+        else if (k === "text") node.textContent = attrs[k];
+        else if (k.startsWith("on") && typeof attrs[k] === "function") node.addEventListener(k.slice(2), attrs[k]);
+        else if (k === "dataset") { for (const d in attrs[k]) node.dataset[d] = attrs[k][d]; }
+        else if (attrs[k] != null) node.setAttribute(k, attrs[k]);
+      }
+    }
+    if (children != null) {
+      (Array.isArray(children) ? children : [children]).forEach((c) => {
+        if (c == null) return;
+        node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+      });
+    }
+    return node;
+  }
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const $ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+
+  // ---------- formato ----------
+  const fmt = {
+    money(n) {
+      const v = Number(n) || 0;
+      return v.toLocaleString("es", { style: "currency", currency: "USD", maximumFractionDigits: v % 1 === 0 ? 0 : 2 });
+    },
+    num(n) { return (Number(n) || 0).toLocaleString("es"); },
+    pct(n) { return Math.round(Number(n) || 0) + "%"; }
+  };
+
+  // ---------- toasts ----------
+  const stack = () => document.getElementById("toast-stack");
+  function toast(opts) {
+    opts = typeof opts === "string" ? { msg: opts } : opts;
+    const icon = opts.icon || "✦";
+    const node = el("div", { class: "toast" + (opts.level ? " level" : "") }, [
+      el("span", { class: "t-ico", text: icon }),
+      el("div", { class: "t-body" }, [
+        opts.title ? el("div", { class: "t-title", text: opts.title }) : null,
+        el("div", { class: "t-msg", text: opts.msg || "" })
+      ])
+    ]);
+    stack().appendChild(node);
+    setTimeout(() => {
+      node.classList.add("out");
+      setTimeout(() => node.remove(), 400);
+    }, opts.duration || 3200);
+  }
+
+  // ---------- modal ----------
+  const overlay = () => document.getElementById("modal-overlay");
+  function openModal(title, bodyNode) {
+    document.getElementById("modal-title").textContent = title;
+    const body = document.getElementById("modal-body");
+    body.innerHTML = "";
+    body.appendChild(bodyNode);
+    overlay().hidden = false;
+    const firstInput = body.querySelector("input, textarea, select");
+    if (firstInput) setTimeout(() => firstInput.focus(), 60);
+  }
+  function closeModal() { overlay().hidden = true; }
+
+  // ---------- form builder ----------
+  // fields: [{name,label,type,value,options,placeholder,required,min,step}]
+  function form(fields, onSubmit, submitLabel) {
+    const inputs = {};
+    const wrap = el("form", { class: "nexus-form" });
+    fields.forEach((f) => {
+      if (f.type === "row" && f.fields) {
+        const row = el("div", { class: "row" });
+        f.fields.forEach((sf) => { const fld = buildField(sf, inputs); row.appendChild(fld); });
+        wrap.appendChild(row);
+        return;
+      }
+      wrap.appendChild(buildField(f, inputs));
+    });
+    const submit = el("button", { class: "btn primary block mt-8", type: "submit", text: submitLabel || "Guardar" });
+    wrap.appendChild(submit);
+    wrap.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const data = {};
+      let ok = true;
+      for (const name in inputs) {
+        const inp = inputs[name];
+        let val = inp.value;
+        if (inp.type === "number") val = val === "" ? "" : Number(val);
+        if (inp.dataset.required === "1" && (val === "" || val == null)) { ok = false; inp.style.borderColor = "var(--bad)"; }
+        data[name] = val;
+      }
+      if (!ok) { Audio.play("error"); toast({ icon: "⚠️", title: "Faltan datos", msg: "Completa los campos obligatorios." }); return; }
+      onSubmit(data);
+    });
+    return wrap;
+  }
+
+  function buildField(f, inputs) {
+    const field = el("div", { class: "field" });
+    if (f.label) field.appendChild(el("label", { text: f.label + (f.required ? " *" : "") }));
+    let input;
+    if (f.type === "select") {
+      input = el("select", { class: "select" });
+      (f.options || []).forEach((o) => {
+        const opt = el("option", { value: o.value != null ? o.value : o, text: o.label != null ? o.label : o });
+        if ((o.value != null ? o.value : o) == f.value) opt.selected = true;
+        input.appendChild(opt);
+      });
+    } else if (f.type === "textarea") {
+      input = el("textarea", { class: "textarea", placeholder: f.placeholder || "" });
+      input.value = f.value || "";
+    } else {
+      input = el("input", { class: "input", type: f.type || "text", placeholder: f.placeholder || "" });
+      if (f.value != null) input.value = f.value;
+      if (f.min != null) input.min = f.min;
+      if (f.step != null) input.step = f.step;
+    }
+    if (f.required) input.dataset.required = "1";
+    inputs[f.name] = input;
+    input.addEventListener("input", () => { input.style.borderColor = ""; });
+    field.appendChild(input);
+    return field;
+  }
+
+  // ---------- confirm ----------
+  function confirmBox(title, msg, onYes, yesLabel) {
+    const body = el("div", {}, [
+      el("p", { class: "text-dim fs-13 mb-16", text: msg }),
+      el("div", { class: "row" }, [
+        el("button", { class: "btn ghost", text: "Cancelar", onclick: closeModal }),
+        el("button", { class: "btn danger", text: yesLabel || "Confirmar", onclick: () => { closeModal(); onYes(); } })
+      ])
+    ]);
+    openModal(title, body);
+  }
+
+  window.NEXUS.UI = { el, $, $, fmt, toast, openModal, closeModal, form, confirmBox };
+})();
+
+
+/* ===== assets/js/gamification.js ===== */
+/* =====================================================================
+   NEXUS · Gamification — XP, niveles, rachas y logros
+   ===================================================================== */
+(function () {
+  "use strict";
+  const Store = window.NEXUS.Store;
+  const Audio = window.NEXUS.Audio;
+  const UI = window.NEXUS.UI;
+  const DateUtil = Store.DateUtil;
+
+  // XP necesaria para alcanzar el nivel L (curva progresiva)
+  function xpForLevel(L) { return Math.round(100 * Math.pow(L, 1.45)); }
+
+  const RANKS = [
+    { min: 1, name: "Iniciado" },
+    { min: 4, name: "Aprendiz" },
+    { min: 8, name: "Constante" },
+    { min: 13, name: "Disciplinado" },
+    { min: 20, name: "Élite" },
+    { min: 30, name: "Maestro" },
+    { min: 45, name: "Leyenda" }
+  ];
+
+  const ACHIEVEMENTS = [
+    { id: "first_step", name: "Primer paso", icon: "👣", desc: "Registra tu primera acción", test: (s) => totalActions(s) >= 1 },
+    { id: "streak_3", name: "En marcha", icon: "🔥", desc: "Racha de 3 días", test: (s) => Gami.globalStreak() >= 3 },
+    { id: "streak_7", name: "Semana perfecta", icon: "🗓️", desc: "Racha de 7 días", test: (s) => Gami.globalStreak() >= 7 },
+    { id: "streak_30", name: "Imparable", icon: "⚡", desc: "Racha de 30 días", test: (s) => Gami.globalStreak() >= 30 },
+    { id: "level_5", name: "Nivel 5", icon: "⭐", desc: "Alcanza el nivel 5", test: (s) => s.profile.level >= 5 },
+    { id: "level_10", name: "Nivel 10", icon: "🌟", desc: "Alcanza el nivel 10", test: (s) => s.profile.level >= 10 },
+    { id: "habit_master", name: "Maestro del hábito", icon: "✦", desc: "5 hábitos activos", test: (s) => s.habits.length >= 5 },
+    { id: "saver", name: "Ahorrador", icon: "💰", desc: "Balance mensual positivo", test: (s) => window.NEXUS.Finance && window.NEXUS.Finance.monthBalance() > 0 },
+    { id: "task_crusher", name: "Productivo", icon: "✓", desc: "Completa 10 tareas", test: (s) => s.tasks.filter((t) => t.done).length >= 10 },
+    { id: "athlete", name: "Atleta", icon: "🏆", desc: "Registra 10 entrenamientos", test: (s) => s.workouts.length >= 10 },
+    { id: "achiever", name: "Cumplidor", icon: "◉", desc: "Completa una meta al 100%", test: (s) => s.goals.some((g) => g.current >= g.target && g.target > 0) }
+  ];
+
+  function totalActions(s) {
+    return Object.keys(s.xpLog).length + s.tasks.length + s.workouts.length + s.finance.transactions.length;
+  }
+
+  const Gami = {
+    xpForLevel,
+
+    rankName(level) {
+      let name = RANKS[0].name;
+      RANKS.forEach((r) => { if (level >= r.min) name = r.name; });
+      return name;
+    },
+
+    // progreso dentro del nivel actual
+    levelProgress() {
+      const s = Store.get();
+      const L = s.profile.level;
+      const prev = L <= 1 ? 0 : xpForLevel(L - 1);
+      const next = xpForLevel(L);
+      const into = s.profile.xp - prev;
+      const span = next - prev;
+      return { level: L, into: Math.max(0, into), span, next: next - prev, total: s.profile.xp, pct: Math.max(0, Math.min(100, (into / span) * 100)) };
+    },
+
+    // otorga XP + registra actividad + revisa nivel/logros
+    award(amount, reason) {
+      const s = Store.get();
+      s.profile.xp += amount;
+      const today = DateUtil.todayKey();
+      s.xpLog[today] = (s.xpLog[today] || 0) + amount;
+      Store.markActive();
+
+      // subir de nivel (puede subir varios)
+      let leveledTo = null;
+      while (s.profile.xp >= xpForLevel(s.profile.level)) {
+        s.profile.level++;
+        leveledTo = s.profile.level;
+      }
+      Store.commit();
+
+      if (leveledTo) {
+        Audio.play("levelup");
+        UI.toast({ level: true, icon: "🎉", title: "¡Nivel " + leveledTo + "!", msg: "Ahora eres " + this.rankName(leveledTo) + ". +" + amount + " XP" });
+        this.burst();
+      } else if (amount > 0) {
+        UI.toast({ icon: "✦", title: "+" + amount + " XP", msg: reason || "¡Buen trabajo!" });
+      }
+      this.checkAchievements();
+      return leveledTo;
+    },
+
+    // quitar XP (al deshacer acciones) sin bajar de nivel bruscamente
+    remove(amount) {
+      const s = Store.get();
+      s.profile.xp = Math.max(0, s.profile.xp - amount);
+      const today = DateUtil.todayKey();
+      if (s.xpLog[today]) s.xpLog[today] = Math.max(0, s.xpLog[today] - amount);
+      // recalcular nivel
+      let L = 1;
+      while (s.profile.xp >= xpForLevel(L)) L++;
+      s.profile.level = L;
+      Store.commit();
+    },
+
+    checkAchievements() {
+      const s = Store.get();
+      ACHIEVEMENTS.forEach((a) => {
+        if (!s.achievements.includes(a.id)) {
+          try {
+            if (a.test(s)) {
+              s.achievements.push(a.id);
+              Store.commit(true);
+              Audio.play("achieve");
+              UI.toast({ icon: a.icon, title: "Logro: " + a.name, msg: a.desc });
+            }
+          } catch (e) {}
+        }
+      });
+    },
+
+    allAchievements() { return ACHIEVEMENTS; },
+
+    // racha global de días con actividad
+    globalStreak() {
+      const s = Store.get();
+      let streak = 0;
+      let day = DateUtil.todayKey();
+      // si hoy no hay actividad, empezamos desde ayer para no romper visualmente
+      if (!s.activity[day]) day = DateUtil.addDays(day, -1);
+      while (s.activity[day]) { streak++; day = DateUtil.addDays(day, -1); }
+      return streak;
+    },
+
+    // efecto visual de partículas al subir de nivel
+    burst() {
+      const n = 26;
+      const colors = ["#00e5ff", "#7c5cff", "#ff2fb0", "#21e6a4", "#ffb020"];
+      for (let i = 0; i < n; i++) {
+        const p = document.createElement("div");
+        p.style.cssText = "position:fixed;left:50%;top:22%;width:9px;height:9px;border-radius:2px;z-index:300;pointer-events:none;";
+        p.style.background = colors[i % colors.length];
+        document.body.appendChild(p);
+        const ang = Math.random() * Math.PI * 2;
+        const dist = 120 + Math.random() * 180;
+        const dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist + 120;
+        p.animate([
+          { transform: "translate(0,0) rotate(0) scale(1)", opacity: 1 },
+          { transform: `translate(${dx}px,${dy}px) rotate(${Math.random() * 720}deg) scale(0)`, opacity: 0 }
+        ], { duration: 900 + Math.random() * 500, easing: "cubic-bezier(.2,.7,.3,1)" }).onfinish = () => p.remove();
+      }
+    }
+  };
+
+  window.NEXUS.Gami = Gami;
+})();
+
+
+/* ===== assets/js/modules/dashboard.js ===== */
+/* =====================================================================
+   NEXUS · Dashboard — resumen general con gráficas en tiempo real
+   ===================================================================== */
+(function () {
+  "use strict";
+  const N = window.NEXUS;
+  const { Store, UI, Charts, Gami } = N;
+  const { el, fmt } = UI;
+  const DateUtil = Store.DateUtil;
+
+  function render(container) {
+    const s = Store.get();
+    container.innerHTML = "";
+
+    const lp = Gami.levelProgress();
+    const streak = Gami.globalStreak();
+    const hp = N.Habits.todayProgress();
+    const ts = N.Tasks.stats();
+    const ws = N.Workouts.stats();
+    const gs = N.Goals.stats();
+    const bal = N.Finance.monthBalance();
+
+    const hour = new Date().getHours();
+    const greet = hour < 6 ? "Buenas noches" : hour < 12 ? "Buenos días" : hour < 20 ? "Buenas tardes" : "Buenas noches";
+
+    container.appendChild(el("div", { class: "view-head" }, [
+      el("div", {}, [
+        el("h1", { class: "view-title" }, [el("span", { class: "ico", text: "◎" }), greet]),
+        el("p", { class: "view-desc", text: `Nivel ${lp.level} · ${Gami.rankName(lp.level)} · racha de ${streak} día${streak === 1 ? "" : "s"} 🔥` })
+      ])
+    ]));
+
+    // KPIs principales
+    container.appendChild(el("div", { class: "grid cols-4 mb-16" }, [
+      kpi("Hábitos hoy", `${hp.done}/${hp.total}`, fmt.pct(hp.pct) + " completado", "accent"),
+      kpi("Tareas", ts.pending + "", "pendientes", ts.overdue ? "bad" : "accent"),
+      kpi("Balance mes", fmt.money(bal), bal >= 0 ? "ahorro" : "déficit", bal >= 0 ? "good" : "bad"),
+      kpi("Metas", `${gs.completed}/${gs.total}`, "completadas", "good")
+    ]));
+
+    // Fila: XP semanal + progreso de nivel
+    const row1 = el("div", { class: "grid cols-2 mb-16" });
+
+    const xpCard = el("div", { class: "card" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "XP ganada · últimos 14 días"])])
+    ]);
+    const cvXp = el("canvas");
+    xpCard.appendChild(el("div", { class: "chart-box" }, [cvXp]));
+    row1.appendChild(xpCard);
+
+    const lvlCard = el("div", { class: "card" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Progreso de nivel"])]),
+      el("div", { class: "flex items-center gap-12" }, [
+        (function () { const c = el("canvas"); setTimeout(() => Charts.ring(c, lp.pct, { size: 110, color: "--accent", thickness: 10 }), 30); return el("div", { class: "ring-wrap" }, [c, el("div", { class: "ring-val", text: "Lv " + lp.level })]); })(),
+        el("div", {}, [
+          el("div", { class: "kpi-val accent", text: fmt.num(s.profile.xp) + " XP" }),
+          el("div", { class: "kpi-sub", text: `${fmt.num(lp.into)} / ${fmt.num(lp.span)} para nivel ${lp.level + 1}` }),
+          el("div", { class: "chip warn mt-8", html: "🔥 Racha " + streak + " día" + (streak === 1 ? "" : "s") })
+        ])
+      ])
+    ]);
+    row1.appendChild(lvlCard);
+    container.appendChild(row1);
+
+    // Fila: actividad combinada + finanzas
+    const row2 = el("div", { class: "grid cols-2 mb-16" });
+
+    const actCard = el("div", { class: "card" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Actividad · hábitos y tareas (7 días)"])]),
+    ]);
+    const cvAct = el("canvas");
+    actCard.appendChild(el("div", { class: "chart-box" }, [cvAct]));
+    actCard.appendChild(el("div", { class: "flex gap-12 mt-8 fs-12" }, [
+      el("span", { class: "chip accent", text: "● Hábitos" }), el("span", { class: "chip good", text: "● Tareas" })
+    ]));
+    row2.appendChild(actCard);
+
+    const finCard = el("div", { class: "card" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Gasto por categoría (mes)"])]),
+    ]);
+    const cvFin = el("canvas");
+    finCard.appendChild(el("div", { class: "chart-box" }, [cvFin]));
+    row2.appendChild(finCard);
+    container.appendChild(row2);
+
+    // Logros
+    const achCard = el("div", { class: "card" }, [
+      el("div", { class: "card-head" }, [
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Logros"]),
+        el("span", { class: "chip accent", text: s.achievements.length + "/" + Gami.allAchievements().length })
+      ])
+    ]);
+    const achGrid = el("div", { class: "grid cols-4" });
+    Gami.allAchievements().forEach((a) => {
+      const un = s.achievements.includes(a.id);
+      achGrid.appendChild(el("div", { class: "card", style: "padding:12px;text-align:center;opacity:" + (un ? "1" : ".38"), title: a.desc }, [
+        el("div", { style: "font-size:26px;filter:" + (un ? "none" : "grayscale(1)"), text: a.icon }),
+        el("div", { class: "fs-12 fw-700 mt-8", text: a.name }),
+        el("div", { class: "fs-12 text-faint", text: un ? "Desbloqueado" : "Bloqueado" })
+      ]));
+    });
+    achCard.appendChild(achGrid);
+    container.appendChild(achCard);
+
+    // dibujar gráficas
+    setTimeout(() => {
+      const days14 = DateUtil.lastNDays(14);
+      Charts.line(cvXp, { labels: days14.map((d) => DateUtil.label(d)), values: days14.map((d) => s.xpLog[d] || 0) }, { height: 180, color: "--accent" });
+
+      const h7 = N.Habits.weeklySeries();
+      const t7 = N.Tasks.completed7();
+      Charts.bars(cvAct, { labels: h7.labels, series: [{ values: h7.values, color: "--accent" }, { values: t7.values, color: "--good" }] }, { height: 180 });
+
+      Charts.doughnut(cvFin, N.Finance.expenseByCategory(), { height: 190, centerLabel: fmt.money(N.Finance.monthExpense()), centerSub: "gasto mes" });
+    }, 40);
+  }
+
+  function kpi(label, val, sub, cls) {
+    return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
+      el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
+    ])]);
+  }
+
+  N.Dashboard = { render };
+})();
+
+
+/* ===== assets/js/modules/habits.js ===== */
+/* =====================================================================
+   NEXUS · Módulo Hábitos
+   ===================================================================== */
+(function () {
+  "use strict";
+  const N = window.NEXUS;
+  const { Store, UI, Audio, Gami, Charts } = N;
+  const { el, fmt, toast } = UI;
+  const DateUtil = Store.DateUtil;
+
+  const ICONS = ["✦", "💧", "📚", "🏃", "🧘", "🥗", "😴", "💊", "🎯", "🎨", "🎸", "☀️", "🚭", "🧠"];
+
+  function habits() { return Store.get().habits; }
+
+  // racha de un hábito
+  function streak(h) {
+    let s = 0, day = DateUtil.todayKey();
+    if (!h.history[day]) day = DateUtil.addDays(day, -1);
+    while (h.history[day]) { s++; day = DateUtil.addDays(day, -1); }
+    return s;
+  }
+  function bestStreak(h) {
+    const dates = Object.keys(h.history).filter((k) => h.history[k]).sort();
+    let best = 0, cur = 0, prev = null;
+    dates.forEach((d) => {
+      if (prev && DateUtil.diffDays(d, prev) === 1) cur++; else cur = 1;
+      if (cur > best) best = cur;
+      prev = d;
+    });
+    return best;
+  }
+  function doneToday(h) { return !!h.history[DateUtil.todayKey()]; }
+  function completion30(h) {
+    const days = DateUtil.lastNDays(30);
+    const done = days.filter((d) => h.history[d]).length;
+    return Math.round((done / 30) * 100);
+  }
+
+  function toggle(h) {
+    const today = DateUtil.todayKey();
+    if (h.history[today]) {
+      delete h.history[today];
+      Audio.play("tap");
+      Gami.remove(12);
+      Store.commit();
+    } else {
+      h.history[today] = true;
+      Audio.play("complete");
+      const bonus = streak(h) >= 7 ? 6 : 0;
+      Gami.award(12 + bonus, bonus ? "Hábito + racha 🔥" : "Hábito completado");
+    }
+    render(document.getElementById("view-habits"));
+    N.App && N.App.refreshTop();
+  }
+
+  function addOrEdit(existing) {
+    const body = UI.form([
+      { name: "name", label: "Nombre del hábito", value: existing ? existing.name : "", placeholder: "Beber 2L de agua", required: true },
+      { name: "icon", label: "Ícono", type: "select", value: existing ? existing.icon : "✦", options: ICONS },
+      { name: "target", label: "Meta diaria (opcional, texto)", value: existing ? existing.target || "" : "", placeholder: "Ej: 8 vasos" }
+    ], (data) => {
+      if (existing) {
+        existing.name = data.name; existing.icon = data.icon; existing.target = data.target;
+        toast({ icon: "✏️", msg: "Hábito actualizado" });
+      } else {
+        habits().push({ id: Store.uid(), name: data.name, icon: data.icon, target: data.target, history: {}, created: DateUtil.todayKey() });
+        Audio.play("add");
+        toast({ icon: "✦", title: "Nuevo hábito", msg: data.name });
+        Gami.award(5, "Nuevo hábito creado");
+      }
+      Store.commit();
+      UI.closeModal();
+      render(document.getElementById("view-habits"));
+      N.App && N.App.refreshTop();
+    }, existing ? "Guardar cambios" : "Crear hábito");
+    UI.openModal(existing ? "Editar hábito" : "Nuevo hábito", body);
+  }
+
+  function remove(h) {
+    UI.confirmBox("Eliminar hábito", `¿Eliminar "${h.name}"? Se perderá su historial.`, () => {
+      const arr = habits();
+      arr.splice(arr.indexOf(h), 1);
+      Store.commit();
+      Audio.play("delete");
+      render(document.getElementById("view-habits"));
+    }, "Eliminar");
+  }
+
+  // ---------- stats para dashboard ----------
+  function todayProgress() {
+    const arr = habits();
+    if (!arr.length) return { done: 0, total: 0, pct: 0 };
+    const done = arr.filter(doneToday).length;
+    return { done, total: arr.length, pct: Math.round((done / arr.length) * 100) };
+  }
+  function weeklySeries() {
+    const days = DateUtil.lastNDays(7);
+    return {
+      labels: days.map((d) => DateUtil.weekday(d)),
+      values: days.map((d) => habits().filter((h) => h.history[d]).length)
+    };
+  }
+
+  function render(container) {
+    const arr = habits();
+    const prog = todayProgress();
+    container.innerHTML = "";
+
+    const head = el("div", { class: "view-head" }, [
+      el("div", {}, [
+        el("h1", { class: "view-title" }, [el("span", { class: "ico", text: "✦" }), "Hábitos"]),
+        el("p", { class: "view-desc", text: "Construye rutinas, mantén tu racha y suma XP cada día." })
+      ]),
+      el("button", { class: "btn primary", onclick: () => addOrEdit(null) }, [el("span", { text: "＋" }), "Nuevo hábito"])
+    ]);
+    container.appendChild(head);
+
+    // resumen del día
+    const summary = el("div", { class: "grid cols-3 mb-16" }, [
+      statCard("Hoy", `${prog.done}/${prog.total}`, "completados", "accent"),
+      statCard("Cumplimiento", fmt.pct(prog.pct), "del día", prog.pct >= 100 ? "good" : "warn"),
+      statCard("Hábitos activos", arr.length + "", "en seguimiento", "accent")
+    ]);
+    container.appendChild(summary);
+
+    // gráfica semanal
+    const chartCard = el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Hábitos completados · últimos 7 días"])])
+    ]);
+    const cv = el("canvas");
+    const box = el("div", { class: "chart-box" }, [cv]);
+    chartCard.appendChild(box);
+    container.appendChild(chartCard);
+    setTimeout(() => Charts.bars(cv, { labels: weeklySeries().labels, series: [{ values: weeklySeries().values, color: "--accent" }] }, { height: 170 }), 30);
+
+    // lista
+    if (!arr.length) {
+      container.appendChild(el("div", { class: "card" }, [
+        el("div", { class: "empty" }, [el("span", { class: "big", text: "✦" }), el("div", { text: "Aún no tienes hábitos. ¡Crea el primero!" })])
+      ]));
+      return;
+    }
+
+    const list = el("div", { class: "grid cols-2" });
+    arr.forEach((h) => list.appendChild(habitCard(h)));
+    container.appendChild(list);
+  }
+
+  function statCard(label, val, sub, cls) {
+    return el("div", { class: "card" }, [
+      el("div", { class: "kpi" }, [
+        el("div", { class: "kpi-lbl", text: label }),
+        el("div", { class: "kpi-val " + (cls || ""), text: val }),
+        el("div", { class: "kpi-sub", text: sub })
+      ])
+    ]);
+  }
+
+  function habitCard(h) {
+    const st = streak(h);
+    const done = doneToday(h);
+    const comp = completion30(h);
+
+    // heatmap 30 días
+    const heat = el("div", { class: "heat mt-8" });
+    DateUtil.lastNDays(35).forEach((d) => {
+      const cell = el("i", { title: DateUtil.label(d) });
+      if (h.history[d]) cell.classList.add("l3");
+      heat.appendChild(cell);
+    });
+
+    const card = el("div", { class: "card" }, [
+      el("div", { class: "flex items-center gap-12" }, [
+        el("button", {
+          class: "check" + (done ? " on" : ""),
+          title: done ? "Marcar como no hecho" : "Marcar hecho hoy",
+          onclick: () => toggle(h),
+          html: done ? "✓" : ""
+        }),
+        el("div", { class: "item-main" }, [
+          el("div", { class: "item-title" }, [el("span", { text: h.icon + " " }), h.name]),
+          el("div", { class: "item-meta" }, [
+            el("span", { class: "chip warn", html: "🔥 " + st + " día" + (st === 1 ? "" : "s") }),
+            el("span", { class: "chip", text: "Récord " + bestStreak(h) }),
+            h.target ? el("span", { class: "text-faint fs-12", text: h.target }) : null
+          ])
+        ]),
+        el("div", { class: "flex gap-8" }, [
+          el("button", { class: "icon-btn", title: "Editar", onclick: () => addOrEdit(h), html: "✏️" }),
+          el("button", { class: "icon-btn", title: "Eliminar", onclick: () => remove(h), html: "🗑️" })
+        ])
+      ]),
+      el("div", { class: "flex items-center justify-between mt-16", style: "margin-bottom:6px" }, [
+        el("span", { class: "fs-12 text-dim", text: "Cumplimiento 30 días" }),
+        el("span", { class: "fs-12 fw-700 text-accent", text: fmt.pct(comp) })
+      ]),
+      el("div", { class: "progress" + (comp >= 70 ? " good" : "") }, [el("span", { style: `width:${comp}%` })]),
+      heat
+    ]);
+    return card;
+  }
+
+  N.Habits = { render, todayProgress, weeklySeries, streak };
+})();
+
+
+/* ===== assets/js/modules/finance.js ===== */
+/* =====================================================================
+   NEXUS · Módulo Finanzas con IA
+   Motor de análisis por reglas: detecta patrones, sobregasto, tasa de
+   ahorro, proyecciones y genera recomendaciones personalizadas.
+   ===================================================================== */
+(function () {
+  "use strict";
+  const N = window.NEXUS;
+  const { Store, UI, Audio, Gami, Charts } = N;
+  const { el, fmt, toast } = UI;
+  const DateUtil = Store.DateUtil;
+
+  const EXPENSE_CATS = ["Comida", "Transporte", "Vivienda", "Servicios", "Ocio", "Salud", "Compras", "Educación", "Suscripciones", "Otros"];
+  const INCOME_CATS = ["Salario", "Freelance", "Inversiones", "Regalo", "Ventas", "Otros"];
+  const CAT_ICON = { Comida: "🍔", Transporte: "🚗", Vivienda: "🏠", Servicios: "💡", Ocio: "🎮", Salud: "🩺", Compras: "🛍️", Educación: "📖", Suscripciones: "📺", Otros: "•", Salario: "💼", Freelance: "💻", Inversiones: "📈", Regalo: "🎁", Ventas: "🏷️" };
+
+  function fin() { return Store.get().finance; }
+  function txs() { return fin().transactions; }
+
+  function inMonth(t, mk) { return t.date.slice(0, 7) === (mk || DateUtil.monthKey()); }
+  function sum(list) { return list.reduce((s, t) => s + t.amount, 0); }
+
+  function monthIncome(mk) { return sum(txs().filter((t) => t.type === "income" && inMonth(t, mk))); }
+  function monthExpense(mk) { return sum(txs().filter((t) => t.type === "expense" && inMonth(t, mk))); }
+  function monthBalance(mk) { return monthIncome(mk) - monthExpense(mk); }
+
+  function expenseByCategory(mk) {
+    const map = {};
+    txs().filter((t) => t.type === "expense" && inMonth(t, mk)).forEach((t) => { map[t.category] = (map[t.category] || 0) + t.amount; });
+    return Object.keys(map).map((k) => ({ label: k, value: map[k] })).sort((a, b) => b.value - a.value);
+  }
+
+  function last6Months() {
+    const out = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mk = DateUtil.monthKey(d);
+      out.push({ mk, label: d.toLocaleDateString("es", { month: "short" }), income: monthIncome(mk), expense: monthExpense(mk) });
+    }
+    return out;
+  }
+
+  // ---------------------------------------------------------------
+  //  MOTOR DE IA — genera insights a partir de los datos
+  // ---------------------------------------------------------------
+  function analyze() {
+    const insights = [];
+    const inc = monthIncome(), exp = monthExpense(), bal = inc - exp;
+    const f = fin();
+    const cats = expenseByCategory();
+    const months = last6Months();
+    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    const today = new Date().getDate();
+
+    if (inc === 0 && exp === 0) {
+      insights.push({ type: "info", icon: "🤖", txt: "Registra tus ingresos y gastos y analizaré tus finanzas al instante: tasa de ahorro, sobregastos, proyecciones y recomendaciones." });
+      return { insights, score: null };
+    }
+
+    // 1) Tasa de ahorro
+    if (inc > 0) {
+      const rate = (bal / inc) * 100;
+      if (rate >= 20) insights.push({ type: "good", icon: "💎", txt: `Excelente: ahorras el <b>${Math.round(rate)}%</b> de tus ingresos este mes. Estás por encima de la regla del 20%.` });
+      else if (rate >= 0) insights.push({ type: "warn", icon: "📊", txt: `Tu tasa de ahorro es del <b>${Math.round(rate)}%</b>. Apunta al 20% (regla 50/30/20): recorta gastos no esenciales unos ${fmt.money(inc * 0.2 - bal)}.` });
+      else insights.push({ type: "bad", icon: "🚨", txt: `Alerta: gastas <b>${fmt.money(-bal)}</b> más de lo que ingresas. Revisa las categorías más altas para equilibrar tu mes.` });
+    }
+
+    // 2) Categoría dominante
+    if (cats.length && exp > 0) {
+      const top = cats[0];
+      const share = (top.value / exp) * 100;
+      if (share > 40) insights.push({ type: "warn", icon: CAT_ICON[top.label] || "⚠️", txt: `<b>${top.label}</b> concentra el <b>${Math.round(share)}%</b> de tus gastos (${fmt.money(top.value)}). Es tu mayor oportunidad de ahorro.` });
+      else insights.push({ type: "info", icon: CAT_ICON[top.label] || "📌", txt: `Tu mayor gasto es <b>${top.label}</b> con ${fmt.money(top.value)} (${Math.round(share)}%). Gasto bien distribuido.` });
+    }
+
+    // 3) Proyección fin de mes (ritmo de gasto)
+    if (exp > 0 && today > 2) {
+      const dailyRate = exp / today;
+      const projected = dailyRate * daysInMonth;
+      if (f.budget > 0) {
+        if (projected > f.budget) insights.push({ type: "bad", icon: "📈", txt: `A este ritmo gastarás ~<b>${fmt.money(projected)}</b> este mes, superando tu presupuesto de ${fmt.money(f.budget)} en ${fmt.money(projected - f.budget)}.` });
+        else insights.push({ type: "good", icon: "✅", txt: `Vas bien: proyección de ~<b>${fmt.money(projected)}</b>, dentro de tu presupuesto de ${fmt.money(f.budget)}.` });
+      } else {
+        insights.push({ type: "info", icon: "🔮", txt: `Según tu ritmo, cerrarás el mes con ~<b>${fmt.money(projected)}</b> en gastos. Define un presupuesto para recibir alertas.` });
+      }
+    }
+
+    // 4) Tendencia vs mes anterior
+    if (months.length >= 2) {
+      const prev = months[months.length - 2], cur = months[months.length - 1];
+      if (prev.expense > 0) {
+        const chg = ((cur.expense - prev.expense) / prev.expense) * 100;
+        if (chg > 15) insights.push({ type: "warn", icon: "⬆️", txt: `Tus gastos subieron un <b>${Math.round(chg)}%</b> respecto al mes pasado. Vigila el ritmo.` });
+        else if (chg < -10) insights.push({ type: "good", icon: "⬇️", txt: `¡Bien! Redujiste tus gastos un <b>${Math.round(-chg)}%</b> frente al mes anterior.` });
+      }
+    }
+
+    // 5) Suscripciones
+    const subs = cats.find((c) => c.label === "Suscripciones");
+    if (subs && subs.value > 0 && inc > 0 && subs.value / inc > 0.1) {
+      insights.push({ type: "warn", icon: "📺", txt: `Gastas ${fmt.money(subs.value)} en suscripciones (${Math.round((subs.value / inc) * 100)}% de tus ingresos). Cancela las que no uses.` });
+    }
+
+    // 6) Meta de ahorro
+    if (f.savingGoal > 0) {
+      if (bal >= f.savingGoal) insights.push({ type: "good", icon: "🎯", txt: `¡Meta de ahorro cumplida! Guardaste ${fmt.money(bal)} de los ${fmt.money(f.savingGoal)} objetivo.` });
+      else insights.push({ type: "info", icon: "🎯", txt: `Te faltan <b>${fmt.money(f.savingGoal - bal)}</b> para tu meta de ahorro mensual de ${fmt.money(f.savingGoal)}.` });
+    }
+
+    // 7) Fondo de emergencia (consejo educativo)
+    if (bal > 0) {
+      insights.push({ type: "info", icon: "🛡️", txt: `Consejo: destina parte de tus ${fmt.money(bal)} de balance a un fondo de emergencia (meta: 3-6 meses de gastos).` });
+    }
+
+    // ---- Salud financiera (score 0-100) ----
+    let score = 50;
+    if (inc > 0) {
+      const rate = (bal / inc) * 100;
+      score = 50 + Math.max(-40, Math.min(40, rate));            // ahorro
+      if (cats.length && (cats[0].value / (exp || 1)) > 0.45) score -= 8; // concentración
+      if (f.budget > 0 && exp <= f.budget) score += 8;
+    }
+    score = Math.round(Math.max(0, Math.min(100, score)));
+
+    return { insights, score };
+  }
+
+  // ---------------------------------------------------------------
+  //  Acciones
+  // ---------------------------------------------------------------
+  function addTx(type) {
+    const cats = type === "income" ? INCOME_CATS : EXPENSE_CATS;
+    const body = UI.form([
+      { type: "row", fields: [
+        { name: "amount", label: "Monto", type: "number", min: 0, step: "0.01", placeholder: "0.00", required: true },
+        { name: "category", label: "Categoría", type: "select", options: cats, value: cats[0] }
+      ]},
+      { name: "note", label: "Nota (opcional)", placeholder: type === "income" ? "Pago de nómina" : "Supermercado" },
+      { name: "date", label: "Fecha", type: "date", value: DateUtil.todayKey(), required: true }
+    ], (data) => {
+      if (!data.amount || data.amount <= 0) { Audio.play("error"); toast({ icon: "⚠️", msg: "Ingresa un monto válido" }); return; }
+      txs().push({ id: Store.uid(), type, amount: Number(data.amount), category: data.category, note: data.note, date: data.date });
+      Store.commit();
+      Audio.play(type === "income" ? "money" : "coin");
+      Gami.award(type === "income" ? 8 : 5, type === "income" ? "Ingreso registrado" : "Gasto registrado");
+      UI.closeModal();
+      render(document.getElementById("view-finance"));
+      N.App && N.App.refreshTop();
+    }, type === "income" ? "Registrar ingreso" : "Registrar gasto");
+    UI.openModal(type === "income" ? "＋ Nuevo ingreso" : "－ Nuevo gasto", body);
+  }
+
+  function editBudget() {
+    const f = fin();
+    const body = UI.form([
+      { name: "budget", label: "Presupuesto mensual de gasto", type: "number", min: 0, value: f.budget || "", placeholder: "1500" },
+      { name: "savingGoal", label: "Meta de ahorro mensual", type: "number", min: 0, value: f.savingGoal || "", placeholder: "300" }
+    ], (data) => {
+      f.budget = Number(data.budget) || 0;
+      f.savingGoal = Number(data.savingGoal) || 0;
+      Store.commit();
+      toast({ icon: "🎯", msg: "Objetivos actualizados" });
+      UI.closeModal();
+      render(document.getElementById("view-finance"));
+    }, "Guardar objetivos");
+    UI.openModal("Objetivos financieros", body);
+  }
+
+  function removeTx(t) {
+    const arr = txs();
+    arr.splice(arr.indexOf(t), 1);
+    Store.commit();
+    Audio.play("delete");
+    render(document.getElementById("view-finance"));
+    N.App && N.App.refreshTop();
+  }
+
+  // ---------------------------------------------------------------
+  //  Render
+  // ---------------------------------------------------------------
+  function render(container) {
+    container.innerHTML = "";
+    const inc = monthIncome(), exp = monthExpense(), bal = inc - exp;
+    const result = analyze();
+
+    const head = el("div", { class: "view-head" }, [
+      el("div", {}, [
+        el("h1", { class: "view-title" }, [el("span", { class: "ico", text: "◈" }), "Finanzas IA"]),
+        el("p", { class: "view-desc", text: "Registra tu dinero y recibe análisis inteligente en tiempo real." })
+      ]),
+      el("div", { class: "flex gap-8" }, [
+        el("button", { class: "btn", onclick: editBudget, html: "🎯 Objetivos" }),
+        el("button", { class: "btn ghost", onclick: () => addTx("expense"), html: "－ Gasto" }),
+        el("button", { class: "btn primary", onclick: () => addTx("income"), html: "＋ Ingreso" })
+      ])
+    ]);
+    container.appendChild(head);
+
+    // KPIs
+    container.appendChild(el("div", { class: "grid cols-4 mb-16" }, [
+      kpi("Ingresos", fmt.money(inc), "este mes", "good"),
+      kpi("Gastos", fmt.money(exp), "este mes", "bad"),
+      kpi("Balance", fmt.money(bal), bal >= 0 ? "ahorro" : "déficit", bal >= 0 ? "good" : "bad"),
+      kpi("Salud", result.score == null ? "—" : result.score + "/100", "financiera", healthClass(result.score))
+    ]));
+
+    // Panel IA
+    const aiCard = el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head" }, [
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "🤖 Asistente financiero IA"]),
+        result.score != null ? el("span", { class: "chip " + healthChip(result.score), text: "Salud " + result.score + "/100" }) : null
+      ])
+    ]);
+    result.insights.forEach((ins) => {
+      aiCard.appendChild(el("div", { class: "insight " + ins.type }, [
+        el("span", { class: "ico", text: ins.icon }),
+        el("div", { class: "txt", html: ins.txt })
+      ]));
+    });
+    container.appendChild(aiCard);
+
+    // Gráficas
+    const charts = el("div", { class: "grid cols-2 mb-16" });
+
+    const trendCard = el("div", { class: "card" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Ingresos vs Gastos · 6 meses"])])
+    ]);
+    const cvTrend = el("canvas");
+    trendCard.appendChild(el("div", { class: "chart-box" }, [cvTrend]));
+    trendCard.appendChild(el("div", { class: "flex gap-12 mt-8 fs-12" }, [
+      el("span", { class: "chip good", text: "● Ingresos" }), el("span", { class: "chip bad", text: "● Gastos" })
+    ]));
+    charts.appendChild(trendCard);
+
+    const catCard = el("div", { class: "card" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Gastos por categoría"])])
+    ]);
+    const cvCat = el("canvas");
+    catCard.appendChild(el("div", { class: "chart-box" }, [cvCat]));
+    const cats = expenseByCategory();
+    const legend = el("div", { class: "mt-8" });
+    cats.slice(0, 5).forEach((c) => {
+      legend.appendChild(el("div", { class: "flex items-center justify-between fs-12", style: "padding:3px 0" }, [
+        el("span", { text: (CAT_ICON[c.label] || "•") + " " + c.label }),
+        el("span", { class: "fw-700", text: fmt.money(c.value) })
+      ]));
+    });
+    catCard.appendChild(legend);
+    charts.appendChild(catCard);
+    container.appendChild(charts);
+
+    setTimeout(() => {
+      const m = last6Months();
+      Charts.bars(cvTrend, {
+        labels: m.map((x) => x.label),
+        series: [{ values: m.map((x) => x.income), color: "--good" }, { values: m.map((x) => x.expense), color: "--bad" }]
+      }, { height: 190 });
+      Charts.doughnut(cvCat, cats, { height: 190, centerLabel: fmt.money(exp), centerSub: "gasto mes" });
+    }, 30);
+
+    // Movimientos recientes
+    const recent = txs().slice().sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 12);
+    const listCard = el("div", { class: "card" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Movimientos recientes"])])
+    ]);
+    if (!recent.length) {
+      listCard.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "◈" }), el("div", { text: "Sin movimientos todavía." })]));
+    } else {
+      recent.forEach((t) => {
+        listCard.appendChild(el("div", { class: "item" }, [
+          el("div", { style: "font-size:20px", text: CAT_ICON[t.category] || "•" }),
+          el("div", { class: "item-main" }, [
+            el("div", { class: "item-title", text: t.note || t.category }),
+            el("div", { class: "item-meta" }, [
+              el("span", { text: t.category }),
+              el("span", { text: DateUtil.label(t.date) })
+            ])
+          ]),
+          el("div", { class: "fw-700 " + (t.type === "income" ? "text-good" : "text-bad"), text: (t.type === "income" ? "+" : "−") + fmt.money(t.amount) }),
+          el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => removeTx(t) })
+        ]));
+      });
+    }
+    container.appendChild(listCard);
+  }
+
+  function kpi(label, val, sub, cls) {
+    return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
+      el("div", { class: "kpi-lbl", text: label }),
+      el("div", { class: "kpi-val " + (cls || ""), text: val }),
+      el("div", { class: "kpi-sub", text: sub })
+    ])]);
+  }
+  function healthClass(s) { if (s == null) return ""; return s >= 70 ? "good" : s >= 45 ? "warn" : "bad"; }
+  function healthChip(s) { return s >= 70 ? "good" : s >= 45 ? "warn" : "bad"; }
+
+  N.Finance = { render, monthIncome, monthExpense, monthBalance, expenseByCategory, last6Months, analyze };
+})();
+
+
+/* ===== assets/js/modules/tasks.js ===== */
+/* =====================================================================
+   NEXUS · Módulo Tareas
+   ===================================================================== */
+(function () {
+  "use strict";
+  const N = window.NEXUS;
+  const { Store, UI, Audio, Gami, Charts } = N;
+  const { el, fmt, toast } = UI;
+  const DateUtil = Store.DateUtil;
+
+  const PRIO = { high: { label: "Alta", chip: "bad", xp: 15 }, medium: { label: "Media", chip: "warn", xp: 10 }, low: { label: "Baja", chip: "accent", xp: 6 } };
+
+  function tasks() { return Store.get().tasks; }
+  let filter = "active";
+
+  function completeTask(t) {
+    t.done = !t.done;
+    if (t.done) {
+      t.doneAt = DateUtil.todayKey();
+      Audio.play("complete");
+      Gami.award(PRIO[t.priority].xp, "Tarea completada");
+    } else {
+      Audio.play("tap");
+      Gami.remove(PRIO[t.priority].xp);
+      Store.commit();
+    }
+    render(document.getElementById("view-tasks"));
+    N.App && N.App.refreshTop();
+  }
+
+  function toggleSub(t, sub) {
+    sub.done = !sub.done;
+    Audio.play(sub.done ? "coin" : "tap");
+    // completar automáticamente si todas las subtareas están hechas
+    if (t.subtasks.length && t.subtasks.every((s) => s.done) && !t.done) { completeTask(t); return; }
+    Store.commit();
+    render(document.getElementById("view-tasks"));
+  }
+
+  function addOrEdit(existing) {
+    const body = UI.form([
+      { name: "title", label: "Tarea", value: existing ? existing.title : "", placeholder: "Terminar informe mensual", required: true },
+      { type: "row", fields: [
+        { name: "priority", label: "Prioridad", type: "select", value: existing ? existing.priority : "medium", options: [
+          { value: "high", label: "🔴 Alta" }, { value: "medium", label: "🟡 Media" }, { value: "low", label: "🔵 Baja" }
+        ]},
+        { name: "due", label: "Fecha límite", type: "date", value: existing ? existing.due || "" : "" }
+      ]},
+      { name: "subtasks", label: "Subtareas (una por línea)", type: "textarea", value: existing ? existing.subtasks.map((s) => s.t).join("\n") : "", placeholder: "Investigar\nRedactar\nRevisar" }
+    ], (data) => {
+      const subs = (data.subtasks || "").split("\n").map((s) => s.trim()).filter(Boolean).map((t) => ({ t, done: false }));
+      if (existing) {
+        existing.title = data.title; existing.priority = data.priority; existing.due = data.due;
+        // preservar estado de subtareas existentes por texto
+        existing.subtasks = subs.map((ns) => { const prev = existing.subtasks.find((os) => os.t === ns.t); return prev || ns; });
+        toast({ icon: "✏️", msg: "Tarea actualizada" });
+      } else {
+        tasks().push({ id: Store.uid(), title: data.title, priority: data.priority, due: data.due, done: false, subtasks: subs, created: DateUtil.todayKey() });
+        Audio.play("add");
+        toast({ icon: "✓", title: "Nueva tarea", msg: data.title });
+      }
+      Store.commit();
+      UI.closeModal();
+      render(document.getElementById("view-tasks"));
+    }, existing ? "Guardar" : "Crear tarea");
+    UI.openModal(existing ? "Editar tarea" : "Nueva tarea", body);
+  }
+
+  function remove(t) {
+    const arr = tasks(); arr.splice(arr.indexOf(t), 1);
+    Store.commit(); Audio.play("delete");
+    render(document.getElementById("view-tasks"));
+    N.App && N.App.refreshTop();
+  }
+
+  // ---------- stats ----------
+  function stats() {
+    const arr = tasks();
+    const done = arr.filter((t) => t.done).length;
+    const pending = arr.length - done;
+    const overdue = arr.filter((t) => !t.done && t.due && t.due < DateUtil.todayKey()).length;
+    return { total: arr.length, done, pending, overdue, pct: arr.length ? Math.round((done / arr.length) * 100) : 0 };
+  }
+  function completed7() {
+    const days = DateUtil.lastNDays(7);
+    return { labels: days.map((d) => DateUtil.weekday(d)), values: days.map((d) => tasks().filter((t) => t.done && t.doneAt === d).length) };
+  }
+
+  function dueLabel(t) {
+    if (!t.due) return null;
+    const diff = DateUtil.diffDays(t.due, DateUtil.todayKey());
+    if (diff < 0) return { text: "Vencida", cls: "bad" };
+    if (diff === 0) return { text: "Hoy", cls: "warn" };
+    if (diff === 1) return { text: "Mañana", cls: "warn" };
+    return { text: DateUtil.label(t.due), cls: "" };
+  }
+
+  function render(container) {
+    container.innerHTML = "";
+    const st = stats();
+
+    const head = el("div", { class: "view-head" }, [
+      el("div", {}, [
+        el("h1", { class: "view-title" }, [el("span", { class: "ico", text: "✓" }), "Tareas"]),
+        el("p", { class: "view-desc", text: "Organiza tu día por prioridad y completa con subtareas." })
+      ]),
+      el("button", { class: "btn primary", onclick: () => addOrEdit(null), html: "＋ Nueva tarea" })
+    ]);
+    container.appendChild(head);
+
+    container.appendChild(el("div", { class: "grid cols-4 mb-16" }, [
+      kpi("Pendientes", st.pending + "", "por hacer", "accent"),
+      kpi("Completadas", st.done + "", "en total", "good"),
+      kpi("Vencidas", st.overdue + "", "atrasadas", st.overdue ? "bad" : ""),
+      kpi("Progreso", fmt.pct(st.pct), "completado", st.pct >= 70 ? "good" : "warn")
+    ]));
+
+    // gráfica
+    const chartCard = el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Tareas completadas · últimos 7 días"])])
+    ]);
+    const cv = el("canvas");
+    chartCard.appendChild(el("div", { class: "chart-box" }, [cv]));
+    container.appendChild(chartCard);
+    setTimeout(() => Charts.line(cv, completed7(), { height: 160, color: "--good" }), 30);
+
+    // filtros
+    const seg = el("div", { class: "seg mb-16" });
+    [["active", "Activas"], ["all", "Todas"], ["done", "Hechas"]].forEach(([k, lb]) => {
+      seg.appendChild(el("button", { class: filter === k ? "on" : "", text: lb, onclick: () => { filter = k; Audio.play("tab"); render(container); } }));
+    });
+    container.appendChild(seg);
+
+    // lista
+    let arr = tasks().slice();
+    if (filter === "active") arr = arr.filter((t) => !t.done);
+    if (filter === "done") arr = arr.filter((t) => t.done);
+    const order = { high: 0, medium: 1, low: 2 };
+    arr.sort((a, b) => (a.done - b.done) || (order[a.priority] - order[b.priority]) || ((a.due || "9999") .localeCompare(b.due || "9999")));
+
+    const listCard = el("div", { class: "card" });
+    if (!arr.length) {
+      listCard.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "✓" }), el("div", { text: filter === "done" ? "Aún no completas tareas." : "Sin tareas. ¡Añade una!" })]));
+    } else {
+      arr.forEach((t) => listCard.appendChild(taskItem(t)));
+    }
+    container.appendChild(listCard);
+  }
+
+  function taskItem(t) {
+    const p = PRIO[t.priority];
+    const due = dueLabel(t);
+    const subDone = t.subtasks.filter((s) => s.done).length;
+
+    const item = el("div", { class: "item" + (t.done ? " done" : ""), style: "flex-direction:column;align-items:stretch" });
+    const topRow = el("div", { class: "flex items-center gap-12" }, [
+      el("button", { class: "check" + (t.done ? " on" : ""), html: t.done ? "✓" : "", onclick: () => completeTask(t) }),
+      el("div", { class: "item-main" }, [
+        el("div", { class: "item-title", text: t.title }),
+        el("div", { class: "item-meta" }, [
+          el("span", { class: "chip " + p.chip, text: p.label }),
+          due ? el("span", { class: "chip " + due.cls, text: "📅 " + due.text }) : null,
+          t.subtasks.length ? el("span", { class: "text-faint fs-12", text: `${subDone}/${t.subtasks.length} subtareas` }) : null
+        ])
+      ]),
+      el("div", { class: "flex gap-8" }, [
+        el("button", { class: "icon-btn", html: "✏️", title: "Editar", onclick: () => addOrEdit(t) }),
+        el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => remove(t) })
+      ])
+    ]);
+    item.appendChild(topRow);
+
+    if (t.subtasks.length) {
+      const subWrap = el("div", { style: "margin:10px 0 2px 42px;display:flex;flex-direction:column;gap:6px" });
+      t.subtasks.forEach((s) => {
+        subWrap.appendChild(el("div", { class: "flex items-center gap-8", style: "cursor:pointer", onclick: () => toggleSub(t, s) }, [
+          el("span", { style: "font-size:14px;color:" + (s.done ? "var(--good)" : "var(--txt-faint)"), text: s.done ? "☑" : "☐" }),
+          el("span", { class: "fs-13", style: s.done ? "text-decoration:line-through;color:var(--txt-faint)" : "", text: s.t })
+        ]));
+      });
+      item.appendChild(subWrap);
+      const pct = Math.round((subDone / t.subtasks.length) * 100);
+      item.appendChild(el("div", { class: "progress", style: "margin-left:42px;width:calc(100% - 42px)" }, [el("span", { style: `width:${pct}%` })]));
+    }
+    return item;
+  }
+
+  function kpi(label, val, sub, cls) {
+    return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
+      el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
+    ])]);
+  }
+
+  N.Tasks = { render, stats, completed7 };
+})();
+
+
+/* ===== assets/js/modules/workouts.js ===== */
+/* =====================================================================
+   NEXUS · Módulo Entrenamientos
+   ===================================================================== */
+(function () {
+  "use strict";
+  const N = window.NEXUS;
+  const { Store, UI, Audio, Gami, Charts } = N;
+  const { el, fmt, toast } = UI;
+  const DateUtil = Store.DateUtil;
+
+  const TYPES = [
+    { value: "fuerza", label: "🏋️ Fuerza" },
+    { value: "cardio", label: "🏃 Cardio" },
+    { value: "hiit", label: "⚡ HIIT" },
+    { value: "yoga", label: "🧘 Yoga / Movilidad" },
+    { value: "deporte", label: "⚽ Deporte" },
+    { value: "otro", label: "💪 Otro" }
+  ];
+  const TYPE_ICON = { fuerza: "🏋️", cardio: "🏃", hiit: "⚡", yoga: "🧘", deporte: "⚽", otro: "💪" };
+
+  function workouts() { return Store.get().workouts; }
+
+  function add() {
+    const body = UI.form([
+      { name: "name", label: "Nombre de la sesión", placeholder: "Pecho y tríceps", required: true },
+      { type: "row", fields: [
+        { name: "type", label: "Tipo", type: "select", options: TYPES, value: "fuerza" },
+        { name: "date", label: "Fecha", type: "date", value: DateUtil.todayKey(), required: true }
+      ]},
+      { type: "row", fields: [
+        { name: "duration", label: "Duración (min)", type: "number", min: 0, placeholder: "45", required: true },
+        { name: "calories", label: "Calorías (aprox)", type: "number", min: 0, placeholder: "350" }
+      ]},
+      { name: "volume", label: "Volumen / distancia (opcional)", placeholder: "5200 kg · o · 5 km" },
+      { name: "notes", label: "Notas", type: "textarea", placeholder: "Sensaciones, PRs, etc." }
+    ], (data) => {
+      const dur = Number(data.duration) || 0;
+      if (dur <= 0) { Audio.play("error"); toast({ icon: "⚠️", msg: "Indica la duración" }); return; }
+      workouts().push({ id: Store.uid(), name: data.name, type: data.type, date: data.date, duration: dur, calories: Number(data.calories) || 0, volume: data.volume, notes: data.notes });
+      Store.commit();
+      Audio.play("complete");
+      const xp = Math.min(30, 10 + Math.round(dur / 5));
+      Gami.award(xp, "Entrenamiento registrado 💪");
+      UI.closeModal();
+      render(document.getElementById("view-workouts"));
+      N.App && N.App.refreshTop();
+    }, "Registrar entrenamiento");
+    UI.openModal("Nuevo entrenamiento", body);
+  }
+
+  function remove(w) {
+    const arr = workouts(); arr.splice(arr.indexOf(w), 1);
+    Store.commit(); Audio.play("delete");
+    render(document.getElementById("view-workouts"));
+    N.App && N.App.refreshTop();
+  }
+
+  // ---------- stats ----------
+  function streak() {
+    const dates = new Set(workouts().map((w) => w.date));
+    let s = 0, day = DateUtil.todayKey();
+    if (!dates.has(day)) day = DateUtil.addDays(day, -1);
+    while (dates.has(day)) { s++; day = DateUtil.addDays(day, -1); }
+    return s;
+  }
+  function weekMinutes() {
+    const days = DateUtil.lastNDays(7);
+    return { labels: days.map((d) => DateUtil.weekday(d)), values: days.map((d) => workouts().filter((w) => w.date === d).reduce((s, w) => s + w.duration, 0)) };
+  }
+  function stats() {
+    const arr = workouts();
+    const mk = DateUtil.monthKey();
+    const monthSessions = arr.filter((w) => w.date.slice(0, 7) === mk);
+    return {
+      total: arr.length,
+      monthCount: monthSessions.length,
+      monthMinutes: monthSessions.reduce((s, w) => s + w.duration, 0),
+      monthCalories: monthSessions.reduce((s, w) => s + w.calories, 0),
+      streak: streak()
+    };
+  }
+
+  function render(container) {
+    container.innerHTML = "";
+    const st = stats();
+
+    container.appendChild(el("div", { class: "view-head" }, [
+      el("div", {}, [
+        el("h1", { class: "view-title" }, [el("span", { class: "ico", text: "⚡" }), "Entrenamientos"]),
+        el("p", { class: "view-desc", text: "Registra tus sesiones y observa tu progreso físico." })
+      ]),
+      el("button", { class: "btn primary", onclick: add, html: "＋ Registrar sesión" })
+    ]));
+
+    container.appendChild(el("div", { class: "grid cols-4 mb-16" }, [
+      kpi("Racha", st.streak + (st.streak === 1 ? " día" : " días"), "🔥 constancia", "warn"),
+      kpi("Este mes", st.monthCount + "", "sesiones", "accent"),
+      kpi("Minutos", fmt.num(st.monthMinutes), "este mes", "accent"),
+      kpi("Calorías", fmt.num(st.monthCalories), "quemadas", "good")
+    ]));
+
+    // gráfica minutos por día
+    const chartCard = el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Minutos entrenados · últimos 7 días"])])
+    ]);
+    const cv = el("canvas");
+    chartCard.appendChild(el("div", { class: "chart-box" }, [cv]));
+    container.appendChild(chartCard);
+    setTimeout(() => Charts.bars(cv, { labels: weekMinutes().labels, series: [{ values: weekMinutes().values, color: "--accent-2" }] }, { height: 170 }), 30);
+
+    // historial
+    const arr = workouts().slice().sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+    const listCard = el("div", { class: "card" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Historial"])])
+    ]);
+    if (!arr.length) {
+      listCard.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "⚡" }), el("div", { text: "Sin entrenamientos. ¡Registra el primero!" })]));
+    } else {
+      arr.slice(0, 20).forEach((w) => {
+        listCard.appendChild(el("div", { class: "item" }, [
+          el("div", { style: "font-size:22px", text: TYPE_ICON[w.type] || "💪" }),
+          el("div", { class: "item-main" }, [
+            el("div", { class: "item-title", text: w.name }),
+            el("div", { class: "item-meta" }, [
+              el("span", { text: DateUtil.label(w.date) }),
+              el("span", { class: "chip accent", text: w.duration + " min" }),
+              w.calories ? el("span", { class: "chip", text: w.calories + " kcal" }) : null,
+              w.volume ? el("span", { class: "text-faint fs-12", text: w.volume }) : null
+            ])
+          ]),
+          el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => remove(w) })
+        ]));
+      });
+    }
+    container.appendChild(listCard);
+  }
+
+  function kpi(label, val, sub, cls) {
+    return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
+      el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
+    ])]);
+  }
+
+  N.Workouts = { render, stats, weekMinutes, streak };
+})();
+
+
+/* ===== assets/js/modules/goals.js ===== */
+/* =====================================================================
+   NEXUS · Módulo Metas
+   ===================================================================== */
+(function () {
+  "use strict";
+  const N = window.NEXUS;
+  const { Store, UI, Audio, Gami, Charts } = N;
+  const { el, fmt, toast } = UI;
+  const DateUtil = Store.DateUtil;
+
+  function goals() { return Store.get().goals; }
+
+  function pct(g) { return g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0; }
+
+  function addOrEdit(existing) {
+    const body = UI.form([
+      { name: "title", label: "Meta", value: existing ? existing.title : "", placeholder: "Leer 12 libros", required: true },
+      { type: "row", fields: [
+        { name: "current", label: "Progreso actual", type: "number", min: 0, value: existing ? existing.current : 0 },
+        { name: "target", label: "Objetivo", type: "number", min: 0, value: existing ? existing.target : "", placeholder: "12", required: true }
+      ]},
+      { type: "row", fields: [
+        { name: "unit", label: "Unidad", value: existing ? existing.unit || "" : "", placeholder: "libros" },
+        { name: "deadline", label: "Fecha límite", type: "date", value: existing ? existing.deadline || "" : "" }
+      ]},
+      { name: "milestones", label: "Hitos (uno por línea)", type: "textarea", value: existing ? existing.milestones.map((m) => m.t).join("\n") : "", placeholder: "Elegir libros\nLeer 3\nLeer 6" }
+    ], (data) => {
+      const ms = (data.milestones || "").split("\n").map((s) => s.trim()).filter(Boolean).map((t) => ({ t, done: false }));
+      if (existing) {
+        existing.title = data.title; existing.current = Number(data.current) || 0; existing.target = Number(data.target) || 0;
+        existing.unit = data.unit; existing.deadline = data.deadline;
+        existing.milestones = ms.map((nm) => existing.milestones.find((om) => om.t === nm.t) || nm);
+        toast({ icon: "✏️", msg: "Meta actualizada" });
+      } else {
+        goals().push({ id: Store.uid(), title: data.title, current: Number(data.current) || 0, target: Number(data.target) || 0, unit: data.unit, deadline: data.deadline, milestones: ms, created: DateUtil.todayKey() });
+        Audio.play("add");
+        toast({ icon: "◉", title: "Nueva meta", msg: data.title });
+        Gami.award(6, "Meta creada");
+      }
+      Store.commit();
+      UI.closeModal();
+      render(document.getElementById("view-goals"));
+      N.App && N.App.refreshTop();
+    }, existing ? "Guardar" : "Crear meta");
+    UI.openModal(existing ? "Editar meta" : "Nueva meta", body);
+  }
+
+  function adjust(g, delta) {
+    const before = pct(g);
+    g.current = Math.max(0, g.current + delta);
+    if (g.target && g.current > g.target) g.current = g.target;
+    const after = pct(g);
+    if (delta > 0) {
+      Audio.play("coin");
+      Gami.award(4, "Avance en meta");
+      if (after >= 100 && before < 100) {
+        Audio.play("achieve");
+        Gami.award(40, "🎉 ¡Meta completada!");
+        Gami.burst();
+        toast({ level: true, icon: "🏆", title: "¡Meta lograda!", msg: g.title });
+      }
+    } else {
+      Store.commit();
+    }
+    render(document.getElementById("view-goals"));
+    N.App && N.App.refreshTop();
+  }
+
+  function toggleMs(g, m) {
+    m.done = !m.done;
+    Audio.play(m.done ? "coin" : "tap");
+    Store.commit();
+    render(document.getElementById("view-goals"));
+  }
+
+  function remove(g) {
+    UI.confirmBox("Eliminar meta", `¿Eliminar "${g.title}"?`, () => {
+      const arr = goals(); arr.splice(arr.indexOf(g), 1);
+      Store.commit(); Audio.play("delete");
+      render(document.getElementById("view-goals"));
+    }, "Eliminar");
+  }
+
+  // ---------- stats ----------
+  function stats() {
+    const arr = goals();
+    const completed = arr.filter((g) => pct(g) >= 100).length;
+    const avg = arr.length ? Math.round(arr.reduce((s, g) => s + pct(g), 0) / arr.length) : 0;
+    return { total: arr.length, completed, active: arr.length - completed, avg };
+  }
+
+  function deadlineInfo(g) {
+    if (!g.deadline) return null;
+    const diff = DateUtil.diffDays(g.deadline, DateUtil.todayKey());
+    if (diff < 0) return { text: "Plazo vencido", cls: "bad" };
+    if (diff === 0) return { text: "Vence hoy", cls: "warn" };
+    return { text: `${diff} día${diff === 1 ? "" : "s"} restantes`, cls: diff <= 7 ? "warn" : "" };
+  }
+
+  function render(container) {
+    container.innerHTML = "";
+    const st = stats();
+
+    container.appendChild(el("div", { class: "view-head" }, [
+      el("div", {}, [
+        el("h1", { class: "view-title" }, [el("span", { class: "ico", text: "◉" }), "Metas"]),
+        el("p", { class: "view-desc", text: "Define objetivos, sigue tu progreso y celebra cada logro." })
+      ]),
+      el("button", { class: "btn primary", onclick: () => addOrEdit(null), html: "＋ Nueva meta" })
+    ]));
+
+    container.appendChild(el("div", { class: "grid cols-3 mb-16" }, [
+      kpi("Activas", st.active + "", "en progreso", "accent"),
+      kpi("Completadas", st.completed + "", "logradas", "good"),
+      kpi("Progreso medio", fmt.pct(st.avg), "global", st.avg >= 60 ? "good" : "warn")
+    ]));
+
+    const arr = goals();
+    if (!arr.length) {
+      container.appendChild(el("div", { class: "card" }, [el("div", { class: "empty" }, [el("span", { class: "big", text: "◉" }), el("div", { text: "Sin metas todavía. ¡Define la primera!" })])]));
+      return;
+    }
+
+    const grid = el("div", { class: "grid cols-2" });
+    arr.forEach((g) => grid.appendChild(goalCard(g)));
+    container.appendChild(grid);
+  }
+
+  function goalCard(g) {
+    const p = pct(g);
+    const done = p >= 100;
+    const dl = deadlineInfo(g);
+    const msDone = g.milestones.filter((m) => m.done).length;
+
+    const ring = el("canvas");
+    const ringWrap = el("div", { class: "ring-wrap" }, [ring, el("div", { class: "ring-val", text: p + "%" })]);
+    setTimeout(() => Charts.ring(ring, p, { size: 84, color: done ? "--good" : "--accent" }), 30);
+
+    const card = el("div", { class: "card" }, [
+      el("div", { class: "flex items-center gap-12" }, [
+        ringWrap,
+        el("div", { class: "item-main" }, [
+          el("div", { class: "item-title", text: (done ? "🏆 " : "") + g.title }),
+          el("div", { class: "item-meta" }, [
+            el("span", { class: "chip accent", text: `${fmt.num(g.current)} / ${fmt.num(g.target)} ${g.unit || ""}`.trim() }),
+            dl ? el("span", { class: "chip " + dl.cls, text: "⏳ " + dl.text }) : null
+          ])
+        ]),
+        el("button", { class: "icon-btn", html: "✏️", title: "Editar", onclick: () => addOrEdit(g) }),
+        el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => remove(g) })
+      ]),
+      el("div", { class: "flex gap-8 mt-16" }, [
+        el("button", { class: "btn sm ghost", html: "－1", onclick: () => adjust(g, -1) }),
+        el("button", { class: "btn sm primary", html: "＋1", onclick: () => adjust(g, 1) }),
+        el("button", { class: "btn sm", html: "＋5", onclick: () => adjust(g, 5) })
+      ])
+    ]);
+
+    if (g.milestones.length) {
+      const wrap = el("div", { class: "mt-16" });
+      wrap.appendChild(el("div", { class: "fs-12 text-dim", style: "margin-bottom:6px", text: `Hitos ${msDone}/${g.milestones.length}` }));
+      g.milestones.forEach((m) => {
+        wrap.appendChild(el("div", { class: "flex items-center gap-8", style: "cursor:pointer;padding:2px 0", onclick: () => toggleMs(g, m) }, [
+          el("span", { style: "font-size:14px;color:" + (m.done ? "var(--good)" : "var(--txt-faint)"), text: m.done ? "☑" : "☐" }),
+          el("span", { class: "fs-13", style: m.done ? "text-decoration:line-through;color:var(--txt-faint)" : "", text: m.t })
+        ]));
+      });
+      card.appendChild(wrap);
+    }
+    return card;
+  }
+
+  function kpi(label, val, sub, cls) {
+    return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
+      el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
+    ])]);
+  }
+
+  N.Goals = { render, stats, pct };
+})();
+
+
+/* ===== assets/js/app.js ===== */
+/* =====================================================================
+   NEXUS · App — orquestador principal
+   ===================================================================== */
+(function () {
+  "use strict";
+  const N = window.NEXUS;
+  const { Store, Audio, UI, Gami } = N;
+  const { $, $ } = UI;
+
+  const VIEWS = {
+    dashboard: N.Dashboard,
+    habits: N.Habits,
+    finance: N.Finance,
+    tasks: N.Tasks,
+    workouts: N.Workouts,
+    goals: N.Goals
+  };
+  let current = "dashboard";
+
+  // ---------- Temas ----------
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    Store.get().settings.theme = theme;
+    Store.commit(true);
+    $(".th-btn").forEach((b) => b.classList.toggle("is-active", b.dataset.themeSet === theme));
+  }
+
+  // ---------- Barra superior ----------
+  function refreshTop() {
+    const s = Store.get();
+    const lp = Gami.levelProgress();
+    $("#level-badge").textContent = lp.level;
+    $("#rank-name").textContent = Gami.rankName(lp.level);
+    $("#xp-text").textContent = `${UI.fmt.num(lp.into)} / ${UI.fmt.num(lp.span)} XP`;
+    $("#xp-fill").style.width = lp.pct + "%";
+    $("#streak-days").textContent = Gami.globalStreak();
+  }
+
+  // ---------- Router ----------
+  function switchView(name, silent) {
+    if (!VIEWS[name]) return;
+    current = name;
+    $(".tab").forEach((t) => t.classList.toggle("is-active", t.dataset.view === name));
+    $(".view").forEach((v) => v.classList.toggle("is-active", v.id === "view-" + name));
+    if (!silent) Audio.play("tab");
+    renderCurrent();
+  }
+
+  function renderCurrent() {
+    const container = document.getElementById("view-" + current);
+    if (container && VIEWS[current]) VIEWS[current].render(container);
+    refreshTop();
+  }
+
+  // ---------- Eventos ----------
+  function bind() {
+    // gesto inicial desbloquea audio
+    document.body.addEventListener("pointerdown", () => Audio.unlock(), { once: true });
+
+    $("#tabs").addEventListener("click", (e) => {
+      const tab = e.target.closest(".tab");
+      if (tab) switchView(tab.dataset.view);
+    });
+
+    $(".th-btn").forEach((b) => b.addEventListener("click", () => { applyTheme(b.dataset.themeSet); Audio.play("tap"); }));
+
+    const soundBtn = $("#sound-toggle");
+    soundBtn.addEventListener("click", () => {
+      const on = Audio.toggle();
+      soundBtn.textContent = on ? "🔊" : "🔇";
+      UI.toast({ icon: on ? "🔊" : "🔇", msg: on ? "Sonidos activados" : "Sonidos silenciados" });
+    });
+
+    $("#modal-close").addEventListener("click", UI.closeModal);
+    $("#modal-overlay").addEventListener("click", (e) => { if (e.target.id === "modal-overlay") UI.closeModal(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") UI.closeModal(); });
+
+    $("#reset-data").addEventListener("click", () => {
+      UI.confirmBox("Reiniciar datos", "Se borrarán TODOS tus datos (hábitos, finanzas, tareas, entrenamientos, metas y XP). Esta acción no se puede deshacer.", () => {
+        Store.reset();
+        Audio.play("delete");
+        UI.toast({ icon: "♻️", msg: "Datos reiniciados" });
+        renderCurrent();
+      }, "Borrar todo");
+    });
+
+    // redibujar gráficas al cambiar tamaño
+    let rt = null;
+    window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderCurrent, 250); });
+  }
+
+  // ---------- Init ----------
+  function init() {
+    const s = Store.get();
+    applyTheme(s.settings.theme || "dark");
+    $("#sound-toggle").textContent = Audio.isEnabled() ? "🔊" : "🔇";
+    bind();
+    Gami.checkAchievements();
+    switchView("dashboard", true);
+
+    // ocultar boot
+    setTimeout(() => {
+      $("#boot-screen").classList.add("hide");
+      $("#app").hidden = false;
+      setTimeout(() => $("#boot-screen").remove(), 700);
+    }, 1400);
+  }
+
+  N.App = { refreshTop, switchView, renderCurrent };
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
+
+  </script>
+</body>
+</html>
