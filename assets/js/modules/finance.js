@@ -57,9 +57,41 @@
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const mk = DateUtil.monthKey(d);
-      out.push({ mk, label: d.toLocaleDateString("es", { month: "short" }), income: monthIncome(mk), expense: monthExpense(mk) });
+      out.push({ mk, label: d.toLocaleDateString("es-MX", { month: "short" }), income: monthIncome(mk), expense: monthExpense(mk) });
     }
     return out;
+  }
+
+  // gastos e ingresos por día del mes actual
+  function dailyThisMonth() {
+    const now = new Date(), y = now.getFullYear(), mo = now.getMonth();
+    const days = new Date(y, mo + 1, 0).getDate();
+    const labels = [], income = [], expense = [];
+    for (let d = 1; d <= days; d++) {
+      const key = DateUtil.key(new Date(y, mo, d));
+      labels.push(String(d));
+      income.push(sum(txs().filter((t) => t.type === "income" && t.date === key)));
+      expense.push(sum(txs().filter((t) => t.type === "expense" && t.date === key)));
+    }
+    return { labels, income, expense };
+  }
+
+  // fecha legible con día de la semana: "mié, 9 jul"
+  function niceDate(key) {
+    const d = DateUtil.parse(key);
+    const now = new Date();
+    const opts = d.getFullYear() === now.getFullYear()
+      ? { weekday: "short", day: "numeric", month: "short" }
+      : { day: "numeric", month: "short", year: "numeric" };
+    return d.toLocaleDateString("es-MX", opts);
+  }
+
+  // vista de la gráfica de tendencia: "days" | "months"
+  let trendMode = "days";
+  function trendSegBtn(mode, label, container) {
+    const b = el("button", { text: label, onclick: () => { trendMode = mode; Audio.play("tab"); render(container); } });
+    if (trendMode === mode) b.classList.add("on");
+    return b;
   }
 
   // ---------------------------------------------------------------
@@ -244,14 +276,25 @@
     // Gráficas
     const charts = el("div", { class: "grid cols-2 mb-16" });
 
+    const trendTitle = trendMode === "days"
+      ? "Gastos por día · " + new Date().toLocaleDateString("es-MX", { month: "long" })
+      : "Ingresos vs Gastos · 6 meses";
     const trendCard = el("div", { class: "card" }, [
-      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Ingresos vs Gastos · 6 meses"])])
+      el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), trendTitle]),
+        el("div", { class: "seg" }, [
+          trendSegBtn("days", "Por día", container),
+          trendSegBtn("months", "6 meses", container)
+        ])
+      ])
     ]);
     const cvTrend = el("canvas");
     trendCard.appendChild(el("div", { class: "chart-box" }, [cvTrend]));
-    trendCard.appendChild(el("div", { class: "flex gap-12 mt-8 fs-12" }, [
-      el("span", { class: "chip good", text: "● Ingresos" }), el("span", { class: "chip bad", text: "● Gastos" })
-    ]));
+    trendCard.appendChild(el("div", { class: "flex gap-12 mt-8 fs-12" },
+      trendMode === "days"
+        ? [el("span", { class: "chip bad", text: "● Gasto de cada día" })]
+        : [el("span", { class: "chip good", text: "● Ingresos" }), el("span", { class: "chip bad", text: "● Gastos" })]
+    ));
     charts.appendChild(trendCard);
 
     const catCard = el("div", { class: "card" }, [
@@ -272,11 +315,16 @@
     container.appendChild(charts);
 
     setTimeout(() => {
-      const m = last6Months();
-      Charts.bars(cvTrend, {
-        labels: m.map((x) => x.label),
-        series: [{ values: m.map((x) => x.income), color: "--good" }, { values: m.map((x) => x.expense), color: "--bad" }]
-      }, { height: 190 });
+      if (trendMode === "days") {
+        const dd = dailyThisMonth();
+        Charts.bars(cvTrend, { labels: dd.labels, series: [{ values: dd.expense, color: "--bad" }] }, { height: 190 });
+      } else {
+        const m = last6Months();
+        Charts.bars(cvTrend, {
+          labels: m.map((x) => x.label),
+          series: [{ values: m.map((x) => x.income), color: "--good" }, { values: m.map((x) => x.expense), color: "--bad" }]
+        }, { height: 190 });
+      }
       Charts.doughnut(cvCat, cats, { height: 190, centerLabel: fmt.money(exp), centerSub: "gasto mes" });
     }, 30);
 
@@ -295,7 +343,7 @@
             el("div", { class: "item-title", text: t.note || t.category }),
             el("div", { class: "item-meta" }, [
               el("span", { text: t.category }),
-              el("span", { text: DateUtil.label(t.date) })
+              el("span", { class: "chip accent", text: "📅 " + niceDate(t.date) })
             ])
           ]),
           el("div", { class: "fw-700 " + (t.type === "income" ? "text-good" : "text-bad"), text: (t.type === "income" ? "+" : "−") + fmt.money(t.amount) }),

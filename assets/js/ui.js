@@ -33,9 +33,9 @@
   const fmt = {
     money(n) {
       const v = Number(n) || 0;
-      return v.toLocaleString("es", { style: "currency", currency: "USD", maximumFractionDigits: v % 1 === 0 ? 0 : 2 });
+      return v.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: v % 1 === 0 ? 0 : 2 });
     },
-    num(n) { return (Number(n) || 0).toLocaleString("es"); },
+    num(n) { return (Number(n) || 0).toLocaleString("es-MX"); },
     pct(n) { return Math.round(Number(n) || 0) + "%"; }
   };
 
