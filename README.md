@@ -4,6 +4,8 @@ Aplicación web **futurista de productividad personal**: hábitos, finanzas con 
 
 Hecha en **HTML, CSS y JavaScript puro**, sin dependencias ni paso de build. Funciona offline: solo abre `index.html`.
 
+🌐 **App en vivo:** https://dolarz1.github.io/NEXUS/
+
 ![tech](https://img.shields.io/badge/stack-Vanilla%20JS-00e5ff) ![deps](https://img.shields.io/badge/dependencias-0-7c5cff)
 
 ---
