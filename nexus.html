@@ -132,7 +132,7 @@ input, select, textarea { font-family: inherit; }
   position: fixed; inset: 0; z-index: 100;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   background: var(--bg);
-  transition: opacity .6s ease;
+  transition: opacity .35s ease;
 }
 .boot-screen.hide { opacity: 0; pointer-events: none; }
 .boot-logo { font-size: 64px; filter: drop-shadow(var(--glow)); animation: spin 3s ease-in-out infinite; }
@@ -140,7 +140,7 @@ input, select, textarea { font-family: inherit; }
 .boot-title { font-size: 40px; font-weight: 800; letter-spacing: 12px; color: var(--accent); text-shadow: var(--glow); }
 .boot-sub { color: var(--txt-dim); letter-spacing: 3px; font-size: 12px; text-transform: uppercase; }
 .boot-bar { width: 220px; height: 4px; border-radius: 4px; background: var(--border); overflow: hidden; }
-.boot-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); animation: load 1.4s ease forwards; }
+.boot-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); animation: load .5s ease forwards; }
 @keyframes load { to { width: 100%; } }
 
 /* =====================================================================
@@ -2522,12 +2522,15 @@ canvas { display: block; width: 100%; }
     Gami.checkAchievements();
     switchView("dashboard", true);
 
-    // ocultar boot
+    // mostrar la app cuanto antes y ocultar el arranque
+    $("#app").hidden = false;
     setTimeout(() => {
-      $("#boot-screen").classList.add("hide");
-      $("#app").hidden = false;
-      setTimeout(() => $("#boot-screen").remove(), 700);
-    }, 1400);
+      const boot = $("#boot-screen");
+      if (boot) {
+        boot.classList.add("hide");
+        setTimeout(() => boot.remove(), 350);
+      }
+    }, 450);
   }
 
   N.App = { refreshTop, switchView, renderCurrent };

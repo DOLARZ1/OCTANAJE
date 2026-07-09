@@ -98,12 +98,15 @@
     Gami.checkAchievements();
     switchView("dashboard", true);
 
-    // ocultar boot
+    // mostrar la app cuanto antes y ocultar el arranque
+    $("#app").hidden = false;
     setTimeout(() => {
-      $("#boot-screen").classList.add("hide");
-      $("#app").hidden = false;
-      setTimeout(() => $("#boot-screen").remove(), 700);
-    }, 1400);
+      const boot = $("#boot-screen");
+      if (boot) {
+        boot.classList.add("hide");
+        setTimeout(() => boot.remove(), 350);
+      }
+    }, 450);
   }
 
   N.App = { refreshTop, switchView, renderCurrent };
