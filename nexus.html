@@ -160,7 +160,7 @@ input, select, textarea { font-family: inherit; }
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.6;} }
 .brand-text { display: flex; flex-direction: column; line-height: 1; }
 .brand-name { font-weight: 800; letter-spacing: 4px; font-size: 18px; }
-.brand-tag { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--txt-faint); }
+.brand-tag { font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--txt-faint); white-space: nowrap; }
 
 .topbar-center { flex: 1; display: flex; justify-content: center; }
 .level-wrap { display: flex; align-items: center; gap: 12px; min-width: 260px; max-width: 340px; width: 100%; }
@@ -409,6 +409,35 @@ canvas { display: block; width: 100%; }
 .switch.on { background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--glow); }
 .switch.on .knob { left: 25px; background: #04122b; }
 
+
+/* =====================================================================
+   CALENDARIO DE ACTIVIDAD (Panel)
+   ===================================================================== */
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-h { text-align: center; font-size: 11px; font-weight: 700; color: var(--txt-faint); padding-bottom: 2px; letter-spacing: 1px; }
+.cal-day {
+  aspect-ratio: 1 / 1; display: grid; place-items: center;
+  border-radius: 10px; font-size: 13px; font-weight: 700;
+  background: var(--panel-2); border: 1px solid var(--border); color: var(--txt-dim);
+  transition: transform .15s ease;
+}
+.cal-day:hover { transform: translateY(-2px); }
+.cal-day.empty { background: transparent; border: none; }
+.cal-day.future { opacity: .35; }
+.cal-day.done {
+  color: #04122b;
+  background: linear-gradient(135deg, var(--good), color-mix(in srgb, var(--good) 65%, var(--accent)));
+  border-color: transparent;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--good) 60%, transparent);
+}
+.cal-day.miss {
+  color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 12%, transparent);
+  border-color: color-mix(in srgb, var(--bad) 40%, transparent);
+}
+.cal-day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (max-width: 560px) { .cal-day { font-size: 11px; border-radius: 8px; } .cal { gap: 4px; } }
+
 </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='64' y2='64'><stop offset='0' stop-color='%2300e5ff'/><stop offset='.5' stop-color='%237c5cff'/><stop offset='1' stop-color='%23ff2fb0'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='%23060814'/><polygon points='32,9 51,20 51,44 32,55 13,44 13,20' fill='none' stroke='url(%23g)' stroke-width='4'/><circle cx='32' cy='32' r='6' fill='url(%23g)'/></svg>" />
   <!-- PWA -->
@@ -440,7 +469,7 @@ canvas { display: block; width: 100%; }
         <span class="brand-hex">⬡</span>
         <div class="brand-text">
           <span class="brand-name">NEXUS</span>
-          <span class="brand-tag">personal OS</span>
+          <span class="brand-tag">Salud y Disciplina</span>
         </div>
       </div>
 
@@ -462,14 +491,7 @@ canvas { display: block; width: 100%; }
           <span class="flame">🔥</span><span id="streak-days">0</span>
         </div>
 
-        <div class="theme-switch" role="group" aria-label="Selector de tema">
-          <button class="th-btn" data-theme-set="light" title="Tema claro">☀️</button>
-          <button class="th-btn" data-theme-set="gray" title="Tema gris">◐</button>
-          <button class="th-btn is-active" data-theme-set="dark" title="Tema oscuro">🌙</button>
-        </div>
-
-        <button class="icon-btn" id="sound-toggle" title="Activar / silenciar sonidos">🔊</button>
-        <button class="icon-btn" id="settings-btn" title="Ajustes: datos y notificaciones">⚙️</button>
+        <button class="icon-btn" id="settings-btn" title="Ajustes: tema, sonido, moneda, datos">⚙️</button>
       </div>
     </header>
 
@@ -1365,6 +1387,9 @@ canvas { display: block; width: 100%; }
       kpi("Metas", `${gs.completed}/${gs.total}`, "completadas", "good")
     ]));
 
+    // Calendario de actividad del mes
+    container.appendChild(buildCalendarCard(s));
+
     // Fila: XP semanal + progreso de nivel
     const row1 = el("div", { class: "grid cols-2 mb-16" });
 
@@ -1446,6 +1471,54 @@ canvas { display: block; width: 100%; }
     return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
       el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
     ])]);
+  }
+
+  // ---------- Calendario de actividad ----------
+  function isActive(s, key) {
+    return !!s.activity[key] || (s.xpLog[key] || 0) > 0;
+  }
+
+  function buildCalendarCard(s) {
+    const now = new Date();
+    const y = now.getFullYear(), mo = now.getMonth();
+    const monthLabel = now.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+    const daysInMonth = new Date(y, mo + 1, 0).getDate();
+    const startCol = (new Date(y, mo, 1).getDay() + 6) % 7; // lunes primero
+    const todayKey = DateUtil.todayKey();
+
+    // contar días activos del mes
+    let activos = 0, transcurridos = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = DateUtil.key(new Date(y, mo, d));
+      if (key <= todayKey) { transcurridos++; if (isActive(s, key)) activos++; }
+    }
+
+    const grid = el("div", { class: "cal" });
+    ["L", "M", "M", "J", "V", "S", "D"].forEach((h) => grid.appendChild(el("div", { class: "cal-h", text: h })));
+    for (let i = 0; i < startCol; i++) grid.appendChild(el("div", { class: "cal-day empty" }));
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = DateUtil.key(new Date(y, mo, d));
+      let cls = "cal-day";
+      const label = DateUtil.parse(key).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" });
+      let tip = label;
+      if (key > todayKey) { cls += " future"; }
+      else if (isActive(s, key)) { cls += " done"; tip += " · ✓ con actividad (+" + (s.xpLog[key] || 0) + " XP)"; }
+      else { cls += " miss"; tip += " · sin actividad"; }
+      if (key === todayKey) cls += " today";
+      grid.appendChild(el("div", { class: cls, title: tip, text: String(d) }));
+    }
+
+    return el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
+        el("div", { class: "card-title", style: "text-transform:capitalize" }, [el("span", { class: "dot" }), "Calendario · " + monthLabel]),
+        el("div", { class: "flex gap-8 fs-12" }, [
+          el("span", { class: "chip good", text: "● Activo" }),
+          el("span", { class: "chip bad", text: "● Sin actividad" })
+        ])
+      ]),
+      grid,
+      el("div", { class: "fs-12 text-dim mt-8", text: `${activos} de ${transcurridos} días con actividad este mes` })
+    ]);
   }
 
   N.Dashboard = { render };
@@ -2962,16 +3035,40 @@ canvas { display: block; width: 100%; }
   // monedas disponibles (código + locale para formato correcto)
   const CURRENCIES = [
     { code: "MXN", locale: "es-MX", label: "🇲🇽 Peso mexicano (MXN)" },
-    { code: "USD", locale: "en-US", label: "🇺🇸 Dólar estadounidense (USD)" },
-    { code: "EUR", locale: "es-ES", label: "🇪🇺 Euro (EUR)" },
-    { code: "COP", locale: "es-CO", label: "🇨🇴 Peso colombiano (COP)" },
-    { code: "ARS", locale: "es-AR", label: "🇦🇷 Peso argentino (ARS)" },
-    { code: "CLP", locale: "es-CL", label: "🇨🇱 Peso chileno (CLP)" },
-    { code: "PEN", locale: "es-PE", label: "🇵🇪 Sol peruano (PEN)" },
-    { code: "BRL", locale: "pt-BR", label: "🇧🇷 Real brasileño (BRL)" },
-    { code: "GBP", locale: "en-GB", label: "🇬🇧 Libra esterlina (GBP)" },
-    { code: "CAD", locale: "en-CA", label: "🇨🇦 Dólar canadiense (CAD)" }
+    { code: "USD", locale: "en-US", label: "🇺🇸 Dólar estadounidense (USD)" }
   ];
+
+  // ---------- tema ----------
+  function themeRow() {
+    const cur = Store.get().settings.theme || "dark";
+    const seg = el("div", { class: "seg" });
+    [["light", "☀️ Claro"], ["gray", "◐ Gris"], ["dark", "🌙 Oscuro"]].forEach(([val, label]) => {
+      const b = el("button", { text: label, onclick: () => { if (N.App) N.App.applyTheme(val); Audio.play("tap"); open(); } });
+      if (val === cur) b.classList.add("on");
+      seg.appendChild(b);
+    });
+    return el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:10px" }, [
+      el("div", {}, [
+        el("div", { class: "set-title", text: "🎨 Tema" }),
+        el("div", { class: "set-desc", text: "Elige entre claro, gris u oscuro." })
+      ]),
+      seg
+    ]);
+  }
+
+  // ---------- sonido ----------
+  function soundRow() {
+    const on = Audio.isEnabled();
+    const toggle = el("button", { class: "switch" + (on ? " on" : ""), role: "switch", "aria-checked": on ? "true" : "false" }, [el("span", { class: "knob" })]);
+    toggle.addEventListener("click", () => { Audio.toggle(); open(); });
+    return el("div", { class: "set-row" }, [
+      el("div", {}, [
+        el("div", { class: "set-title", text: "🔊 Sonidos" }),
+        el("div", { class: "set-desc", text: on ? "Activados" : "Silenciados" })
+      ]),
+      toggle
+    ]);
+  }
 
   function currencyRow() {
     const s = Store.get().settings;
@@ -3065,6 +3162,10 @@ canvas { display: block; width: 100%; }
   // ---------- modal principal ----------
   function open() {
     const body = el("div", {}, [
+      // Apariencia
+      themeRow(),
+      // Sonido
+      soundRow(),
       // Moneda
       currencyRow(),
       // Notificaciones
@@ -3137,7 +3238,6 @@ canvas { display: block; width: 100%; }
     document.documentElement.setAttribute("data-theme", theme);
     Store.get().settings.theme = theme;
     Store.commit(true);
-    $$(".th-btn").forEach((b) => b.classList.toggle("is-active", b.dataset.themeSet === theme));
   }
 
   // ---------- Barra superior ----------
@@ -3177,15 +3277,6 @@ canvas { display: block; width: 100%; }
       if (tab) switchView(tab.dataset.view);
     });
 
-    $$(".th-btn").forEach((b) => b.addEventListener("click", () => { applyTheme(b.dataset.themeSet); Audio.play("tap"); }));
-
-    const soundBtn = $("#sound-toggle");
-    soundBtn.addEventListener("click", () => {
-      const on = Audio.toggle();
-      soundBtn.textContent = on ? "🔊" : "🔇";
-      UI.toast({ icon: on ? "🔊" : "🔇", msg: on ? "Sonidos activados" : "Sonidos silenciados" });
-    });
-
     const setBtn = $("#settings-btn");
     if (setBtn) setBtn.addEventListener("click", () => { Audio.play("tap"); if (N.Settings) N.Settings.open(); });
 
@@ -3202,7 +3293,6 @@ canvas { display: block; width: 100%; }
   function init() {
     const s = Store.get();
     applyTheme(s.settings.theme || "dark");
-    $("#sound-toggle").textContent = Audio.isEnabled() ? "🔊" : "🔇";
     bind();
     Gami.checkAchievements();
     if (N.Notify) N.Notify.init();
@@ -3230,7 +3320,7 @@ canvas { display: block; width: 100%; }
     } catch (e) {}
   }
 
-  N.App = { refreshTop, switchView, renderCurrent };
+  N.App = { refreshTop, switchView, renderCurrent, applyTheme };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();

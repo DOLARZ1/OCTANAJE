@@ -10,16 +10,40 @@
   // monedas disponibles (código + locale para formato correcto)
   const CURRENCIES = [
     { code: "MXN", locale: "es-MX", label: "🇲🇽 Peso mexicano (MXN)" },
-    { code: "USD", locale: "en-US", label: "🇺🇸 Dólar estadounidense (USD)" },
-    { code: "EUR", locale: "es-ES", label: "🇪🇺 Euro (EUR)" },
-    { code: "COP", locale: "es-CO", label: "🇨🇴 Peso colombiano (COP)" },
-    { code: "ARS", locale: "es-AR", label: "🇦🇷 Peso argentino (ARS)" },
-    { code: "CLP", locale: "es-CL", label: "🇨🇱 Peso chileno (CLP)" },
-    { code: "PEN", locale: "es-PE", label: "🇵🇪 Sol peruano (PEN)" },
-    { code: "BRL", locale: "pt-BR", label: "🇧🇷 Real brasileño (BRL)" },
-    { code: "GBP", locale: "en-GB", label: "🇬🇧 Libra esterlina (GBP)" },
-    { code: "CAD", locale: "en-CA", label: "🇨🇦 Dólar canadiense (CAD)" }
+    { code: "USD", locale: "en-US", label: "🇺🇸 Dólar estadounidense (USD)" }
   ];
+
+  // ---------- tema ----------
+  function themeRow() {
+    const cur = Store.get().settings.theme || "dark";
+    const seg = el("div", { class: "seg" });
+    [["light", "☀️ Claro"], ["gray", "◐ Gris"], ["dark", "🌙 Oscuro"]].forEach(([val, label]) => {
+      const b = el("button", { text: label, onclick: () => { if (N.App) N.App.applyTheme(val); Audio.play("tap"); open(); } });
+      if (val === cur) b.classList.add("on");
+      seg.appendChild(b);
+    });
+    return el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:10px" }, [
+      el("div", {}, [
+        el("div", { class: "set-title", text: "🎨 Tema" }),
+        el("div", { class: "set-desc", text: "Elige entre claro, gris u oscuro." })
+      ]),
+      seg
+    ]);
+  }
+
+  // ---------- sonido ----------
+  function soundRow() {
+    const on = Audio.isEnabled();
+    const toggle = el("button", { class: "switch" + (on ? " on" : ""), role: "switch", "aria-checked": on ? "true" : "false" }, [el("span", { class: "knob" })]);
+    toggle.addEventListener("click", () => { Audio.toggle(); open(); });
+    return el("div", { class: "set-row" }, [
+      el("div", {}, [
+        el("div", { class: "set-title", text: "🔊 Sonidos" }),
+        el("div", { class: "set-desc", text: on ? "Activados" : "Silenciados" })
+      ]),
+      toggle
+    ]);
+  }
 
   function currencyRow() {
     const s = Store.get().settings;
@@ -113,6 +137,10 @@
   // ---------- modal principal ----------
   function open() {
     const body = el("div", {}, [
+      // Apariencia
+      themeRow(),
+      // Sonido
+      soundRow(),
       // Moneda
       currencyRow(),
       // Notificaciones

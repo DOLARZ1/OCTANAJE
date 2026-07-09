@@ -38,6 +38,9 @@
       kpi("Metas", `${gs.completed}/${gs.total}`, "completadas", "good")
     ]));
 
+    // Calendario de actividad del mes
+    container.appendChild(buildCalendarCard(s));
+
     // Fila: XP semanal + progreso de nivel
     const row1 = el("div", { class: "grid cols-2 mb-16" });
 
@@ -119,6 +122,54 @@
     return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
       el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
     ])]);
+  }
+
+  // ---------- Calendario de actividad ----------
+  function isActive(s, key) {
+    return !!s.activity[key] || (s.xpLog[key] || 0) > 0;
+  }
+
+  function buildCalendarCard(s) {
+    const now = new Date();
+    const y = now.getFullYear(), mo = now.getMonth();
+    const monthLabel = now.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+    const daysInMonth = new Date(y, mo + 1, 0).getDate();
+    const startCol = (new Date(y, mo, 1).getDay() + 6) % 7; // lunes primero
+    const todayKey = DateUtil.todayKey();
+
+    // contar días activos del mes
+    let activos = 0, transcurridos = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = DateUtil.key(new Date(y, mo, d));
+      if (key <= todayKey) { transcurridos++; if (isActive(s, key)) activos++; }
+    }
+
+    const grid = el("div", { class: "cal" });
+    ["L", "M", "M", "J", "V", "S", "D"].forEach((h) => grid.appendChild(el("div", { class: "cal-h", text: h })));
+    for (let i = 0; i < startCol; i++) grid.appendChild(el("div", { class: "cal-day empty" }));
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = DateUtil.key(new Date(y, mo, d));
+      let cls = "cal-day";
+      const label = DateUtil.parse(key).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" });
+      let tip = label;
+      if (key > todayKey) { cls += " future"; }
+      else if (isActive(s, key)) { cls += " done"; tip += " · ✓ con actividad (+" + (s.xpLog[key] || 0) + " XP)"; }
+      else { cls += " miss"; tip += " · sin actividad"; }
+      if (key === todayKey) cls += " today";
+      grid.appendChild(el("div", { class: cls, title: tip, text: String(d) }));
+    }
+
+    return el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
+        el("div", { class: "card-title", style: "text-transform:capitalize" }, [el("span", { class: "dot" }), "Calendario · " + monthLabel]),
+        el("div", { class: "flex gap-8 fs-12" }, [
+          el("span", { class: "chip good", text: "● Activo" }),
+          el("span", { class: "chip bad", text: "● Sin actividad" })
+        ])
+      ]),
+      grid,
+      el("div", { class: "fs-12 text-dim mt-8", text: `${activos} de ${transcurridos} días con actividad este mes` })
+    ]);
   }
 
   N.Dashboard = { render };

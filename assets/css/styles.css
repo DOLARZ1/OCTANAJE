@@ -151,7 +151,7 @@ input, select, textarea { font-family: inherit; }
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.6;} }
 .brand-text { display: flex; flex-direction: column; line-height: 1; }
 .brand-name { font-weight: 800; letter-spacing: 4px; font-size: 18px; }
-.brand-tag { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--txt-faint); }
+.brand-tag { font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--txt-faint); white-space: nowrap; }
 
 .topbar-center { flex: 1; display: flex; justify-content: center; }
 .level-wrap { display: flex; align-items: center; gap: 12px; min-width: 260px; max-width: 340px; width: 100%; }
@@ -399,3 +399,32 @@ canvas { display: block; width: 100%; }
 .switch .knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--txt-dim); transition: .25s; }
 .switch.on { background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--glow); }
 .switch.on .knob { left: 25px; background: #04122b; }
+
+
+/* =====================================================================
+   CALENDARIO DE ACTIVIDAD (Panel)
+   ===================================================================== */
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-h { text-align: center; font-size: 11px; font-weight: 700; color: var(--txt-faint); padding-bottom: 2px; letter-spacing: 1px; }
+.cal-day {
+  aspect-ratio: 1 / 1; display: grid; place-items: center;
+  border-radius: 10px; font-size: 13px; font-weight: 700;
+  background: var(--panel-2); border: 1px solid var(--border); color: var(--txt-dim);
+  transition: transform .15s ease;
+}
+.cal-day:hover { transform: translateY(-2px); }
+.cal-day.empty { background: transparent; border: none; }
+.cal-day.future { opacity: .35; }
+.cal-day.done {
+  color: #04122b;
+  background: linear-gradient(135deg, var(--good), color-mix(in srgb, var(--good) 65%, var(--accent)));
+  border-color: transparent;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--good) 60%, transparent);
+}
+.cal-day.miss {
+  color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 12%, transparent);
+  border-color: color-mix(in srgb, var(--bad) 40%, transparent);
+}
+.cal-day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (max-width: 560px) { .cal-day { font-size: 11px; border-radius: 8px; } .cal { gap: 4px; } }

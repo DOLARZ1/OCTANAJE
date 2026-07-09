@@ -23,7 +23,6 @@
     document.documentElement.setAttribute("data-theme", theme);
     Store.get().settings.theme = theme;
     Store.commit(true);
-    $$(".th-btn").forEach((b) => b.classList.toggle("is-active", b.dataset.themeSet === theme));
   }
 
   // ---------- Barra superior ----------
@@ -63,15 +62,6 @@
       if (tab) switchView(tab.dataset.view);
     });
 
-    $$(".th-btn").forEach((b) => b.addEventListener("click", () => { applyTheme(b.dataset.themeSet); Audio.play("tap"); }));
-
-    const soundBtn = $("#sound-toggle");
-    soundBtn.addEventListener("click", () => {
-      const on = Audio.toggle();
-      soundBtn.textContent = on ? "🔊" : "🔇";
-      UI.toast({ icon: on ? "🔊" : "🔇", msg: on ? "Sonidos activados" : "Sonidos silenciados" });
-    });
-
     const setBtn = $("#settings-btn");
     if (setBtn) setBtn.addEventListener("click", () => { Audio.play("tap"); if (N.Settings) N.Settings.open(); });
 
@@ -88,7 +78,6 @@
   function init() {
     const s = Store.get();
     applyTheme(s.settings.theme || "dark");
-    $("#sound-toggle").textContent = Audio.isEnabled() ? "🔊" : "🔇";
     bind();
     Gami.checkAchievements();
     if (N.Notify) N.Notify.init();
@@ -116,7 +105,7 @@
     } catch (e) {}
   }
 
-  N.App = { refreshTop, switchView, renderCurrent };
+  N.App = { refreshTop, switchView, renderCurrent, applyTheme };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
