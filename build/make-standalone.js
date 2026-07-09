@@ -13,11 +13,15 @@ const jsFiles = [
 const js = jsFiles.map((f) => "/* ===== " + f + " ===== */\n" + fs.readFileSync(path.join(root, f), "utf8")).join("\n\n");
 
 let html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+// IMPORTANTE: se usan funciones de reemplazo para que las secuencias como
+// "$$" o "$&" dentro del CSS/JS NO se interpreten como patrones especiales
+// de String.replace (ese bug convertía "$$" en "$" y rompía el script).
 // quitar el <link> de CSS e inyectar <style>
-html = html.replace(/<link rel="stylesheet" href="assets\/css\/styles.css" \/>/, "<style>\n" + css + "\n</style>");
-// quitar todos los <script src=...> y reemplazar por un solo <script>
+html = html.replace(/<link rel="stylesheet" href="assets\/css\/styles.css" \/>/, () => "<style>\n" + css + "\n</style>");
+// quitar todos los <script src=...>
 html = html.replace(/\s*<script src="assets\/js\/[^"]+"><\/script>/g, "");
-html = html.replace(/<\/body>/, "  <script>\n" + js + "\n  </script>\n</body>");
+// inyectar un único <script> con todo el JS
+html = html.replace(/<\/body>/, () => "  <script>\n" + js + "\n  </script>\n</body>");
 
 fs.writeFileSync(path.join(root, "nexus.html"), html, "utf8");
 console.log("nexus.html generado: " + fs.statSync(path.join(root, "nexus.html")).size + " bytes, " + html.split("\n").length + " líneas");

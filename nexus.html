@@ -980,7 +980,7 @@ canvas { display: block; width: 100%; }
     return node;
   }
   const $ = (sel, root) => (root || document).querySelector(sel);
-  const $ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+  const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
   // ---------- formato ----------
   const fmt = {
@@ -1096,7 +1096,7 @@ canvas { display: block; width: 100%; }
     openModal(title, body);
   }
 
-  window.NEXUS.UI = { el, $, $, fmt, toast, openModal, closeModal, form, confirmBox };
+  window.NEXUS.UI = { el, $, $$, fmt, toast, openModal, closeModal, form, confirmBox };
 })();
 
 
@@ -2429,7 +2429,7 @@ canvas { display: block; width: 100%; }
   "use strict";
   const N = window.NEXUS;
   const { Store, Audio, UI, Gami } = N;
-  const { $, $ } = UI;
+  const { $, $$ } = UI;
 
   const VIEWS = {
     dashboard: N.Dashboard,
@@ -2446,7 +2446,7 @@ canvas { display: block; width: 100%; }
     document.documentElement.setAttribute("data-theme", theme);
     Store.get().settings.theme = theme;
     Store.commit(true);
-    $(".th-btn").forEach((b) => b.classList.toggle("is-active", b.dataset.themeSet === theme));
+    $$(".th-btn").forEach((b) => b.classList.toggle("is-active", b.dataset.themeSet === theme));
   }
 
   // ---------- Barra superior ----------
@@ -2464,8 +2464,8 @@ canvas { display: block; width: 100%; }
   function switchView(name, silent) {
     if (!VIEWS[name]) return;
     current = name;
-    $(".tab").forEach((t) => t.classList.toggle("is-active", t.dataset.view === name));
-    $(".view").forEach((v) => v.classList.toggle("is-active", v.id === "view-" + name));
+    $$(".tab").forEach((t) => t.classList.toggle("is-active", t.dataset.view === name));
+    $$(".view").forEach((v) => v.classList.toggle("is-active", v.id === "view-" + name));
     if (!silent) Audio.play("tab");
     renderCurrent();
   }
@@ -2486,7 +2486,7 @@ canvas { display: block; width: 100%; }
       if (tab) switchView(tab.dataset.view);
     });
 
-    $(".th-btn").forEach((b) => b.addEventListener("click", () => { applyTheme(b.dataset.themeSet); Audio.play("tap"); }));
+    $$(".th-btn").forEach((b) => b.addEventListener("click", () => { applyTheme(b.dataset.themeSet); Audio.play("tap"); }));
 
     const soundBtn = $("#sound-toggle");
     soundBtn.addEventListener("click", () => {
