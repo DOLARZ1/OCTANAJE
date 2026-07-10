@@ -448,3 +448,21 @@ canvas { display: block; width: 100%; }
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bad) 45%, transparent); }
   50% { box-shadow: 0 0 9px 1px color-mix(in srgb, var(--bad) 60%, transparent); }
 }
+
+
+/* =====================================================================
+   CUADRITOS DE META DIARIA (hábitos por cantidad)
+   ===================================================================== */
+.hboxes { display: flex; flex-wrap: wrap; gap: 6px; }
+.hbox {
+  width: 24px; height: 24px; border-radius: 7px;
+  border: 2px solid var(--border-strong); background: transparent;
+  transition: transform .12s ease, box-shadow .2s ease, background .2s ease;
+}
+.hbox:hover { transform: translateY(-2px); border-color: var(--accent); }
+.hbox.on {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--good), var(--accent));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--good) 55%, transparent);
+}
+@media (max-width: 560px) { .hbox { width: 21px; height: 21px; } }

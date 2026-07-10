@@ -15,21 +15,22 @@
   function stampUTC() { return new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, ""); } // 20260709T101500Z
 
   // URL para crear el evento en Google Calendar (evento de día completo)
-  function googleUrl(title, details, dateKey) {
+  function googleUrl(title, details, dateKey, recur) {
     const p = new URLSearchParams({
       action: "TEMPLATE",
       text: title || "Recordatorio",
       dates: ymd(dateKey) + "/" + nextDay(dateKey),
       details: (details || "") + "\n\nCreado desde NEXUS"
     });
+    if (recur) p.set("recur", recur); // p.ej. RRULE:FREQ=DAILY
     return "https://calendar.google.com/calendar/render?" + p.toString();
   }
 
   function escICS(s) { return String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n"); }
 
   // Genera y descarga un archivo .ics (Apple, Outlook, etc.) con alarma a las 9:00
-  function downloadIcs(title, details, dateKey) {
-    const ics = [
+  function downloadIcs(title, details, dateKey, recur) {
+    const lines = [
       "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//NEXUS//ES", "CALSCALE:GREGORIAN",
       "BEGIN:VEVENT",
       "UID:" + Store.uid() + "@nexus",
@@ -37,12 +38,16 @@
       "DTSTART;VALUE=DATE:" + ymd(dateKey),
       "DTEND;VALUE=DATE:" + nextDay(dateKey),
       "SUMMARY:" + escICS(title),
-      "DESCRIPTION:" + escICS((details || "") + " — NEXUS"),
+      "DESCRIPTION:" + escICS((details || "") + " — NEXUS")
+    ];
+    if (recur) lines.push(recur.replace(/^RRULE:/, "RRULE:")); // p.ej. "RRULE:FREQ=DAILY"
+    lines.push(
       "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + escICS(title),
       "TRIGGER:PT9H",   // recordatorio a las 09:00 del día
       "END:VALARM",
       "END:VEVENT", "END:VCALENDAR"
-    ].join("\r\n");
+    );
+    const ics = lines.join("\r\n");
     try {
       const blob = new Blob([ics], { type: "text/calendar" });
       const url = URL.createObjectURL(blob);
@@ -55,30 +60,32 @@
     }
   }
 
-  // Modal con las dos opciones
+  // Modal con las dos opciones (item.recur opcional, p.ej. "RRULE:FREQ=DAILY")
   function open(item) {
     const title = item.title || "Recordatorio";
     const details = item.details || "";
     const dateKey = item.dateKey;
+    const recur = item.recur || null;
     if (!dateKey) { toast({ icon: "⚠️", msg: "Este elemento no tiene fecha." }); return; }
-    const when = DateUtil.parse(dateKey).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const dLabel = DateUtil.parse(dateKey).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+    const when = recur ? ("🔁 Cada día, desde el " + dLabel) : DateUtil.parse(dateKey).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
     const body = el("div", {}, [
       el("div", { class: "insight info", style: "margin-bottom:14px" }, [
         el("span", { class: "ico", text: "📅" }),
-        el("div", { class: "txt", html: "<b>" + title + "</b><br>" + when + "<br><span style='color:var(--txt-faint)'>Se creará un recordatorio de día completo (alarma 09:00).</span>" })
+        el("div", { class: "txt", html: "<b>" + title + "</b><br>" + when + "<br><span style='color:var(--txt-faint)'>Recordatorio " + (recur ? "diario" : "de día completo") + " (alarma 09:00).</span>" })
       ]),
       el("button", {
         class: "btn primary block mb-16", html: "🗓️ Añadir a Google Calendar",
         onclick: () => {
           Audio.play("coin");
-          window.open(googleUrl(title, details, dateKey), "_blank", "noopener");
+          window.open(googleUrl(title, details, dateKey, recur), "_blank", "noopener");
           UI.closeModal();
         }
       }),
       el("button", {
         class: "btn block", html: "📆 Descargar .ics (Apple, Outlook, Samsung…)",
-        onclick: () => { Audio.play("tap"); downloadIcs(title, details, dateKey); UI.closeModal(); }
+        onclick: () => { Audio.play("tap"); downloadIcs(title, details, dateKey, recur); UI.closeModal(); }
       }),
       el("p", { class: "fs-12 text-faint mt-16", text: "Tu app de calendario se encargará de la alerta, incluso con NEXUS cerrado." })
     ]);

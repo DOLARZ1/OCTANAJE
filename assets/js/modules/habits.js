@@ -1,5 +1,7 @@
 /* =====================================================================
    NEXUS · Módulo Hábitos
+   Soporta hábitos simples (1 check) y hábitos con META DIARIA de N veces
+   (se rellenan N cuadritos; el hábito se completa solo al llenarlos todos).
    ===================================================================== */
 (function () {
   "use strict";
@@ -8,19 +10,34 @@
   const { el, fmt, toast } = UI;
   const DateUtil = Store.DateUtil;
 
-  const ICONS = ["✦", "💧", "📚", "🏃", "🧘", "🥗", "😴", "💊", "🎯", "🎨", "🎸", "☀️", "🚭", "🧠"];
+  const ICONS = ["✦", "💧", "📚", "🏃", "🧘", "🥗", "😴", "💊", "🎯", "🎨", "🎸", "☀️", "🚭", "🧠", "💪", "🙏", "📝", "🚶"];
+  const MAX_BOXES = 50;
 
   function habits() { return Store.get().habits; }
+  const today = () => DateUtil.todayKey();
 
-  // racha de un hábito
+  // meta diaria (nº de veces). 1 = hábito simple
+  function tgt(h) { return Math.max(1, Math.min(MAX_BOXES, parseInt(h.count, 10) || 1)); }
+  // cantidad hecha en un día (compatible con formato antiguo: true = completo)
+  function dayVal(h, key) {
+    const v = h.history[key];
+    if (v === true) return tgt(h);
+    if (typeof v === "number") return v;
+    return 0;
+  }
+  function doneOn(h, key) { return dayVal(h, key) >= tgt(h); }
+  function doneToday(h) { return doneOn(h, today()); }
+  function pctToday(h) { return Math.round((dayVal(h, today()) / tgt(h)) * 100); }
+
+  // racha (días consecutivos completados)
   function streak(h) {
-    let s = 0, day = DateUtil.todayKey();
-    if (!h.history[day]) day = DateUtil.addDays(day, -1);
-    while (h.history[day]) { s++; day = DateUtil.addDays(day, -1); }
+    let s = 0, day = today();
+    if (!doneOn(h, day)) day = DateUtil.addDays(day, -1);
+    while (doneOn(h, day)) { s++; day = DateUtil.addDays(day, -1); }
     return s;
   }
   function bestStreak(h) {
-    const dates = Object.keys(h.history).filter((k) => h.history[k]).sort();
+    const dates = Object.keys(h.history).filter((k) => doneOn(h, k)).sort();
     let best = 0, cur = 0, prev = null;
     dates.forEach((d) => {
       if (prev && DateUtil.diffDays(d, prev) === 1) cur++; else cur = 1;
@@ -29,41 +46,60 @@
     });
     return best;
   }
-  function doneToday(h) { return !!h.history[DateUtil.todayKey()]; }
   function completion30(h) {
     const days = DateUtil.lastNDays(30);
-    const done = days.filter((d) => h.history[d]).length;
+    const done = days.filter((d) => doneOn(h, d)).length;
     return Math.round((done / 30) * 100);
   }
 
-  function toggle(h) {
-    const today = DateUtil.todayKey();
-    if (h.history[today]) {
-      delete h.history[today];
+  // fija la cantidad de hoy y gestiona XP según se complete o no el día
+  function applyDay(h, n) {
+    const key = today();
+    const target = tgt(h);
+    n = Math.max(0, Math.min(target, n));
+    const was = doneToday(h);
+    if (target === 1) { if (n >= 1) h.history[key] = true; else delete h.history[key]; }
+    else { if (n > 0) h.history[key] = n; else delete h.history[key]; }
+    const now = doneToday(h);
+
+    if (now && !was) {
+      Audio.play("complete");
+      const bonus = streak(h) >= 7 ? 6 : 0;
+      Gami.award(12 + bonus, bonus ? "Hábito + racha 🔥" : "Hábito completado");
+    } else if (!now && was) {
       Audio.play("tap");
       Gami.remove(12);
       Store.commit();
     } else {
-      h.history[today] = true;
-      Audio.play("complete");
-      const bonus = streak(h) >= 7 ? 6 : 0;
-      Gami.award(12 + bonus, bonus ? "Hábito + racha 🔥" : "Hábito completado");
+      Audio.play(n > 0 ? "coin" : "tap");
+      Store.commit();
     }
     render(document.getElementById("view-habits"));
     N.App && N.App.refreshTop();
   }
 
+  function toggleCheck(h) { applyDay(h, doneToday(h) ? 0 : tgt(h)); }
+  function setBox(h, i) {
+    const cur = dayVal(h, today());
+    applyDay(h, (i + 1 <= cur) ? i : i + 1); // clic en lleno = quitar desde ahí; en vacío = llenar hasta ahí
+  }
+
   function addOrEdit(existing) {
-    const body = UI.form([
-      { name: "name", label: "Nombre del hábito", value: existing ? existing.name : "", placeholder: "Beber 2L de agua", required: true },
+    const formEl = UI.form([
+      { name: "name", label: "Nombre del hábito", value: existing ? existing.name : "", placeholder: "Beber agua", required: true },
       { name: "icon", label: "Ícono", type: "select", value: existing ? existing.icon : "✦", options: ICONS },
-      { name: "target", label: "Meta diaria (opcional, texto)", value: existing ? existing.target || "" : "", placeholder: "Ej: 8 vasos" }
+      { type: "row", fields: [
+        { name: "count", label: "Meta diaria (nº de veces)", type: "number", min: 1, step: 1, value: existing ? tgt(existing) : 1 },
+        { name: "unit", label: "Unidad (opcional)", value: existing ? existing.unit || "" : "", placeholder: "vasos, páginas…" }
+      ]}
     ], (data) => {
+      const cnt = Math.max(1, Math.min(MAX_BOXES, parseInt(data.count, 10) || 1));
       if (existing) {
-        existing.name = data.name; existing.icon = data.icon; existing.target = data.target;
+        existing.name = data.name; existing.icon = data.icon; existing.count = cnt; existing.unit = data.unit;
+        delete existing.target;
         toast({ icon: "✏️", msg: "Hábito actualizado" });
       } else {
-        habits().push({ id: Store.uid(), name: data.name, icon: data.icon, target: data.target, history: {}, created: DateUtil.todayKey() });
+        habits().push({ id: Store.uid(), name: data.name, icon: data.icon, count: cnt, unit: data.unit, history: {}, created: today() });
         Audio.play("add");
         toast({ icon: "✦", title: "Nuevo hábito", msg: data.name });
         Gami.award(5, "Nuevo hábito creado");
@@ -73,7 +109,15 @@
       render(document.getElementById("view-habits"));
       N.App && N.App.refreshTop();
     }, existing ? "Guardar cambios" : "Crear hábito");
-    UI.openModal(existing ? "Editar hábito" : "Nuevo hábito", body);
+
+    const wrap = el("div", {}, [
+      el("div", { class: "insight info", style: "margin-bottom:14px" }, [
+        el("span", { class: "ico", text: "🔢" }),
+        el("div", { class: "txt", html: "Si la <b>meta diaria</b> es mayor que 1, aparecerán esos cuadritos para rellenar durante el día (p. ej. 8 vasos = 8 cuadritos). El hábito solo se completa al llenarlos <b>todos</b>." })
+      ]),
+      formEl
+    ]);
+    UI.openModal(existing ? "Editar hábito" : "Nuevo hábito", wrap);
   }
 
   function remove(h) {
@@ -84,6 +128,15 @@
       Audio.play("delete");
       render(document.getElementById("view-habits"));
     }, "Eliminar");
+  }
+
+  function addToCalendar(h) {
+    N.CalExport.open({
+      title: h.name,
+      details: "Hábito diario en NEXUS" + (tgt(h) > 1 ? " · meta " + tgt(h) + " " + (h.unit || "veces") : ""),
+      dateKey: today(),
+      recur: "RRULE:FREQ=DAILY"
+    });
   }
 
   // ---------- stats para dashboard ----------
@@ -97,7 +150,7 @@
     const days = DateUtil.lastNDays(7);
     return {
       labels: days.map((d) => DateUtil.weekday(d)),
-      values: days.map((d) => habits().filter((h) => h.history[d]).length)
+      values: days.map((d) => habits().filter((h) => doneOn(h, d)).length)
     };
   }
 
@@ -109,13 +162,12 @@
     const head = el("div", { class: "view-head" }, [
       el("div", {}, [
         el("h1", { class: "view-title" }, [el("span", { class: "ico", text: "✦" }), "Hábitos"]),
-        el("p", { class: "view-desc", text: "Construye rutinas, mantén tu racha y suma XP cada día." })
+        el("p", { class: "view-desc", text: "Marca tus cuadritos, mantén tu racha y suma XP cada día." })
       ]),
       el("button", { class: "btn primary", onclick: () => addOrEdit(null) }, [el("span", { text: "＋" }), "Nuevo hábito"])
     ]);
     container.appendChild(head);
 
-    // resumen del día
     const summary = el("div", { class: "grid cols-3 mb-16" }, [
       statCard("Hoy", `${prog.done}/${prog.total}`, "completados", "accent"),
       statCard("Cumplimiento", fmt.pct(prog.pct), "del día", prog.pct >= 100 ? "good" : "warn"),
@@ -123,17 +175,14 @@
     ]);
     container.appendChild(summary);
 
-    // gráfica semanal
     const chartCard = el("div", { class: "card mb-16" }, [
       el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Hábitos completados · últimos 7 días"])])
     ]);
     const cv = el("canvas");
-    const box = el("div", { class: "chart-box" }, [cv]);
-    chartCard.appendChild(box);
+    chartCard.appendChild(el("div", { class: "chart-box" }, [cv]));
     container.appendChild(chartCard);
     setTimeout(() => Charts.bars(cv, { labels: weeklySeries().labels, series: [{ values: weeklySeries().values, color: "--accent" }] }, { height: 170 }), 30);
 
-    // lista
     if (!arr.length) {
       container.appendChild(el("div", { class: "card" }, [
         el("div", { class: "empty" }, [el("span", { class: "big", text: "✦" }), el("div", { text: "Aún no tienes hábitos. ¡Crea el primero!" })])
@@ -160,12 +209,15 @@
     const st = streak(h);
     const done = doneToday(h);
     const comp = completion30(h);
+    const target = tgt(h);
+    const cur = dayVal(h, today());
 
-    // heatmap 30 días
+    // heatmap 35 días (completo = brillante, parcial = tenue)
     const heat = el("div", { class: "heat mt-8" });
     DateUtil.lastNDays(35).forEach((d) => {
       const cell = el("i", { title: DateUtil.label(d) });
-      if (h.history[d]) cell.classList.add("l3");
+      if (doneOn(h, d)) cell.classList.add("l3");
+      else if (dayVal(h, d) > 0) cell.classList.add("l1");
       heat.appendChild(cell);
     });
 
@@ -173,30 +225,51 @@
       el("div", { class: "flex items-center gap-12" }, [
         el("button", {
           class: "check" + (done ? " on" : ""),
-          title: done ? "Marcar como no hecho" : "Marcar hecho hoy",
-          onclick: () => toggle(h),
-          html: done ? "✓" : ""
+          title: done ? "Marcar como no hecho" : "Completar hoy",
+          onclick: () => toggleCheck(h),
+          html: done ? "✓" : (target > 1 ? String(cur) : "")
         }),
         el("div", { class: "item-main" }, [
           el("div", { class: "item-title" }, [el("span", { text: h.icon + " " }), h.name]),
           el("div", { class: "item-meta" }, [
             el("span", { class: "chip warn", html: "🔥 " + st + " día" + (st === 1 ? "" : "s") }),
             el("span", { class: "chip", text: "Récord " + bestStreak(h) }),
-            h.target ? el("span", { class: "text-faint fs-12", text: h.target }) : null
+            target > 1 ? el("span", { class: "chip accent", text: "🎯 " + target + " " + (h.unit || "/día") }) : null
           ])
         ]),
         el("div", { class: "flex gap-8" }, [
+          el("button", { class: "icon-btn", title: "Recordatorio diario en Google Calendar", onclick: () => addToCalendar(h), html: "📅" }),
           el("button", { class: "icon-btn", title: "Editar", onclick: () => addOrEdit(h), html: "✏️" }),
           el("button", { class: "icon-btn", title: "Eliminar", onclick: () => remove(h), html: "🗑️" })
         ])
-      ]),
-      el("div", { class: "flex items-center justify-between mt-16", style: "margin-bottom:6px" }, [
-        el("span", { class: "fs-12 text-dim", text: "Cumplimiento 30 días" }),
-        el("span", { class: "fs-12 fw-700 text-accent", text: fmt.pct(comp) })
-      ]),
-      el("div", { class: "progress" + (comp >= 70 ? " good" : "") }, [el("span", { style: `width:${comp}%` })]),
-      heat
+      ])
     ]);
+
+    // cuadritos de meta diaria
+    if (target > 1) {
+      const boxes = el("div", { class: "hboxes mt-16" });
+      for (let i = 0; i < target; i++) {
+        boxes.appendChild(el("button", {
+          class: "hbox" + (i < cur ? " on" : ""),
+          title: (i + 1) + " de " + target,
+          onclick: () => setBox(h, i)
+        }));
+      }
+      card.appendChild(boxes);
+      card.appendChild(el("div", { class: "flex items-center justify-between fs-12 mt-8" }, [
+        el("span", { class: "text-dim", text: `${cur}/${target} ${h.unit || ""}`.trim() }),
+        el("span", { class: "fw-700 " + (cur >= target ? "text-good" : "text-warn"), text: pctToday(h) + "%" })
+      ]));
+    }
+
+    // cumplimiento 30 días
+    card.appendChild(el("div", { class: "flex items-center justify-between mt-16", style: "margin-bottom:6px" }, [
+      el("span", { class: "fs-12 text-dim", text: "Cumplimiento 30 días" }),
+      el("span", { class: "fs-12 fw-700 text-accent", text: fmt.pct(comp) })
+    ]));
+    card.appendChild(el("div", { class: "progress" + (comp >= 70 ? " good" : "") }, [el("span", { style: `width:${comp}%` })]));
+    card.appendChild(heat);
+
     return card;
   }
 

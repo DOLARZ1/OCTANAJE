@@ -259,6 +259,19 @@ N.CalExport.open({ title: "Meta demo", details: "d", dateKey: "2026-07-20" });
 if (!document.getElementById("modal-body").children.length) throw new Error("Modal de calendario vacío");
 console.log("✔ CalExport: URL de Google OK y modal construido");
 
+// probar hábito con meta diaria (cuadritos): 2/3 no completa, 3/3 sí
+(() => {
+  const DU = N.Store.DateUtil; const hk = DU.todayKey();
+  const hc = { id: "hc", name: "Agua x3", icon: "💧", count: 3, unit: "vasos", history: {}, created: hk };
+  N.Store.get().habits.push(hc);
+  hc.history[hk] = 2;
+  const parcial = N.Habits.todayProgress().done;
+  hc.history[hk] = 3;
+  const completo = N.Habits.todayProgress().done;
+  if (completo !== parcial + 1) throw new Error("Cuadritos: 3/3 debería contar como completo");
+  console.log("✔ Hábito por cuadritos: 2/3 no completa, 3/3 sí (" + parcial + "→" + completo + ")");
+})();
+
 // probar extrasFn en formularios (botón de calendario dentro del form)
 const fNo = N.UI.form([{ name: "title" }], () => {}, "ok");
 const fYes = N.UI.form([{ name: "title" }], () => {}, "ok", (i) => N.CalExport.formRow(i.title, i.title, "x"));
