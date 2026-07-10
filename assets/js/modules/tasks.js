@@ -17,10 +17,12 @@
     t.done = !t.done;
     if (t.done) {
       t.doneAt = DateUtil.todayKey();
+      t.xpEarned = (t.xpEarned || 0) + PRIO[t.priority].xp;
       Audio.play("complete");
       Gami.award(PRIO[t.priority].xp, "Tarea completada");
     } else {
       Audio.play("tap");
+      t.xpEarned = Math.max(0, (t.xpEarned || 0) - PRIO[t.priority].xp);
       Gami.remove(PRIO[t.priority].xp);
       Store.commit();
     }
@@ -69,7 +71,8 @@
 
   function remove(t) {
     const arr = tasks(); arr.splice(arr.indexOf(t), 1);
-    Store.commit(); Audio.play("delete");
+    Audio.play("delete");
+    if (t.xpEarned) Gami.remove(t.xpEarned); else Store.commit(); // devolver la XP ganada
     render(document.getElementById("view-tasks"));
     N.App && N.App.refreshTop();
   }

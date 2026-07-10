@@ -54,10 +54,10 @@
     ], (data) => {
       const dur = Number(data.duration) || 0;
       if (dur <= 0) { Audio.play("error"); toast({ icon: "⚠️", msg: "Indica la duración" }); return; }
-      workouts().push({ id: Store.uid(), name: data.name, type: data.type, date: data.date, duration: dur, calories: Number(data.calories) || 0, volume: data.volume, notes: data.notes });
+      const xp = Math.min(30, 10 + Math.round(dur / 5));
+      workouts().push({ id: Store.uid(), name: data.name, type: data.type, date: data.date, duration: dur, calories: Number(data.calories) || 0, volume: data.volume, notes: data.notes, xpEarned: xp });
       Store.commit();
       Audio.play("complete");
-      const xp = Math.min(30, 10 + Math.round(dur / 5));
       Gami.award(xp, "Entrenamiento registrado 💪");
       UI.closeModal();
       render(document.getElementById("view-workouts"));
@@ -68,7 +68,9 @@
 
   function remove(w) {
     const arr = workouts(); arr.splice(arr.indexOf(w), 1);
-    Store.commit(); Audio.play("delete");
+    Audio.play("delete");
+    const xp = w.xpEarned != null ? w.xpEarned : Math.min(30, 10 + Math.round((w.duration || 0) / 5));
+    if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
     render(document.getElementById("view-workouts"));
     N.App && N.App.refreshTop();
   }

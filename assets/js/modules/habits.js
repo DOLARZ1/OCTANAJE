@@ -65,9 +65,12 @@
     if (now && !was) {
       Audio.play("complete");
       const bonus = streak(h) >= 7 ? 6 : 0;
-      Gami.award(12 + bonus, bonus ? "Hábito + racha 🔥" : "Hábito completado");
+      const gain = 12 + bonus;
+      h.xpEarned = (h.xpEarned || 0) + gain;
+      Gami.award(gain, bonus ? "Hábito + racha 🔥" : "Hábito completado");
     } else if (!now && was) {
       Audio.play("tap");
+      h.xpEarned = Math.max(0, (h.xpEarned || 0) - 12);
       Gami.remove(12);
       Store.commit();
     } else {
@@ -99,7 +102,7 @@
         delete existing.target;
         toast({ icon: "✏️", msg: "Hábito actualizado" });
       } else {
-        habits().push({ id: Store.uid(), name: data.name, icon: data.icon, count: cnt, unit: data.unit, history: {}, created: today() });
+        habits().push({ id: Store.uid(), name: data.name, icon: data.icon, count: cnt, unit: data.unit, history: {}, created: today(), xpEarned: 5 });
         Audio.play("add");
         toast({ icon: "✦", title: "Nuevo hábito", msg: data.name });
         Gami.award(5, "Nuevo hábito creado");
@@ -124,9 +127,10 @@
     UI.confirmBox("Eliminar hábito", `¿Eliminar "${h.name}"? Se perderá su historial.`, () => {
       const arr = habits();
       arr.splice(arr.indexOf(h), 1);
-      Store.commit();
       Audio.play("delete");
+      if (h.xpEarned) Gami.remove(h.xpEarned); else Store.commit(); // devolver la XP ganada
       render(document.getElementById("view-habits"));
+      N.App && N.App.refreshTop();
     }, "Eliminar");
   }
 

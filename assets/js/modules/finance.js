@@ -197,10 +197,11 @@
       { name: "date", label: "Fecha", type: "date", value: DateUtil.todayKey(), required: true }
     ], (data) => {
       if (!data.amount || data.amount <= 0) { Audio.play("error"); toast({ icon: "⚠️", msg: "Ingresa un monto válido" }); return; }
-      txs().push({ id: Store.uid(), type, amount: Number(data.amount), category: data.category, note: data.note, date: data.date });
+      const xp = type === "income" ? 8 : 5;
+      txs().push({ id: Store.uid(), type, amount: Number(data.amount), category: data.category, note: data.note, date: data.date, xpEarned: xp });
       Store.commit();
       Audio.play(type === "income" ? "money" : "coin");
-      Gami.award(type === "income" ? 8 : 5, type === "income" ? "Ingreso registrado" : "Gasto registrado");
+      Gami.award(xp, type === "income" ? "Ingreso registrado" : "Gasto registrado");
       UI.closeModal();
       render(document.getElementById("view-finance"));
       N.App && N.App.refreshTop();
@@ -227,8 +228,9 @@
   function removeTx(t) {
     const arr = txs();
     arr.splice(arr.indexOf(t), 1);
-    Store.commit();
     Audio.play("delete");
+    const xp = t.xpEarned != null ? t.xpEarned : (t.type === "income" ? 8 : 5);
+    if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
     render(document.getElementById("view-finance"));
     N.App && N.App.refreshTop();
   }

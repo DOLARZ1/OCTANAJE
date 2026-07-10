@@ -32,7 +32,7 @@
         existing.milestones = ms.map((nm) => existing.milestones.find((om) => om.t === nm.t) || nm);
         toast({ icon: "✏️", msg: "Meta actualizada" });
       } else {
-        goals().push({ id: Store.uid(), title: data.title, current: Number(data.current) || 0, target: Number(data.target) || 0, unit: data.unit, deadline: data.deadline, milestones: ms, created: DateUtil.todayKey() });
+        goals().push({ id: Store.uid(), title: data.title, current: Number(data.current) || 0, target: Number(data.target) || 0, unit: data.unit, deadline: data.deadline, milestones: ms, created: DateUtil.todayKey(), xpEarned: 6 });
         Audio.play("add");
         toast({ icon: "◉", title: "Nueva meta", msg: data.title });
         Gami.award(6, "Meta creada");
@@ -53,8 +53,10 @@
     const after = pct(g);
     if (delta > 0) {
       Audio.play("coin");
+      g.xpEarned = (g.xpEarned || 0) + 4;
       Gami.award(4, "Avance en meta");
       if (after >= 100 && before < 100) {
+        g.xpEarned = (g.xpEarned || 0) + 40;
         Audio.play("achieve");
         Gami.award(40, "🎉 ¡Meta completada!");
         Gami.burst();
@@ -77,8 +79,10 @@
   function remove(g) {
     UI.confirmBox("Eliminar meta", `¿Eliminar "${g.title}"?`, () => {
       const arr = goals(); arr.splice(arr.indexOf(g), 1);
-      Store.commit(); Audio.play("delete");
+      Audio.play("delete");
+      if (g.xpEarned) Gami.remove(g.xpEarned); else Store.commit(); // devolver la XP ganada
       render(document.getElementById("view-goals"));
+      N.App && N.App.refreshTop();
     }, "Eliminar");
   }
 

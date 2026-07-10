@@ -1800,9 +1800,12 @@ canvas { display: block; width: 100%; }
     if (now && !was) {
       Audio.play("complete");
       const bonus = streak(h) >= 7 ? 6 : 0;
-      Gami.award(12 + bonus, bonus ? "Hábito + racha 🔥" : "Hábito completado");
+      const gain = 12 + bonus;
+      h.xpEarned = (h.xpEarned || 0) + gain;
+      Gami.award(gain, bonus ? "Hábito + racha 🔥" : "Hábito completado");
     } else if (!now && was) {
       Audio.play("tap");
+      h.xpEarned = Math.max(0, (h.xpEarned || 0) - 12);
       Gami.remove(12);
       Store.commit();
     } else {
@@ -1834,7 +1837,7 @@ canvas { display: block; width: 100%; }
         delete existing.target;
         toast({ icon: "✏️", msg: "Hábito actualizado" });
       } else {
-        habits().push({ id: Store.uid(), name: data.name, icon: data.icon, count: cnt, unit: data.unit, history: {}, created: today() });
+        habits().push({ id: Store.uid(), name: data.name, icon: data.icon, count: cnt, unit: data.unit, history: {}, created: today(), xpEarned: 5 });
         Audio.play("add");
         toast({ icon: "✦", title: "Nuevo hábito", msg: data.name });
         Gami.award(5, "Nuevo hábito creado");
@@ -1859,9 +1862,10 @@ canvas { display: block; width: 100%; }
     UI.confirmBox("Eliminar hábito", `¿Eliminar "${h.name}"? Se perderá su historial.`, () => {
       const arr = habits();
       arr.splice(arr.indexOf(h), 1);
-      Store.commit();
       Audio.play("delete");
+      if (h.xpEarned) Gami.remove(h.xpEarned); else Store.commit(); // devolver la XP ganada
       render(document.getElementById("view-habits"));
+      N.App && N.App.refreshTop();
     }, "Eliminar");
   }
 
@@ -2212,10 +2216,11 @@ canvas { display: block; width: 100%; }
       { name: "date", label: "Fecha", type: "date", value: DateUtil.todayKey(), required: true }
     ], (data) => {
       if (!data.amount || data.amount <= 0) { Audio.play("error"); toast({ icon: "⚠️", msg: "Ingresa un monto válido" }); return; }
-      txs().push({ id: Store.uid(), type, amount: Number(data.amount), category: data.category, note: data.note, date: data.date });
+      const xp = type === "income" ? 8 : 5;
+      txs().push({ id: Store.uid(), type, amount: Number(data.amount), category: data.category, note: data.note, date: data.date, xpEarned: xp });
       Store.commit();
       Audio.play(type === "income" ? "money" : "coin");
-      Gami.award(type === "income" ? 8 : 5, type === "income" ? "Ingreso registrado" : "Gasto registrado");
+      Gami.award(xp, type === "income" ? "Ingreso registrado" : "Gasto registrado");
       UI.closeModal();
       render(document.getElementById("view-finance"));
       N.App && N.App.refreshTop();
@@ -2242,8 +2247,9 @@ canvas { display: block; width: 100%; }
   function removeTx(t) {
     const arr = txs();
     arr.splice(arr.indexOf(t), 1);
-    Store.commit();
     Audio.play("delete");
+    const xp = t.xpEarned != null ? t.xpEarned : (t.type === "income" ? 8 : 5);
+    if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
     render(document.getElementById("view-finance"));
     N.App && N.App.refreshTop();
   }
@@ -2491,10 +2497,12 @@ canvas { display: block; width: 100%; }
     t.done = !t.done;
     if (t.done) {
       t.doneAt = DateUtil.todayKey();
+      t.xpEarned = (t.xpEarned || 0) + PRIO[t.priority].xp;
       Audio.play("complete");
       Gami.award(PRIO[t.priority].xp, "Tarea completada");
     } else {
       Audio.play("tap");
+      t.xpEarned = Math.max(0, (t.xpEarned || 0) - PRIO[t.priority].xp);
       Gami.remove(PRIO[t.priority].xp);
       Store.commit();
     }
@@ -2543,7 +2551,8 @@ canvas { display: block; width: 100%; }
 
   function remove(t) {
     const arr = tasks(); arr.splice(arr.indexOf(t), 1);
-    Store.commit(); Audio.play("delete");
+    Audio.play("delete");
+    if (t.xpEarned) Gami.remove(t.xpEarned); else Store.commit(); // devolver la XP ganada
     render(document.getElementById("view-tasks"));
     N.App && N.App.refreshTop();
   }
@@ -2729,10 +2738,10 @@ canvas { display: block; width: 100%; }
     ], (data) => {
       const dur = Number(data.duration) || 0;
       if (dur <= 0) { Audio.play("error"); toast({ icon: "⚠️", msg: "Indica la duración" }); return; }
-      workouts().push({ id: Store.uid(), name: data.name, type: data.type, date: data.date, duration: dur, calories: Number(data.calories) || 0, volume: data.volume, notes: data.notes });
+      const xp = Math.min(30, 10 + Math.round(dur / 5));
+      workouts().push({ id: Store.uid(), name: data.name, type: data.type, date: data.date, duration: dur, calories: Number(data.calories) || 0, volume: data.volume, notes: data.notes, xpEarned: xp });
       Store.commit();
       Audio.play("complete");
-      const xp = Math.min(30, 10 + Math.round(dur / 5));
       Gami.award(xp, "Entrenamiento registrado 💪");
       UI.closeModal();
       render(document.getElementById("view-workouts"));
@@ -2743,7 +2752,9 @@ canvas { display: block; width: 100%; }
 
   function remove(w) {
     const arr = workouts(); arr.splice(arr.indexOf(w), 1);
-    Store.commit(); Audio.play("delete");
+    Audio.play("delete");
+    const xp = w.xpEarned != null ? w.xpEarned : Math.min(30, 10 + Math.round((w.duration || 0) / 5));
+    if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
     render(document.getElementById("view-workouts"));
     N.App && N.App.refreshTop();
   }
@@ -2873,7 +2884,7 @@ canvas { display: block; width: 100%; }
         existing.milestones = ms.map((nm) => existing.milestones.find((om) => om.t === nm.t) || nm);
         toast({ icon: "✏️", msg: "Meta actualizada" });
       } else {
-        goals().push({ id: Store.uid(), title: data.title, current: Number(data.current) || 0, target: Number(data.target) || 0, unit: data.unit, deadline: data.deadline, milestones: ms, created: DateUtil.todayKey() });
+        goals().push({ id: Store.uid(), title: data.title, current: Number(data.current) || 0, target: Number(data.target) || 0, unit: data.unit, deadline: data.deadline, milestones: ms, created: DateUtil.todayKey(), xpEarned: 6 });
         Audio.play("add");
         toast({ icon: "◉", title: "Nueva meta", msg: data.title });
         Gami.award(6, "Meta creada");
@@ -2894,8 +2905,10 @@ canvas { display: block; width: 100%; }
     const after = pct(g);
     if (delta > 0) {
       Audio.play("coin");
+      g.xpEarned = (g.xpEarned || 0) + 4;
       Gami.award(4, "Avance en meta");
       if (after >= 100 && before < 100) {
+        g.xpEarned = (g.xpEarned || 0) + 40;
         Audio.play("achieve");
         Gami.award(40, "🎉 ¡Meta completada!");
         Gami.burst();
@@ -2918,8 +2931,10 @@ canvas { display: block; width: 100%; }
   function remove(g) {
     UI.confirmBox("Eliminar meta", `¿Eliminar "${g.title}"?`, () => {
       const arr = goals(); arr.splice(arr.indexOf(g), 1);
-      Store.commit(); Audio.play("delete");
+      Audio.play("delete");
+      if (g.xpEarned) Gami.remove(g.xpEarned); else Store.commit(); // devolver la XP ganada
       render(document.getElementById("view-goals"));
+      N.App && N.App.refreshTop();
     }, "Eliminar");
   }
 
