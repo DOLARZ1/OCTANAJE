@@ -8,13 +8,12 @@
   const { el, fmt, toast } = UI;
   const DateUtil = Store.DateUtil;
 
-  // Ícono SVG a medida: figura haciendo flexiones (lagartijas) para Calistenia
-  const CALISTENIA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<circle cx="18" cy="9.2" r="1.9"/>' +          /* cabeza */
-    '<path d="M16.3 10.3 L8 13.2"/>' +              /* espalda / torso */
-    '<path d="M16.3 10.3 L16.7 19.2"/>' +           /* brazo de apoyo */
-    '<path d="M8 13.2 L2.8 19.2"/>' +               /* piernas extendidas */
-    '<line x1="2" y1="20" x2="22" y2="20"/>' +      /* suelo */
+  // Ícono SVG a medida: misil estallando para Calistenia
+  const CALISTENIA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<polygon points="14,4 15.3,7.75 19.2,7 16.6,10 19.2,13 15.3,12.25 14,16 12.7,12.25 8.8,13 11.4,10 8.8,7 12.7,7.75" fill="currentColor" stroke="none"/>' + /* explosión */
+    '<path d="M3 19 L8.6 13.4" stroke-width="2.4"/>' +   /* cuerpo del misil */
+    '<path d="M2.2 20.4 L4.6 18"/>' +                    /* estela 1 */
+    '<path d="M4 21.2 L6.2 19"/>' +                      /* estela 2 */
     '</svg>';
 
   const TYPES = [
