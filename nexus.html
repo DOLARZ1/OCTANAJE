@@ -505,6 +505,32 @@ canvas { display: block; width: 100%; }
 .mktlink { transition: transform .15s ease, border-color .2s ease; }
 .mktlink:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--glow); }
 
+
+/* =====================================================================
+   SELECTOR VISUAL CON ÍCONOS (iconpick) + ícono SVG de tipo
+   ===================================================================== */
+.iconpick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 480px) { .iconpick { grid-template-columns: repeat(3, 1fr); } }
+.iconpick-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 10px 6px; border-radius: 12px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--txt-dim); transition: .18s;
+}
+.iconpick-btn:hover { border-color: var(--border-strong); transform: translateY(-2px); color: var(--txt); }
+.iconpick-btn.on {
+  border-color: transparent; color: #04122b;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: var(--glow);
+}
+.iconpick-btn .ip-ic { font-size: 22px; line-height: 1; display: grid; place-items: center; }
+.iconpick-btn .ip-ic svg { width: 26px; height: 26px; display: block; }
+.iconpick-btn .ip-lbl { font-size: 11px; font-weight: 700; }
+
+/* ícono SVG de tipo en el historial */
+.tico-svg { display: inline-grid; place-items: center; color: var(--accent); }
+.tico-svg svg { width: 26px; height: 26px; display: block; }
+
 </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='64' y2='64'><stop offset='0' stop-color='%2300e5ff'/><stop offset='.5' stop-color='%237c5cff'/><stop offset='1' stop-color='%23ff2fb0'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='%23060814'/><polygon points='32,9 51,20 51,44 32,55 13,44 13,20' fill='none' stroke='url(%23g)' stroke-width='4'/><circle cx='32' cy='32' r='6' fill='url(%23g)'/></svg>" />
   <!-- PWA -->
@@ -1220,6 +1246,29 @@ canvas { display: block; width: 100%; }
   function buildField(f, inputs) {
     const field = el("div", { class: "field" });
     if (f.label) field.appendChild(el("label", { text: f.label + (f.required ? " *" : "") }));
+
+    // Selector visual con íconos (emoji o SVG). Guarda el valor en un input oculto.
+    if (f.type === "iconpick") {
+      const hidden = el("input", { type: "hidden" });
+      hidden.value = f.value != null ? f.value : (f.options && f.options[0] ? f.options[0].value : "");
+      const grid = el("div", { class: "iconpick" });
+      (f.options || []).forEach((o) => {
+        const btn = el("button", { type: "button", class: "iconpick-btn" + (o.value === hidden.value ? " on" : ""), title: o.label });
+        const ic = o.svg ? "<span class='ip-ic'>" + o.svg + "</span>" : "<span class='ip-ic ip-emoji'>" + (o.icon || "") + "</span>";
+        btn.innerHTML = ic + "<span class='ip-lbl'>" + o.label + "</span>";
+        btn.addEventListener("click", () => {
+          hidden.value = o.value;
+          grid.querySelectorAll(".iconpick-btn").forEach((b) => b.classList.remove("on"));
+          btn.classList.add("on");
+        });
+        grid.appendChild(btn);
+      });
+      inputs[f.name] = hidden;
+      field.appendChild(grid);
+      field.appendChild(hidden);
+      return field;
+    }
+
     let input;
     if (f.type === "select") {
       input = el("select", { class: "select" });
@@ -2634,32 +2683,52 @@ canvas { display: block; width: 100%; }
   const { el, fmt, toast } = UI;
   const DateUtil = Store.DateUtil;
 
+  // Ícono SVG a medida: figura colgada de una barra (dominada) para Calistenia
+  const CALISTENIA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<line x1="3" y1="4.5" x2="21" y2="4.5"/>' +   /* barra */
+    '<circle cx="12" cy="8.4" r="2"/>' +            /* cabeza */
+    '<path d="M9.3 4.6 L9.7 9.2"/>' +               /* brazo izq */
+    '<path d="M14.7 4.6 L14.3 9.2"/>' +             /* brazo der */
+    '<path d="M9.7 9.2 H14.3"/>' +                  /* hombros */
+    '<path d="M12 10.4 V15.7"/>' +                  /* torso */
+    '<path d="M12 15.7 L9.5 21"/>' +                /* pierna izq */
+    '<path d="M12 15.7 L14.5 21"/>' +               /* pierna der */
+    '</svg>';
+
   const TYPES = [
-    { value: "fuerza", label: "🏋️ Fuerza" },
-    { value: "cardio", label: "🏃 Cardio" },
-    { value: "hiit", label: "⚡ HIIT" },
-    { value: "crossfit", label: "🔥 Crossfit" },
-    { value: "calistenia", label: "🧗 Calistenia" },
-    { value: "yoga", label: "🧘 Yoga / Movilidad" },
-    { value: "deporte", label: "⚽ Deporte" },
-    { value: "otro", label: "💪 Otro" }
+    { value: "fuerza", name: "Fuerza", icon: "🏋️" },
+    { value: "cardio", name: "Cardio", icon: "🏃" },
+    { value: "hiit", name: "HIIT", icon: "⚡" },
+    { value: "crossfit", name: "Crossfit", icon: "🔥" },
+    { value: "calistenia", name: "Calistenia", icon: "🧗", svg: CALISTENIA_SVG },
+    { value: "yoga", name: "Yoga", icon: "🧘" },
+    { value: "deporte", name: "Deporte", icon: "⚽" },
+    { value: "otro", name: "Otro", icon: "💪" }
   ];
-  const TYPE_ICON = { fuerza: "🏋️", cardio: "🏃", hiit: "⚡", crossfit: "🔥", calistenia: "🧗", yoga: "🧘", deporte: "⚽", otro: "💪" };
+  const TYPE_ICON = {};
+  TYPES.forEach((t) => { TYPE_ICON[t.value] = t.icon; });
+
+  // devuelve un nodo con el ícono del tipo (SVG a medida o emoji)
+  function typeIconNode(type) {
+    const t = TYPES.find((x) => x.value === type);
+    if (t && t.svg) return el("span", { class: "tico-svg", html: t.svg });
+    return el("span", { style: "font-size:22px", text: (t && t.icon) || "💪" });
+  }
 
   function workouts() { return Store.get().workouts; }
 
   function add() {
     const body = UI.form([
       { name: "name", label: "Nombre de la sesión", placeholder: "Pecho y tríceps", required: true },
+      { name: "type", label: "Tipo", type: "iconpick", value: "fuerza", options: TYPES.map((t) => ({ value: t.value, label: t.name, icon: t.icon, svg: t.svg })) },
       { type: "row", fields: [
-        { name: "type", label: "Tipo", type: "select", options: TYPES, value: "fuerza" },
-        { name: "date", label: "Fecha", type: "date", value: DateUtil.todayKey(), required: true }
+        { name: "date", label: "Fecha", type: "date", value: DateUtil.todayKey(), required: true },
+        { name: "duration", label: "Duración (min)", type: "number", min: 0, placeholder: "45", required: true }
       ]},
       { type: "row", fields: [
-        { name: "duration", label: "Duración (min)", type: "number", min: 0, placeholder: "45", required: true },
-        { name: "calories", label: "Calorías (aprox)", type: "number", min: 0, placeholder: "350" }
+        { name: "calories", label: "Calorías (aprox)", type: "number", min: 0, placeholder: "350" },
+        { name: "volume", label: "Volumen / distancia", placeholder: "5000 kg · 5 km" }
       ]},
-      { name: "volume", label: "Volumen / distancia (opcional)", placeholder: "5200 kg · o · 5 km" },
       { name: "notes", label: "Notas", type: "textarea", placeholder: "Sensaciones, PRs, etc." }
     ], (data) => {
       const dur = Number(data.duration) || 0;
@@ -2746,7 +2815,7 @@ canvas { display: block; width: 100%; }
     } else {
       arr.slice(0, 20).forEach((w) => {
         listCard.appendChild(el("div", { class: "item" }, [
-          el("div", { style: "font-size:22px", text: TYPE_ICON[w.type] || "💪" }),
+          typeIconNode(w.type),
           el("div", { class: "item-main" }, [
             el("div", { class: "item-title", text: w.name }),
             el("div", { class: "item-meta" }, [

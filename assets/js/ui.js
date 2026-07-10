@@ -120,6 +120,29 @@
   function buildField(f, inputs) {
     const field = el("div", { class: "field" });
     if (f.label) field.appendChild(el("label", { text: f.label + (f.required ? " *" : "") }));
+
+    // Selector visual con íconos (emoji o SVG). Guarda el valor en un input oculto.
+    if (f.type === "iconpick") {
+      const hidden = el("input", { type: "hidden" });
+      hidden.value = f.value != null ? f.value : (f.options && f.options[0] ? f.options[0].value : "");
+      const grid = el("div", { class: "iconpick" });
+      (f.options || []).forEach((o) => {
+        const btn = el("button", { type: "button", class: "iconpick-btn" + (o.value === hidden.value ? " on" : ""), title: o.label });
+        const ic = o.svg ? "<span class='ip-ic'>" + o.svg + "</span>" : "<span class='ip-ic ip-emoji'>" + (o.icon || "") + "</span>";
+        btn.innerHTML = ic + "<span class='ip-lbl'>" + o.label + "</span>";
+        btn.addEventListener("click", () => {
+          hidden.value = o.value;
+          grid.querySelectorAll(".iconpick-btn").forEach((b) => b.classList.remove("on"));
+          btn.classList.add("on");
+        });
+        grid.appendChild(btn);
+      });
+      inputs[f.name] = hidden;
+      field.appendChild(grid);
+      field.appendChild(hidden);
+      return field;
+    }
+
     let input;
     if (f.type === "select") {
       input = el("select", { class: "select" });

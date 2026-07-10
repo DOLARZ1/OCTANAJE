@@ -278,6 +278,21 @@ const fYes = N.UI.form([{ name: "title" }], () => {}, "ok", (i) => N.CalExport.f
 if (fYes.children.length !== fNo.children.length + 1) throw new Error("extrasFn no añadió contenido al formulario");
 console.log("✔ Botón de calendario dentro del formulario (extrasFn) OK");
 
+// probar selector visual con íconos (iconpick) — debe devolver el valor elegido
+(() => {
+  let picked = null;
+  const f2 = N.UI.form(
+    [{ name: "type", type: "iconpick", value: "calistenia", options: [
+      { value: "fuerza", label: "Fuerza", icon: "🏋️" },
+      { value: "calistenia", label: "Calistenia", svg: "<svg></svg>" }
+    ] }],
+    (d) => { picked = d.type; }, "ok"
+  );
+  f2.dispatch("submit", { preventDefault() {} });
+  if (picked !== "calistenia") throw new Error("iconpick no devuelve el valor: " + picked);
+  console.log("✔ Selector visual de tipo (iconpick) devuelve el valor correcto");
+})();
+
 // persistencia
 if (!storage["nexus.state.v1"]) throw new Error("No persistió en localStorage");
 console.log("✔ Persistencia en localStorage OK");

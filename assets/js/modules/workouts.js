@@ -8,32 +8,52 @@
   const { el, fmt, toast } = UI;
   const DateUtil = Store.DateUtil;
 
+  // Ícono SVG a medida: figura colgada de una barra (dominada) para Calistenia
+  const CALISTENIA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<line x1="3" y1="4.5" x2="21" y2="4.5"/>' +   /* barra */
+    '<circle cx="12" cy="8.4" r="2"/>' +            /* cabeza */
+    '<path d="M9.3 4.6 L9.7 9.2"/>' +               /* brazo izq */
+    '<path d="M14.7 4.6 L14.3 9.2"/>' +             /* brazo der */
+    '<path d="M9.7 9.2 H14.3"/>' +                  /* hombros */
+    '<path d="M12 10.4 V15.7"/>' +                  /* torso */
+    '<path d="M12 15.7 L9.5 21"/>' +                /* pierna izq */
+    '<path d="M12 15.7 L14.5 21"/>' +               /* pierna der */
+    '</svg>';
+
   const TYPES = [
-    { value: "fuerza", label: "🏋️ Fuerza" },
-    { value: "cardio", label: "🏃 Cardio" },
-    { value: "hiit", label: "⚡ HIIT" },
-    { value: "crossfit", label: "🔥 Crossfit" },
-    { value: "calistenia", label: "🧗 Calistenia" },
-    { value: "yoga", label: "🧘 Yoga / Movilidad" },
-    { value: "deporte", label: "⚽ Deporte" },
-    { value: "otro", label: "💪 Otro" }
+    { value: "fuerza", name: "Fuerza", icon: "🏋️" },
+    { value: "cardio", name: "Cardio", icon: "🏃" },
+    { value: "hiit", name: "HIIT", icon: "⚡" },
+    { value: "crossfit", name: "Crossfit", icon: "🔥" },
+    { value: "calistenia", name: "Calistenia", icon: "🧗", svg: CALISTENIA_SVG },
+    { value: "yoga", name: "Yoga", icon: "🧘" },
+    { value: "deporte", name: "Deporte", icon: "⚽" },
+    { value: "otro", name: "Otro", icon: "💪" }
   ];
-  const TYPE_ICON = { fuerza: "🏋️", cardio: "🏃", hiit: "⚡", crossfit: "🔥", calistenia: "🧗", yoga: "🧘", deporte: "⚽", otro: "💪" };
+  const TYPE_ICON = {};
+  TYPES.forEach((t) => { TYPE_ICON[t.value] = t.icon; });
+
+  // devuelve un nodo con el ícono del tipo (SVG a medida o emoji)
+  function typeIconNode(type) {
+    const t = TYPES.find((x) => x.value === type);
+    if (t && t.svg) return el("span", { class: "tico-svg", html: t.svg });
+    return el("span", { style: "font-size:22px", text: (t && t.icon) || "💪" });
+  }
 
   function workouts() { return Store.get().workouts; }
 
   function add() {
     const body = UI.form([
       { name: "name", label: "Nombre de la sesión", placeholder: "Pecho y tríceps", required: true },
+      { name: "type", label: "Tipo", type: "iconpick", value: "fuerza", options: TYPES.map((t) => ({ value: t.value, label: t.name, icon: t.icon, svg: t.svg })) },
       { type: "row", fields: [
-        { name: "type", label: "Tipo", type: "select", options: TYPES, value: "fuerza" },
-        { name: "date", label: "Fecha", type: "date", value: DateUtil.todayKey(), required: true }
+        { name: "date", label: "Fecha", type: "date", value: DateUtil.todayKey(), required: true },
+        { name: "duration", label: "Duración (min)", type: "number", min: 0, placeholder: "45", required: true }
       ]},
       { type: "row", fields: [
-        { name: "duration", label: "Duración (min)", type: "number", min: 0, placeholder: "45", required: true },
-        { name: "calories", label: "Calorías (aprox)", type: "number", min: 0, placeholder: "350" }
+        { name: "calories", label: "Calorías (aprox)", type: "number", min: 0, placeholder: "350" },
+        { name: "volume", label: "Volumen / distancia", placeholder: "5000 kg · 5 km" }
       ]},
-      { name: "volume", label: "Volumen / distancia (opcional)", placeholder: "5200 kg · o · 5 km" },
       { name: "notes", label: "Notas", type: "textarea", placeholder: "Sensaciones, PRs, etc." }
     ], (data) => {
       const dur = Number(data.duration) || 0;
@@ -120,7 +140,7 @@
     } else {
       arr.slice(0, 20).forEach((w) => {
         listCard.appendChild(el("div", { class: "item" }, [
-          el("div", { style: "font-size:22px", text: TYPE_ICON[w.type] || "💪" }),
+          typeIconNode(w.type),
           el("div", { class: "item-main" }, [
             el("div", { class: "item-title", text: w.name }),
             el("div", { class: "item-meta" }, [

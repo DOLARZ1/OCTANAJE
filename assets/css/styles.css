@@ -495,3 +495,29 @@ canvas { display: block; width: 100%; }
 /* Tarjetas de enlace a fuentes de mercado/noticias */
 .mktlink { transition: transform .15s ease, border-color .2s ease; }
 .mktlink:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--glow); }
+
+
+/* =====================================================================
+   SELECTOR VISUAL CON ÍCONOS (iconpick) + ícono SVG de tipo
+   ===================================================================== */
+.iconpick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 480px) { .iconpick { grid-template-columns: repeat(3, 1fr); } }
+.iconpick-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 10px 6px; border-radius: 12px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--txt-dim); transition: .18s;
+}
+.iconpick-btn:hover { border-color: var(--border-strong); transform: translateY(-2px); color: var(--txt); }
+.iconpick-btn.on {
+  border-color: transparent; color: #04122b;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: var(--glow);
+}
+.iconpick-btn .ip-ic { font-size: 22px; line-height: 1; display: grid; place-items: center; }
+.iconpick-btn .ip-ic svg { width: 26px; height: 26px; display: block; }
+.iconpick-btn .ip-lbl { font-size: 11px; font-weight: 700; }
+
+/* ícono SVG de tipo en el historial */
+.tico-svg { display: inline-grid; place-items: center; color: var(--accent); }
+.tico-svg svg { width: 26px; height: 26px; display: block; }
