@@ -156,7 +156,7 @@
       else if (isActive(s, key)) { cls += " done"; tip += " · ✓ con actividad (+" + (s.xpLog[key] || 0) + " XP)"; }
       else { cls += " miss"; tip += " · sin actividad"; }
       if (key === todayKey) cls += " today";
-      grid.appendChild(el("div", { class: cls, title: tip, text: String(d) }));
+      grid.appendChild(el("div", { class: cls + " clickable", title: tip + " · toca para ver detalle", text: String(d), onclick: () => showDayDetail(key) }));
     }
 
     return el("div", { class: "card mb-16" }, [
@@ -170,6 +170,95 @@
       grid,
       el("div", { class: "fs-12 text-dim mt-8", text: `${activos} de ${transcurridos} días con actividad este mes` })
     ]);
+  }
+
+  // estado de un hábito en un día concreto
+  function habitDayStatus(h, key) {
+    const target = Math.max(1, parseInt(h.count, 10) || 1);
+    const v = h.history[key];
+    const cur = v === true ? target : (typeof v === "number" ? v : 0);
+    return { done: cur >= target, cur, target };
+  }
+
+  // fila con palomita (✓) o tache (✗)
+  function statusRow(label, done, extra) {
+    return el("div", { class: "item", style: "padding:10px 12px" }, [
+      el("span", { style: "font-size:18px;flex:none;color:" + (done ? "var(--good)" : "var(--bad)"), text: done ? "✓" : "✗" }),
+      el("div", { class: "item-main" }, [el("div", { class: "item-title", style: "font-size:14px", text: label })]),
+      extra ? el("span", { class: "chip " + (done ? "good" : "bad"), text: extra }) : null
+    ]);
+  }
+  function infoRow(icon, label, valueText, cls) {
+    return el("div", { class: "item", style: "padding:10px 12px" }, [
+      el("span", { style: "font-size:18px;flex:none", text: icon }),
+      el("div", { class: "item-main" }, [el("div", { class: "item-title", style: "font-size:14px", text: label })]),
+      el("span", { class: "fw-700 " + (cls || ""), text: valueText })
+    ]);
+  }
+  function section(title) {
+    return el("div", { style: "margin-bottom:16px" }, [
+      el("div", { class: "card-title", style: "margin-bottom:8px", text: title })
+    ]);
+  }
+
+  // Detalle del día al tocar en el calendario
+  function showDayDetail(key) {
+    const s = Store.get();
+    const isFuture = key > DateUtil.todayKey();
+    const dLabel = DateUtil.parse(key).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const body = el("div", {});
+
+    // Hábitos
+    if (s.habits.length) {
+      const sec = section("✦ Hábitos");
+      s.habits.forEach((h) => {
+        const st = habitDayStatus(h, key);
+        sec.appendChild(statusRow(h.icon + " " + h.name, st.done, st.target > 1 ? (st.cur + "/" + st.target) : (st.done ? "hecho" : "pendiente")));
+      });
+      body.appendChild(sec);
+    }
+
+    // Tareas (vencen ese día o se completaron ese día)
+    const dayTasks = s.tasks.filter((t) => t.due === key || t.doneAt === key);
+    if (dayTasks.length) {
+      const sec = section("✓ Tareas");
+      dayTasks.forEach((t) => sec.appendChild(statusRow(t.title, !!t.done, t.done ? "completada" : "pendiente")));
+      body.appendChild(sec);
+    }
+
+    // Entrenamientos
+    const ws = s.workouts.filter((w) => w.date === key);
+    if (ws.length) {
+      const sec = section("⚡ Entrenamientos");
+      ws.forEach((w) => sec.appendChild(statusRow(w.name, true, w.duration + " min")));
+      body.appendChild(sec);
+    }
+
+    // Finanzas
+    const tx = s.finance.transactions.filter((t) => t.date === key);
+    if (tx.length) {
+      const sec = section("◈ Finanzas");
+      tx.forEach((t) => sec.appendChild(infoRow(t.type === "income" ? "💰" : "💸", t.note || t.category,
+        (t.type === "income" ? "+" : "−") + fmt.money(t.amount), t.type === "income" ? "text-good" : "text-bad")));
+      body.appendChild(sec);
+    }
+
+    // Foco
+    const fSes = (s.focus.sessionsLog && s.focus.sessionsLog[key]) || 0;
+    if (fSes) {
+      const sec = section("◷ Foco");
+      sec.appendChild(statusRow("Sesiones de enfoque", true, fSes + " · " + ((s.focus.focusLog && s.focus.focusLog[key]) || 0) + " min"));
+      body.appendChild(sec);
+    }
+
+    if (!body.children.length) {
+      body.appendChild(el("div", { class: "empty" }, [
+        el("span", { class: "big", text: isFuture ? "🔮" : "🌙" }),
+        el("div", { text: isFuture ? "Día futuro: aún sin nada planeado." : "Sin actividad registrada este día." })
+      ]));
+    }
+
+    UI.openModal("Detalle · " + dLabel, body);
   }
 
   N.Dashboard = { render };

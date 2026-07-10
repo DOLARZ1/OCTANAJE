@@ -95,6 +95,29 @@ input, select, textarea { font-family: inherit; }
   --blur: 14px;
 }
 
+[data-theme="purple"] {
+  --bg: #0c0320;
+  --bg-2: #17092f;
+  --panel: rgba(45, 20, 78, .55);
+  --panel-solid: #1c0d38;
+  --panel-2: rgba(62, 30, 102, .6);
+  --txt: #f2ecff;
+  --txt-dim: #c0a9ec;
+  --txt-faint: #826bb4;
+  --border: rgba(170, 110, 255, .2);
+  --border-strong: rgba(170, 110, 255, .38);
+  --accent: #b14bff;
+  --accent-2: #ff45e0;
+  --accent-3: #6a5cff;
+  --good: #29e6bd;
+  --warn: #ffb648;
+  --bad: #ff4d8d;
+  --glow: 0 0 24px rgba(177, 75, 255, .45);
+  --shadow: 0 18px 52px rgba(18, 0, 40, .62);
+  --grid-line: rgba(170, 110, 255, .11);
+  --blur: 16px;
+}
+
 /* =====================================================================
    FONDO
    ===================================================================== */
@@ -413,6 +436,7 @@ canvas { display: block; width: 100%; }
   transition: transform .15s ease;
 }
 .cal-day:hover { transform: translateY(-2px); }
+.cal-day.clickable { cursor: pointer; }
 .cal-day.empty { background: transparent; border: none; }
 .cal-day.future { opacity: .35; }
 .cal-day.done {
