@@ -78,7 +78,7 @@ function reg(id, el) { byId[id] = el; return el; }
 // Construir el árbol que index.html necesita
 const ids = ["boot-screen", "app", "level-badge", "rank-name", "xp-text", "xp-fill",
   "streak-days", "sound-toggle", "tabs", "views", "toast-stack", "modal-overlay",
-  "modal", "modal-title", "modal-body", "modal-close", "reset-data", "global-streak", "settings-btn", "telegram-btn"];
+  "modal", "modal-title", "modal-body", "modal-close", "reset-data", "global-streak", "settings-btn"];
 ids.forEach((id) => reg(id, makeEl("div")));
 ["dashboard", "habits", "finance", "tasks", "workouts", "goals", "focus"].forEach((v) => reg("view-" + v, makeEl("section")));
 
@@ -164,7 +164,7 @@ const files = [
   "assets/js/gamification.js", "assets/js/modules/dashboard.js", "assets/js/modules/habits.js",
   "assets/js/modules/finance.js", "assets/js/modules/tasks.js", "assets/js/modules/workouts.js",
   "assets/js/modules/goals.js", "assets/js/modules/focus.js", "assets/js/notifications.js",
-  "assets/js/calexport.js", "assets/js/telegram.js", "assets/js/settings.js", "assets/js/app.js"
+  "assets/js/calexport.js", "assets/js/settings.js", "assets/js/app.js"
 ];
 const root = path.resolve(__dirname, "..");
 let loaded = 0;
