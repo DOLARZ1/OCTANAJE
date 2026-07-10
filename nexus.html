@@ -466,10 +466,10 @@ canvas { display: block; width: 100%; }
 /* =====================================================================
    CALENDARIO DE ACTIVIDAD (Panel)
    ===================================================================== */
-.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; width: 100%; }
 .cal-h { text-align: center; font-size: 11px; font-weight: 700; color: var(--txt-faint); padding-bottom: 2px; letter-spacing: 1px; }
 .cal-day {
-  aspect-ratio: 1 / 1; display: grid; place-items: center;
+  aspect-ratio: 1 / 1; display: grid; place-items: center; min-width: 0;
   border-radius: 10px; font-size: 13px; font-weight: 700;
   background: var(--panel-2); border: 1px solid var(--border); color: var(--txt-dim);
   transition: transform .15s ease;
@@ -490,7 +490,7 @@ canvas { display: block; width: 100%; }
   border-color: color-mix(in srgb, var(--bad) 40%, transparent);
 }
 .cal-day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
-@media (max-width: 560px) { .cal-day { font-size: 11px; border-radius: 8px; } .cal { gap: 4px; } }
+@media (max-width: 560px) { .cal-day { font-size: 11px; border-radius: 7px; } .cal { gap: 3px; } .cal-h { font-size: 10px; letter-spacing: 0; } }
 
 
 /* =====================================================================
