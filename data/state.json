@@ -1,1 +1,113 @@
-{}
+{
+  "_app": "NEXUS",
+  "_version": 1,
+  "_exportedAt": "2026-07-10T18:01:24.566Z",
+  "profile": {
+    "xp": 31,
+    "level": 1,
+    "createdAt": "2026-07-10"
+  },
+  "settings": {
+    "theme": "dark",
+    "sound": true,
+    "notifications": false,
+    "currency": "MXN",
+    "locale": "es-MX"
+  },
+  "notifyMeta": {
+    "lastReminder": ""
+  },
+  "activity": {
+    "2026-07-10": true
+  },
+  "xpLog": {
+    "2026-07-10": 31
+  },
+  "achievements": [
+    "first_step",
+    "habit_master"
+  ],
+  "habits": [
+    {
+      "id": "mrepboo2em5aq",
+      "name": "Agua",
+      "icon": "💧",
+      "count": 10,
+      "unit": "Vasos",
+      "history": {},
+      "created": "2026-07-10",
+      "xpEarned": 5
+    },
+    {
+      "id": "mrepd40b1jyr4",
+      "name": "Aseo dental ",
+      "icon": "🦷",
+      "count": 3,
+      "unit": "Veces",
+      "history": {},
+      "created": "2026-07-10",
+      "xpEarned": 5
+    },
+    {
+      "id": "mrepdqg7ej59n",
+      "name": "Aseo corporal ",
+      "icon": "🚿",
+      "count": 1,
+      "unit": "",
+      "history": {},
+      "created": "2026-07-10",
+      "xpEarned": 5
+    },
+    {
+      "id": "mrepg3qettabn",
+      "name": "BACKTESTING ",
+      "icon": "📊",
+      "count": 1,
+      "unit": "Vez",
+      "history": {},
+      "created": "2026-07-10",
+      "xpEarned": 5
+    },
+    {
+      "id": "mrephrsx5ylpi",
+      "name": "TRADING ",
+      "icon": "📈",
+      "count": 1,
+      "unit": "Vez",
+      "history": {},
+      "created": "2026-07-10",
+      "xpEarned": 5
+    }
+  ],
+  "finance": {
+    "transactions": [],
+    "budget": 0,
+    "savingGoal": 0,
+    "savings": [],
+    "savingsTarget": 0
+  },
+  "tasks": [],
+  "workouts": [],
+  "goals": [
+    {
+      "id": "mrepnu24d18ju",
+      "title": "INGLÉS PRINCIPIANTE A1",
+      "current": 0,
+      "target": 37,
+      "unit": "37",
+      "deadline": "2026-08-31",
+      "milestones": [],
+      "created": "2026-07-10",
+      "xpEarned": 6
+    }
+  ],
+  "focus": {
+    "work": 25,
+    "break": 5,
+    "longBreak": 15,
+    "longEvery": 4,
+    "sessionsCompleted": 0,
+    "focusLog": {},
+    "sessionsLog": {}
+  }
+}
