@@ -70,11 +70,13 @@
   }
 
   function remove(t) {
-    const arr = tasks(); arr.splice(arr.indexOf(t), 1);
-    Audio.play("delete");
-    if (t.xpEarned) Gami.remove(t.xpEarned); else Store.commit(); // devolver la XP ganada
-    render(document.getElementById("view-tasks"));
-    N.App && N.App.refreshTop();
+    UI.confirmBox("Eliminar tarea", `¿Eliminar "${t.title}"?`, () => {
+      const arr = tasks(); arr.splice(arr.indexOf(t), 1);
+      Audio.play("delete");
+      if (t.xpEarned) Gami.remove(t.xpEarned); else Store.commit(); // devolver la XP ganada
+      render(document.getElementById("view-tasks"));
+      N.App && N.App.refreshTop();
+    }, "Eliminar");
   }
 
   // ---------- stats ----------

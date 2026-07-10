@@ -226,13 +226,15 @@
   }
 
   function removeTx(t) {
-    const arr = txs();
-    arr.splice(arr.indexOf(t), 1);
-    Audio.play("delete");
-    const xp = t.xpEarned != null ? t.xpEarned : (t.type === "income" ? 8 : 5);
-    if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
-    render(document.getElementById("view-finance"));
-    N.App && N.App.refreshTop();
+    UI.confirmBox("Eliminar movimiento", `¿Eliminar este ${t.type === "income" ? "ingreso" : "gasto"} de ${fmt.money(t.amount)}?`, () => {
+      const arr = txs();
+      arr.splice(arr.indexOf(t), 1);
+      Audio.play("delete");
+      const xp = t.xpEarned != null ? t.xpEarned : (t.type === "income" ? 8 : 5);
+      if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
+      render(document.getElementById("view-finance"));
+      N.App && N.App.refreshTop();
+    }, "Eliminar");
   }
 
   // ---------------------------------------------------------------

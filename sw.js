@@ -1,7 +1,7 @@
 /* =====================================================================
    NEXUS · Service Worker — offline con estrategia stale-while-revalidate
    ===================================================================== */
-const CACHE = "nexus-cache-v11";
+const CACHE = "nexus-cache-v12";
 
 const CORE = [
   "./", "./index.html", "./manifest.webmanifest",

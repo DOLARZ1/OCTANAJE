@@ -67,12 +67,14 @@
   }
 
   function remove(w) {
-    const arr = workouts(); arr.splice(arr.indexOf(w), 1);
-    Audio.play("delete");
-    const xp = w.xpEarned != null ? w.xpEarned : Math.min(30, 10 + Math.round((w.duration || 0) / 5));
-    if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
-    render(document.getElementById("view-workouts"));
-    N.App && N.App.refreshTop();
+    UI.confirmBox("Eliminar entrenamiento", `¿Eliminar "${w.name}"?`, () => {
+      const arr = workouts(); arr.splice(arr.indexOf(w), 1);
+      Audio.play("delete");
+      const xp = w.xpEarned != null ? w.xpEarned : Math.min(30, 10 + Math.round((w.duration || 0) / 5));
+      if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
+      render(document.getElementById("view-workouts"));
+      N.App && N.App.refreshTop();
+    }, "Eliminar");
   }
 
   // ---------- stats ----------

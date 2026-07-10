@@ -179,10 +179,30 @@ input, select, textarea { font-family: inherit; }
   border: 1px solid var(--border); box-shadow: var(--shadow);
 }
 .brand { display: flex; align-items: center; gap: 10px; }
-.brand-hex { font-size: 30px; color: var(--accent); text-shadow: var(--glow); animation: pulse 4s ease-in-out infinite; }
+.brand-hex {
+  font-size: 42px; color: var(--accent);
+  text-shadow: 0 0 8px var(--accent), 0 0 18px var(--accent), 0 0 32px var(--accent-2);
+  animation: pulse 3.4s ease-in-out infinite;
+}
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.6;} }
 .brand-text { display: flex; flex-direction: column; line-height: 1; }
-.brand-name { font-weight: 800; letter-spacing: 4px; font-size: 18px; }
+.brand-name {
+  font-weight: 800; letter-spacing: 4px; font-size: 21px;
+  /* base con degradado + banda blanca (haz de luz) que barre de izq. a der. */
+  background: linear-gradient(100deg,
+    var(--accent) 0%, var(--accent) 42%,
+    #ffffff 49%, #ffffff 51%,
+    var(--accent-2) 58%, var(--accent-2) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 70%, transparent));
+  animation: nexusShine 3.4s linear infinite;
+}
+@keyframes nexusShine {
+  0% { background-position: 125% 0; }
+  100% { background-position: -25% 0; }
+}
 .brand-tag { font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--txt-faint); white-space: nowrap; }
 
 .topbar-center { flex: 1; display: flex; justify-content: center; }
@@ -2245,13 +2265,15 @@ canvas { display: block; width: 100%; }
   }
 
   function removeTx(t) {
-    const arr = txs();
-    arr.splice(arr.indexOf(t), 1);
-    Audio.play("delete");
-    const xp = t.xpEarned != null ? t.xpEarned : (t.type === "income" ? 8 : 5);
-    if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
-    render(document.getElementById("view-finance"));
-    N.App && N.App.refreshTop();
+    UI.confirmBox("Eliminar movimiento", `¿Eliminar este ${t.type === "income" ? "ingreso" : "gasto"} de ${fmt.money(t.amount)}?`, () => {
+      const arr = txs();
+      arr.splice(arr.indexOf(t), 1);
+      Audio.play("delete");
+      const xp = t.xpEarned != null ? t.xpEarned : (t.type === "income" ? 8 : 5);
+      if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
+      render(document.getElementById("view-finance"));
+      N.App && N.App.refreshTop();
+    }, "Eliminar");
   }
 
   // ---------------------------------------------------------------
@@ -2550,11 +2572,13 @@ canvas { display: block; width: 100%; }
   }
 
   function remove(t) {
-    const arr = tasks(); arr.splice(arr.indexOf(t), 1);
-    Audio.play("delete");
-    if (t.xpEarned) Gami.remove(t.xpEarned); else Store.commit(); // devolver la XP ganada
-    render(document.getElementById("view-tasks"));
-    N.App && N.App.refreshTop();
+    UI.confirmBox("Eliminar tarea", `¿Eliminar "${t.title}"?`, () => {
+      const arr = tasks(); arr.splice(arr.indexOf(t), 1);
+      Audio.play("delete");
+      if (t.xpEarned) Gami.remove(t.xpEarned); else Store.commit(); // devolver la XP ganada
+      render(document.getElementById("view-tasks"));
+      N.App && N.App.refreshTop();
+    }, "Eliminar");
   }
 
   // ---------- stats ----------
@@ -2751,12 +2775,14 @@ canvas { display: block; width: 100%; }
   }
 
   function remove(w) {
-    const arr = workouts(); arr.splice(arr.indexOf(w), 1);
-    Audio.play("delete");
-    const xp = w.xpEarned != null ? w.xpEarned : Math.min(30, 10 + Math.round((w.duration || 0) / 5));
-    if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
-    render(document.getElementById("view-workouts"));
-    N.App && N.App.refreshTop();
+    UI.confirmBox("Eliminar entrenamiento", `¿Eliminar "${w.name}"?`, () => {
+      const arr = workouts(); arr.splice(arr.indexOf(w), 1);
+      Audio.play("delete");
+      const xp = w.xpEarned != null ? w.xpEarned : Math.min(30, 10 + Math.round((w.duration || 0) / 5));
+      if (xp) Gami.remove(xp); else Store.commit(); // devolver la XP ganada
+      render(document.getElementById("view-workouts"));
+      N.App && N.App.refreshTop();
+    }, "Eliminar");
   }
 
   // ---------- stats ----------
