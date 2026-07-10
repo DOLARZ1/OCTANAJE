@@ -65,6 +65,9 @@
     const setBtn = $("#settings-btn");
     if (setBtn) setBtn.addEventListener("click", () => { Audio.play("tap"); if (N.Settings) N.Settings.open(); });
 
+    const tgBtn = $("#telegram-btn");
+    if (tgBtn) tgBtn.addEventListener("click", () => { if (N.Telegram) N.Telegram.send(); });
+
     $("#modal-close").addEventListener("click", UI.closeModal);
     $("#modal-overlay").addEventListener("click", (e) => { if (e.target.id === "modal-overlay") UI.closeModal(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") UI.closeModal(); });
