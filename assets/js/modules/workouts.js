@@ -12,11 +12,13 @@
     { value: "fuerza", label: "🏋️ Fuerza" },
     { value: "cardio", label: "🏃 Cardio" },
     { value: "hiit", label: "⚡ HIIT" },
+    { value: "crossfit", label: "🔥 Crossfit" },
+    { value: "calistenia", label: "🧗 Calistenia" },
     { value: "yoga", label: "🧘 Yoga / Movilidad" },
     { value: "deporte", label: "⚽ Deporte" },
     { value: "otro", label: "💪 Otro" }
   ];
-  const TYPE_ICON = { fuerza: "🏋️", cardio: "🏃", hiit: "⚡", yoga: "🧘", deporte: "⚽", otro: "💪" };
+  const TYPE_ICON = { fuerza: "🏋️", cardio: "🏃", hiit: "⚡", crossfit: "🔥", calistenia: "🧗", yoga: "🧘", deporte: "⚽", otro: "💪" };
 
   function workouts() { return Store.get().workouts; }
 
