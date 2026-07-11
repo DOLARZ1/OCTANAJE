@@ -672,24 +672,28 @@ canvas { display: block; width: 100%; }
 @keyframes medalFloat { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.05); } }
 
 .medal-bronze      { --mc1: #f0b076; --mc2: #8a5a3c; }
-.medal-silver      { --mc1: #ffffff; --mc2: #9aa4b2; }
+.medal-silver      { --mc1: #cfe6ff; --mc2: #7c8ea6; animation: medalFloat 3s ease-in-out infinite, medalGlowSilver 2.4s ease-in-out infinite; }
 .medal-gold        { --mc1: #ffe680; --mc2: #d9a521; animation: medalFloat 3s ease-in-out infinite, medalGlow 2.4s ease-in-out infinite; }
 .medal-titanium    { --mc1: #eef4f8; --mc2: #8b9bb0; animation: medalFloat 3s ease-in-out infinite, medalGlow 2.4s ease-in-out infinite; }
-.medal-diamond     { --mc1: #d5f6ff; --mc2: #1c9dea; animation: medalFloat 2.6s ease-in-out infinite, medalGlow 2s ease-in-out infinite; }
+.medal-diamond     { --mc1: #7fdcff; --mc2: #1c9dea; animation: medalFloat 2.6s ease-in-out infinite, medalGlow 2s ease-in-out infinite; }
 .medal-heroic      { --mc1: #ff5252; --mc2: #7a0018; animation: medalFloat 2.2s ease-in-out infinite, medalGlowRed 1.5s ease-in-out infinite; }
 .medal-grandmaster { --mc1: #ffe680; --mc2: #a8760a; animation: medalFloat 2.2s ease-in-out infinite, medalGlowGold 1.5s ease-in-out infinite; }
 
+@keyframes medalGlowSilver {
+  0%, 100% { filter: drop-shadow(0 0 7px #dbeeff) drop-shadow(0 0 14px #9fc4ee) drop-shadow(0 0 22px rgba(159,196,238,.5)); }
+  50% { filter: drop-shadow(0 0 13px #ffffff) drop-shadow(0 0 24px #bcdcff) drop-shadow(0 0 36px rgba(188,220,255,.7)); }
+}
 @keyframes medalGlow {
-  0%, 100% { filter: drop-shadow(0 0 6px var(--mc1)) drop-shadow(0 0 12px var(--mc2)); }
-  50% { filter: drop-shadow(0 0 12px var(--mc1)) drop-shadow(0 0 22px var(--mc2)); }
+  0%, 100% { filter: drop-shadow(0 0 7px var(--mc1)) drop-shadow(0 0 14px var(--mc2)) drop-shadow(0 0 22px color-mix(in srgb, var(--mc2) 50%, transparent)); }
+  50% { filter: drop-shadow(0 0 13px var(--mc1)) drop-shadow(0 0 26px var(--mc2)) drop-shadow(0 0 38px color-mix(in srgb, var(--mc2) 65%, transparent)); }
 }
 @keyframes medalGlowRed {
-  0%, 100% { filter: drop-shadow(0 0 8px #ff3b3b) drop-shadow(0 0 18px #ff0000) drop-shadow(0 0 30px rgba(255,0,0,.4)); }
-  50% { filter: drop-shadow(0 0 16px #ff6b6b) drop-shadow(0 0 32px #ff0000) drop-shadow(0 0 50px rgba(255,0,0,.6)); }
+  0%, 100% { filter: drop-shadow(0 0 9px #ff3b3b) drop-shadow(0 0 20px #ff0000) drop-shadow(0 0 34px rgba(255,0,0,.45)); }
+  50% { filter: drop-shadow(0 0 18px #ff6b6b) drop-shadow(0 0 36px #ff0000) drop-shadow(0 0 56px rgba(255,0,0,.65)); }
 }
 @keyframes medalGlowGold {
-  0%, 100% { filter: drop-shadow(0 0 8px #ffe066) drop-shadow(0 0 18px #ffc400) drop-shadow(0 0 30px rgba(255,196,0,.4)); }
-  50% { filter: drop-shadow(0 0 16px #fff2a8) drop-shadow(0 0 32px #ffc400) drop-shadow(0 0 50px rgba(255,196,0,.6)); }
+  0%, 100% { filter: drop-shadow(0 0 9px #ffe066) drop-shadow(0 0 20px #ffc400) drop-shadow(0 0 34px rgba(255,196,0,.45)); }
+  50% { filter: drop-shadow(0 0 18px #fff2a8) drop-shadow(0 0 36px #ffc400) drop-shadow(0 0 56px rgba(255,196,0,.65)); }
 }
 
 .medal-strip { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 4px; align-items: flex-end; }

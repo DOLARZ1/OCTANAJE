@@ -64,68 +64,93 @@
   // ---------------------------------------------------------------
   //  MEDALLAS POR RACHA — escalera estilo "battle pass" (Free Fire)
   //  Bronce → Plata → Oro → Titanio → Diamante → Heroico → Gran Maestro
-  //  colors: [brillo, base]. hasWings: alas de águila (Heroico/Gran Maestro)
+  //  colors: [brillo, base]. shield: forma de escudo (Diamante/Heroico/GM)
+  //  hasWings: rayos eléctricos dorados a los costados (Heroico/Gran Maestro)
   // ---------------------------------------------------------------
   const MEDALS = [
     { id: "bronze", name: "Bronce", cls: "bronze", minStreak: 0, colors: ["#f0b076", "#5c3418"] },
-    { id: "silver", name: "Plata", cls: "silver", minStreak: 5, colors: ["#ffffff", "#7c8798"] },
+    { id: "silver", name: "Plata", cls: "silver", minStreak: 5, colors: ["#f5f9ff", "#8b97ab"] },
     { id: "gold", name: "Oro", cls: "gold", minStreak: 15, colors: ["#ffe680", "#a8760a"] },
     { id: "titanium", name: "Titanio", cls: "titanium", minStreak: 30, colors: ["#eef4f8", "#4a5568"] },
-    { id: "diamond", name: "Diamante", cls: "diamond", minStreak: 50, colors: ["#d5f6ff", "#1c6aa8"] },
-    { id: "heroic", name: "Heroico", cls: "heroic", minStreak: 75, colors: ["#ff8a8a", "#7a0018"], hasWings: true },
-    { id: "grandmaster", name: "Gran Maestro", cls: "grandmaster", minStreak: 100, colors: ["#fff6c8", "#a8760a"], hasWings: true }
+    { id: "diamond", name: "Diamante", cls: "diamond", minStreak: 50, colors: ["#d5f6ff", "#1c6aa8"], shield: true },
+    { id: "heroic", name: "Heroico", cls: "heroic", minStreak: 75, colors: ["#ff8a8a", "#7a0018"], shield: true, hasWings: true },
+    { id: "grandmaster", name: "Gran Maestro", cls: "grandmaster", minStreak: 100, colors: ["#fff6c8", "#a8760a"], shield: true, hasWings: true }
   ];
 
-  // ---- generador de una pluma (feather) tipo ala de águila ----
-  function featherPath(bx, by, angleDeg, len, halfW, curve) {
-    const rad = angleDeg * Math.PI / 180;
-    const dx = Math.cos(rad), dy = Math.sin(rad);
-    const px = -dy, py = dx;
-    const tipX = bx + dx * len, tipY = by + dy * len;
-    const b1x = bx + px * halfW, b1y = by + py * halfW;
-    const b2x = bx - px * halfW, b2y = by - py * halfW;
-    const mx = bx + dx * len * 0.55, my = by + dy * len * 0.55;
-    const c1x = mx + px * halfW * curve, c1y = my + py * halfW * curve;
-    const c2x = mx - px * halfW * curve, c2y = my - py * halfW * curve;
-    return "M" + b1x.toFixed(1) + "," + b1y.toFixed(1) +
-      " Q" + c1x.toFixed(1) + "," + c1y.toFixed(1) + " " + tipX.toFixed(1) + "," + tipY.toFixed(1) +
-      " Q" + c2x.toFixed(1) + "," + c2y.toFixed(1) + " " + b2x.toFixed(1) + "," + b2y.toFixed(1) + " Z";
+  // ---- contorno de escudo heráldico (Diamante / Heroico / Gran Maestro) ----
+  function shieldPath(cx, cy, R) {
+    const x0 = (cx - R).toFixed(1), x1 = (cx + R).toFixed(1);
+    const yTop = (cy - R * 1.05).toFixed(1), ySh = (cy - R * 0.7).toFixed(1);
+    const yWaist = (cy + R * 0.15).toFixed(1), yTip = (cy + R * 1.35).toFixed(1);
+    const cxS = cx.toFixed(1);
+    return "M" + x0 + "," + ySh +
+      " Q" + (cx - R * 1.05).toFixed(1) + "," + yTop + " " + cxS + "," + yTop +
+      " Q" + (cx + R * 1.05).toFixed(1) + "," + yTop + " " + x1 + "," + ySh +
+      " C" + x1 + "," + yWaist + " " + (cx + R * 0.85).toFixed(1) + "," + (cy + R * 0.85).toFixed(1) + " " + cxS + "," + yTip +
+      " C" + (cx - R * 0.85).toFixed(1) + "," + (cy + R * 0.85).toFixed(1) + " " + x0 + "," + yWaist + " " + x0 + "," + ySh + " Z";
   }
-  // construye un ala completa (abanico de plumas) — mirror=true para el ala izquierda
-  function wingSvg(cx, cy, mirror, fillId) {
-    const angles = [4, -14, -32, -50, -66, -80];   // abanico de la más baja/larga a la más alta/corta
-    const lens = [30, 33, 30, 25, 19, 13];
-    const halfWs = [3.6, 3.9, 3.6, 3, 2.4, 1.8];
+
+  // ---- un solo rayo eléctrico (lightning bolt), en abanico a lo largo del ángulo dado ----
+  function boltPath(bx, by, angleDeg, len, halfW) {
+    const rad = angleDeg * Math.PI / 180;
+    const dx = Math.cos(rad), dy = Math.sin(rad);   // eje de longitud (hacia fuera)
+    const px = -dy, py = dx;                        // eje perpendicular (ancho)
+    // silueta local normalizada de un rayo: x=ancho[-1..1], y=longitud[0..1]
+    const pts = [
+      [0.30, 0.00], [0.85, 0.32], [0.20, 0.40], [0.65, 0.68],
+      [-0.05, 1.00], [0.10, 0.58], [-0.50, 0.48], [0.10, 0.20], [-0.35, 0.06]
+    ];
+    const toWorld = (lx, ly) => {
+      const wx = bx + px * lx * halfW + dx * ly * len;
+      const wy = by + py * lx * halfW + dy * ly * len;
+      return wx.toFixed(1) + "," + wy.toFixed(1);
+    };
+    let d = "M" + toWorld(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) d += " L" + toWorld(pts[i][0], pts[i][1]);
+    return d + " Z";
+  }
+  // abanico de rayos dorados a un costado del escudo (mirror=true → lado izquierdo)
+  // dos capas: una borrosa (glow dorado intenso) + una nítida encima con núcleo blanco.
+  function boltWingSvg(cx, cy, mirror, gradId, blurId) {
+    const angles = [-8, -30, -52, -74];
+    const lens = [31, 35, 31, 23];
+    const halfWs = [4.4, 4.8, 4.2, 3.3];
     let d = "";
     for (let i = 0; i < angles.length; i++) {
       const ang = mirror ? (180 - angles[i]) : angles[i];
-      const bx = cx + (mirror ? -1 : 1) * (2 + i * 1.4);
-      const by = cy - 1 + i * 0.6;
-      d += featherPath(bx, by, ang, lens[i], halfWs[i], 0.55);
+      const bx = cx + (mirror ? -1 : 1) * (3 + i * 1.6);
+      const by = cy - 3 + i * 0.8;
+      d += boltPath(bx, by, ang, lens[i], halfWs[i]) + " ";
     }
-    return '<path d="' + d + '" fill="url(#' + fillId + ')" stroke="rgba(255,255,255,.35)" stroke-width=".5" fill-rule="evenodd"/>';
+    return '<path d="' + d + '" fill="#ffd23d" filter="url(#' + blurId + ')" opacity=".9"/>' +
+           '<path d="' + d + '" fill="#ffd23d" filter="url(#' + blurId + ')" opacity=".55"/>' +
+           '<path d="' + d + '" fill="url(#' + gradId + ')" stroke="#fffbe0" stroke-width=".7"/>';
   }
 
-  // construye el SVG completo de la medalla: alas (si aplica) + medallón metálico con relieve, gema y brillo
+  // construye el SVG completo de la medalla: escudo/medallón + gema central + brillo (+ rayos si aplica)
   function medalBadgeSvg(medal) {
-    const gid = "mg-" + medal.id;     // gradiente principal (metal)
-    const wid = "wg-" + medal.id;     // gradiente de las alas
+    const gid = "mg-" + medal.id;     // gradiente principal (metal/escudo)
+    const bgid = "bg-" + medal.id;    // gradiente dorado de los rayos
     const hid = "hl-" + medal.id;     // brillo especular
-    const rid = "rb-" + medal.id;     // listón inferior
+    const rid = "rb-" + medal.id;     // listón inferior (solo medallón circular)
+    const flid = "fl-" + medal.id;    // filtro de desenfoque (glow de los rayos)
     const light = medal.colors[0], deep = medal.colors[1];
+    const isShield = !!medal.shield;
     const wings = !!medal.hasWings;
-    const vbW = wings ? 148 : 56, vbH = 66;
-    const cx = wings ? 74 : 28, cy = 30, R = 20;
+    const vbW = wings ? 152 : 56;
+    const vbH = isShield ? (wings ? 84 : 76) : 66;
+    const cx = wings ? 76 : 28, cy = isShield ? 34 : 30, R = 20;
 
     const defs = '<defs>' +
-      '<radialGradient id="' + gid + '" cx="34%" cy="28%" r="78%">' +
+      '<radialGradient id="' + gid + '" cx="36%" cy="26%" r="80%">' +
         '<stop offset="0%" stop-color="' + light + '"/>' +
-        '<stop offset="52%" stop-color="' + deep + '"/>' +
+        '<stop offset="55%" stop-color="' + deep + '"/>' +
         '<stop offset="100%" stop-color="' + deep + '"/>' +
       '</radialGradient>' +
-      '<linearGradient id="' + wid + '" x1="0" y1="1" x2="1" y2="0">' +
-        '<stop offset="0%" stop-color="' + deep + '"/>' +
-        '<stop offset="100%" stop-color="' + light + '"/>' +
+      '<linearGradient id="' + bgid + '" x1="0" y1="1" x2="0" y2="0">' +
+        '<stop offset="0%" stop-color="#ff9d00"/>' +
+        '<stop offset="55%" stop-color="#ffe066"/>' +
+        '<stop offset="100%" stop-color="#fffbe0"/>' +
       '</linearGradient>' +
       '<linearGradient id="' + hid + '" x1="0" y1="0" x2="1" y2="1">' +
         '<stop offset="0%" stop-color="#ffffff" stop-opacity=".9"/>' +
@@ -135,30 +160,41 @@
         '<stop offset="0%" stop-color="' + light + '"/>' +
         '<stop offset="100%" stop-color="' + deep + '"/>' +
       '</linearGradient>' +
+      '<filter id="' + flid + '" x="-80%" y="-80%" width="260%" height="260%">' +
+        '<feGaussianBlur stdDeviation="2.6"/>' +
+      '</filter>' +
     '</defs>';
 
     let wingsMk = "";
-    if (wings) { wingsMk = wingSvg(cx, cy, false, wid) + wingSvg(cx, cy, true, wid); }
+    if (wings) { wingsMk = boltWingSvg(cx, cy, false, bgid, flid) + boltWingSvg(cx, cy, true, bgid, flid); }
 
-    // listón/cinta inferior (solo medallas sin alas, look "medalla de pecho")
+    // listón/cinta inferior (solo medallón circular, look "medalla de pecho")
     let ribbon = "";
-    if (!wings) {
+    if (!isShield) {
       ribbon = '<path d="M' + (cx - 8) + ',' + (cy + R - 4) + ' L' + (cx - 6) + ',' + (cy + R + 13) + ' L' + cx + ',' + (cy + R + 7) + ' L' + (cx + 6) + ',' + (cy + R + 13) + ' L' + (cx + 8) + ',' + (cy + R - 4) + ' Z" fill="url(#' + rid + ')" opacity=".92"/>';
     }
 
-    // anillo biselado exterior + cuerpo del medallón
-    const outerRing = '<circle cx="' + cx + '" cy="' + cy + '" r="' + (R + 2.4) + '" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.4"/>';
-    const body = '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="url(#' + gid + ')" stroke="rgba(0,0,0,.25)" stroke-width="1"/>';
-    const innerRing = '<circle cx="' + cx + '" cy="' + cy + '" r="' + (R - 4) + '" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1"/>';
-    // gema/estrella central
-    const star = starPath(cx, cy, R - 8, R - 15, 5);
+    let outerRing, body, innerRing;
+    if (isShield) {
+      outerRing = '<path d="' + shieldPath(cx, cy, R + 2.4) + '" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.4"/>';
+      body = '<path d="' + shieldPath(cx, cy, R) + '" fill="url(#' + gid + ')" stroke="rgba(0,0,0,.3)" stroke-width="1"/>';
+      innerRing = '<path d="' + shieldPath(cx, cy, R - 4) + '" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1"/>';
+    } else {
+      outerRing = '<circle cx="' + cx + '" cy="' + cy + '" r="' + (R + 2.4) + '" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.4"/>';
+      body = '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="url(#' + gid + ')" stroke="rgba(0,0,0,.25)" stroke-width="1"/>';
+      innerRing = '<circle cx="' + cx + '" cy="' + cy + '" r="' + (R - 4) + '" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1"/>';
+    }
+    // gema/estrella central (la "esfera") — misma pieza en medallón o escudo
+    const gemCy = isShield ? cy - R * 0.12 : cy;
+    const star = starPath(cx, gemCy, R - 8, R - 15, 5);
     const gem = '<path d="' + star + '" fill="rgba(255,255,255,.95)"/>';
     // brillo especular ovalado
-    const gloss = '<ellipse cx="' + (cx - R * 0.32) + '" cy="' + (cy - R * 0.4) + '" rx="' + (R * 0.55) + '" ry="' + (R * 0.34) + '" fill="url(#' + hid + ')" transform="rotate(-28 ' + (cx - R * 0.32) + ' ' + (cy - R * 0.4) + ')"/>';
-    // destellos (sparkles) — más notorios en alas
+    const glossCy = isShield ? cy - R * 0.5 : cy - R * 0.4;
+    const gloss = '<ellipse cx="' + (cx - R * 0.32) + '" cy="' + glossCy + '" rx="' + (R * 0.55) + '" ry="' + (R * 0.34) + '" fill="url(#' + hid + ')" transform="rotate(-28 ' + (cx - R * 0.32) + ' ' + glossCy + ')"/>';
+    // destellos (sparkles) — más notorios junto a los rayos
     let sparkles = "";
     if (wings) {
-      sparkles = sparkle(cx - R - 6, cy - R - 2, 3.4) + sparkle(cx + R + 6, cy - R - 2, 3.4) + sparkle(cx, cy - R - 10, 2.6);
+      sparkles = sparkle(cx - R - 10, cy - R - 6, 3.8) + sparkle(cx + R + 10, cy - R - 6, 3.8) + sparkle(cx, cy - R - 15, 3);
     }
 
     return '<svg viewBox="0 0 ' + vbW + ' ' + vbH + '">' + defs + wingsMk + ribbon + outerRing + body + innerRing + gem + gloss + sparkles + '</svg>';
