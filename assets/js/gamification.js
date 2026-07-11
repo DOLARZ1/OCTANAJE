@@ -73,8 +73,8 @@
     { id: "gold", name: "Oro", cls: "gold", minStreak: 15, colors: ["#ffe680", "#a8760a"] },
     { id: "titanium", name: "Titanio", cls: "titanium", minStreak: 30, colors: ["#eef4f8", "#4a5568"] },
     { id: "diamond", name: "Diamante", cls: "diamond", minStreak: 50, colors: ["#d5f6ff", "#1c6aa8"], shield: true },
-    { id: "heroic", name: "Heroico", cls: "heroic", minStreak: 75, colors: ["#ff8a8a", "#7a0018"], shield: true, hasWings: true },
-    { id: "grandmaster", name: "Gran Maestro", cls: "grandmaster", minStreak: 100, colors: ["#fff6c8", "#a8760a"], shield: true, hasWings: true }
+    { id: "heroic", name: "Heroico", cls: "heroic", minStreak: 75, colors: ["#ff8a8a", "#7a0018"], shield: true, hasWings: true, wingScale: 1, blurStd: 2.6 },
+    { id: "grandmaster", name: "Gran Maestro", cls: "grandmaster", minStreak: 100, colors: ["#fff6c8", "#a8760a"], shield: true, hasWings: true, wingScale: 1.55, blurStd: 3.6, hasCrown: true }
   ];
 
   // ---- contorno de escudo heráldico (Diamante / Heroico / Gran Maestro) ----
@@ -110,21 +110,48 @@
     return d + " Z";
   }
   // abanico de rayos dorados a un costado del escudo (mirror=true → lado izquierdo)
-  // dos capas: una borrosa (glow dorado intenso) + una nítida encima con núcleo blanco.
-  function boltWingSvg(cx, cy, mirror, gradId, blurId) {
+  // tres capas: dos borrosas (glow dorado intenso, más ancho) + una nítida encima con núcleo blanco.
+  function boltWingSvg(cx, cy, mirror, gradId, blurId, scale) {
+    scale = scale || 1;
     const angles = [-8, -30, -52, -74];
-    const lens = [31, 35, 31, 23];
-    const halfWs = [4.4, 4.8, 4.2, 3.3];
+    const lens = [31 * scale, 35 * scale, 31 * scale, 23 * scale];
+    const halfWs = [4.4 * scale, 4.8 * scale, 4.2 * scale, 3.3 * scale];
     let d = "";
     for (let i = 0; i < angles.length; i++) {
       const ang = mirror ? (180 - angles[i]) : angles[i];
-      const bx = cx + (mirror ? -1 : 1) * (3 + i * 1.6);
+      const bx = cx + (mirror ? -1 : 1) * (3 + i * 1.6 * scale);
       const by = cy - 3 + i * 0.8;
       d += boltPath(bx, by, ang, lens[i], halfWs[i]) + " ";
     }
-    return '<path d="' + d + '" fill="#ffd23d" filter="url(#' + blurId + ')" opacity=".9"/>' +
-           '<path d="' + d + '" fill="#ffd23d" filter="url(#' + blurId + ')" opacity=".55"/>' +
-           '<path d="' + d + '" fill="url(#' + gradId + ')" stroke="#fffbe0" stroke-width=".7"/>';
+    return '<path d="' + d + '" fill="#ffb300" filter="url(#' + blurId + ')" opacity=".95"/>' +
+           '<path d="' + d + '" fill="#ffd23d" filter="url(#' + blurId + ')" opacity=".8"/>' +
+           '<path d="' + d + '" fill="#fff6c8" filter="url(#' + blurId + ')" opacity=".5"/>' +
+           '<path d="' + d + '" fill="url(#' + gradId + ')" stroke="#fffbe0" stroke-width=".8"/>';
+  }
+
+  // corona real (5 picos con perlas) para Gran Maestro, sobre el escudo
+  function crownSvg(cx, topY, halfW, gradId) {
+    const h = halfW * 1.05;
+    const baseY = topY + h * 0.62;
+    const pts = [
+      [-halfW, baseY], [-halfW, topY + h * 0.18],
+      [-halfW * 0.62, topY + h * 0.5], [-halfW * 0.34, topY],
+      [0, topY + h * 0.38], [halfW * 0.34, topY],
+      [halfW * 0.62, topY + h * 0.5], [halfW, topY + h * 0.18],
+      [halfW, baseY]
+    ];
+    let d = "M" + (cx + pts[0][0]).toFixed(1) + "," + pts[0][1].toFixed(1);
+    for (let i = 1; i < pts.length; i++) d += " L" + (cx + pts[i][0]).toFixed(1) + "," + pts[i][1].toFixed(1);
+    d += " Z";
+    const band = '<rect x="' + (cx - halfW).toFixed(1) + '" y="' + (baseY - h * 0.14).toFixed(1) + '" width="' + (halfW * 2).toFixed(1) + '" height="' + (h * 0.2).toFixed(1) + '" rx="' + (h * 0.06).toFixed(1) + '" fill="url(#' + gradId + ')" stroke="#fffbe0" stroke-width=".6"/>';
+    const body = '<path d="' + d + '" fill="url(#' + gradId + ')" stroke="#fffbe0" stroke-width=".8"/>';
+    const jewels = [-halfW * 0.34, 0, halfW * 0.34].map((jx) =>
+      '<circle cx="' + (cx + jx).toFixed(1) + '" cy="' + (topY + h * 0.42).toFixed(1) + '" r="' + (h * 0.11).toFixed(1) + '" fill="#ff3b6e"/>'
+    ).join("");
+    const tips = [-halfW, -halfW * 0.34, 0, halfW * 0.34, halfW].map((jx, i) =>
+      '<circle cx="' + (cx + jx).toFixed(1) + '" cy="' + (i % 2 === 0 ? baseY - h * 0.05 : topY).toFixed(1) + '" r="' + (h * 0.09).toFixed(1) + '" fill="#fffbe0"/>'
+    ).join("");
+    return body + band + jewels + tips;
   }
 
   // construye el SVG completo de la medalla: escudo/medallón + gema central + brillo (+ rayos si aplica)
@@ -137,9 +164,13 @@
     const light = medal.colors[0], deep = medal.colors[1];
     const isShield = !!medal.shield;
     const wings = !!medal.hasWings;
-    const vbW = wings ? 152 : 56;
-    const vbH = isShield ? (wings ? 84 : 76) : 66;
-    const cx = wings ? 76 : 28, cy = isShield ? 34 : 30, R = 20;
+    const crown = !!medal.hasCrown;
+    const wingScale = medal.wingScale || 1;
+    const blurStd = medal.blurStd || 2.6;
+    const topPad = (crown ? 22 : 0) + (wings ? 12 : 0);
+    const vbW = wings ? Math.round(152 * Math.max(1, wingScale * 0.86)) : 56;
+    const vbH = (isShield ? (wings ? 84 : 76) : 66) + topPad;
+    const cx = wings ? vbW / 2 : 28, cy = (isShield ? 34 : 30) + topPad, R = 20;
 
     const defs = '<defs>' +
       '<radialGradient id="' + gid + '" cx="36%" cy="26%" r="80%">' +
@@ -160,13 +191,13 @@
         '<stop offset="0%" stop-color="' + light + '"/>' +
         '<stop offset="100%" stop-color="' + deep + '"/>' +
       '</linearGradient>' +
-      '<filter id="' + flid + '" x="-80%" y="-80%" width="260%" height="260%">' +
-        '<feGaussianBlur stdDeviation="2.6"/>' +
+      '<filter id="' + flid + '" x="-120%" y="-120%" width="340%" height="340%">' +
+        '<feGaussianBlur stdDeviation="' + blurStd + '"/>' +
       '</filter>' +
     '</defs>';
 
     let wingsMk = "";
-    if (wings) { wingsMk = boltWingSvg(cx, cy, false, bgid, flid) + boltWingSvg(cx, cy, true, bgid, flid); }
+    if (wings) { wingsMk = boltWingSvg(cx, cy, false, bgid, flid, wingScale) + boltWingSvg(cx, cy, true, bgid, flid, wingScale); }
 
     // listón/cinta inferior (solo medallón circular, look "medalla de pecho")
     let ribbon = "";
@@ -194,10 +225,16 @@
     // destellos (sparkles) — más notorios junto a los rayos
     let sparkles = "";
     if (wings) {
-      sparkles = sparkle(cx - R - 10, cy - R - 6, 3.8) + sparkle(cx + R + 10, cy - R - 6, 3.8) + sparkle(cx, cy - R - 15, 3);
+      const spScale = 1 + (wingScale - 1) * 0.6;
+      sparkles = sparkle(cx - (R + 10) * spScale, cy - (R + 6) * spScale, 3.8 * spScale) +
+        sparkle(cx + (R + 10) * spScale, cy - (R + 6) * spScale, 3.8 * spScale) +
+        sparkle(cx, cy - (R + 15) * spScale, 3 * spScale);
     }
+    // corona real sobre el escudo (Gran Maestro)
+    let crownMk = "";
+    if (crown) { crownMk = crownSvg(cx, cy - R * 1.28, R * 0.62, gid); }
 
-    return '<svg viewBox="0 0 ' + vbW + ' ' + vbH + '">' + defs + wingsMk + ribbon + outerRing + body + innerRing + gem + gloss + sparkles + '</svg>';
+    return '<svg viewBox="0 0 ' + vbW + ' ' + vbH + '">' + defs + wingsMk + ribbon + outerRing + body + innerRing + gem + gloss + sparkles + crownMk + '</svg>';
   }
   function starPath(cx, cy, rOuter, rInner, points) {
     let d = "";

@@ -665,47 +665,56 @@ canvas { display: block; width: 100%; }
    ===================================================================== */
 .medal-badge {
   display: inline-grid; place-items: center; flex: none; line-height: 0;
-  filter: drop-shadow(0 0 7px var(--mc1, #c98a55)) drop-shadow(0 0 14px var(--mc2, #8a5a3c));
+  filter: drop-shadow(0 0 8px var(--mc1, #c98a55)) drop-shadow(0 0 16px var(--mc2, #8a5a3c));
   animation: medalFloat 3.2s ease-in-out infinite;
 }
-.medal-badge svg { display: block; height: 40px; width: auto; }
+/* medallas sencillas (Bronce/Plata/Oro/Titanio/Diamante): más grandes que antes */
+.medal-badge svg { display: block; height: 52px; width: auto; }
 @keyframes medalFloat { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.05); } }
 
 .medal-bronze      { --mc1: #f0b076; --mc2: #8a5a3c; }
-.medal-silver      { --mc1: #cfe6ff; --mc2: #7c8ea6; animation: medalFloat 3s ease-in-out infinite, medalGlowSilver 2.4s ease-in-out infinite; }
+.medal-silver      { --mc1: #d8ecff; --mc2: #8fa8c4; animation: medalFloat 3s ease-in-out infinite, medalGlowSilver 2.2s ease-in-out infinite; }
 .medal-gold        { --mc1: #ffe680; --mc2: #d9a521; animation: medalFloat 3s ease-in-out infinite, medalGlow 2.4s ease-in-out infinite; }
 .medal-titanium    { --mc1: #eef4f8; --mc2: #8b9bb0; animation: medalFloat 3s ease-in-out infinite, medalGlow 2.4s ease-in-out infinite; }
 .medal-diamond     { --mc1: #7fdcff; --mc2: #1c9dea; animation: medalFloat 2.6s ease-in-out infinite, medalGlow 2s ease-in-out infinite; }
-.medal-heroic      { --mc1: #ff5252; --mc2: #7a0018; animation: medalFloat 2.2s ease-in-out infinite, medalGlowRed 1.5s ease-in-out infinite; }
-.medal-grandmaster { --mc1: #ffe680; --mc2: #a8760a; animation: medalFloat 2.2s ease-in-out infinite, medalGlowGold 1.5s ease-in-out infinite; }
+
+/* Heroico y Gran Maestro: badges mucho más grandes y con brillo mucho más intenso */
+.medal-heroic, .medal-grandmaster { --sz: 78px; }
+.medal-heroic svg, .medal-grandmaster svg { height: var(--sz, 78px); }
+.medal-heroic      { --mc1: #ff5252; --mc2: #7a0018; animation: medalFloat 2.2s ease-in-out infinite, medalGlowRed 1.4s ease-in-out infinite; }
+.medal-grandmaster { --mc1: #ffe680; --mc2: #a8760a; --sz: 90px; animation: medalFloat 2.1s ease-in-out infinite, medalGlowGold 1.3s ease-in-out infinite; }
 
 @keyframes medalGlowSilver {
-  0%, 100% { filter: drop-shadow(0 0 7px #dbeeff) drop-shadow(0 0 14px #9fc4ee) drop-shadow(0 0 22px rgba(159,196,238,.5)); }
-  50% { filter: drop-shadow(0 0 13px #ffffff) drop-shadow(0 0 24px #bcdcff) drop-shadow(0 0 36px rgba(188,220,255,.7)); }
+  0%, 100% { filter: drop-shadow(0 0 8px #e3f2ff) drop-shadow(0 0 16px #a9c9ee) drop-shadow(0 0 26px rgba(159,196,238,.55)); }
+  50% { filter: drop-shadow(0 0 15px #ffffff) drop-shadow(0 0 28px #cfe6ff) drop-shadow(0 0 42px rgba(188,220,255,.75)); }
 }
 @keyframes medalGlow {
-  0%, 100% { filter: drop-shadow(0 0 7px var(--mc1)) drop-shadow(0 0 14px var(--mc2)) drop-shadow(0 0 22px color-mix(in srgb, var(--mc2) 50%, transparent)); }
-  50% { filter: drop-shadow(0 0 13px var(--mc1)) drop-shadow(0 0 26px var(--mc2)) drop-shadow(0 0 38px color-mix(in srgb, var(--mc2) 65%, transparent)); }
+  0%, 100% { filter: drop-shadow(0 0 8px var(--mc1)) drop-shadow(0 0 16px var(--mc2)) drop-shadow(0 0 26px color-mix(in srgb, var(--mc2) 50%, transparent)); }
+  50% { filter: drop-shadow(0 0 15px var(--mc1)) drop-shadow(0 0 30px var(--mc2)) drop-shadow(0 0 44px color-mix(in srgb, var(--mc2) 65%, transparent)); }
 }
+/* Heroico: rojo brillante, resplandor mucho más grande e intenso */
 @keyframes medalGlowRed {
-  0%, 100% { filter: drop-shadow(0 0 9px #ff3b3b) drop-shadow(0 0 20px #ff0000) drop-shadow(0 0 34px rgba(255,0,0,.45)); }
-  50% { filter: drop-shadow(0 0 18px #ff6b6b) drop-shadow(0 0 36px #ff0000) drop-shadow(0 0 56px rgba(255,0,0,.65)); }
+  0%, 100% { filter: drop-shadow(0 0 12px #ff4040) drop-shadow(0 0 26px #ff0000) drop-shadow(0 0 44px rgba(255,0,0,.55)) drop-shadow(0 0 66px rgba(255,0,0,.3)); }
+  50% { filter: drop-shadow(0 0 22px #ff8080) drop-shadow(0 0 46px #ff0000) drop-shadow(0 0 72px rgba(255,0,0,.75)) drop-shadow(0 0 96px rgba(255,0,0,.4)); }
 }
+/* Gran Maestro: dorado brillante, el resplandor más grande e intenso de todos */
 @keyframes medalGlowGold {
-  0%, 100% { filter: drop-shadow(0 0 9px #ffe066) drop-shadow(0 0 20px #ffc400) drop-shadow(0 0 34px rgba(255,196,0,.45)); }
-  50% { filter: drop-shadow(0 0 18px #fff2a8) drop-shadow(0 0 36px #ffc400) drop-shadow(0 0 56px rgba(255,196,0,.65)); }
+  0%, 100% { filter: drop-shadow(0 0 14px #ffe066) drop-shadow(0 0 30px #ffc400) drop-shadow(0 0 50px rgba(255,196,0,.6)) drop-shadow(0 0 76px rgba(255,196,0,.35)); }
+  50% { filter: drop-shadow(0 0 26px #fff2a8) drop-shadow(0 0 52px #ffc400) drop-shadow(0 0 82px rgba(255,196,0,.8)) drop-shadow(0 0 110px rgba(255,196,0,.45)); }
 }
 
-.medal-strip { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 4px; align-items: flex-end; }
-.medal-mini { display: inline-grid; place-items: center; padding: 8px 10px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border); transition: transform .15s ease, box-shadow .2s ease; }
-.medal-mini svg { height: 30px; width: auto; }
+.medal-strip { display: flex; gap: 12px; flex-wrap: wrap; padding-top: 4px; align-items: flex-end; }
+.medal-mini { display: inline-grid; place-items: center; padding: 9px 11px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border); transition: transform .15s ease, box-shadow .2s ease; }
+.medal-mini svg { height: 36px; width: auto; }
+.medal-mini.medal-heroic svg, .medal-mini.medal-grandmaster svg { height: 46px; }
 .medal-mini.off { opacity: .25; filter: grayscale(1); }
 .medal-mini.on { opacity: 1; filter: none; }
 .medal-mini.active { border-color: var(--accent); box-shadow: var(--glow); transform: translateY(-3px) scale(1.1); }
 .medal-mini:hover { transform: translateY(-2px); }
 
-/* En la barra superior la medalla se muestra un poco más compacta */
-#medal-badge svg { height: 34px; }
+/* En la barra superior la medalla se muestra algo más compacta pero sigue notándose grande */
+#medal-badge svg { height: 42px; }
+#medal-badge.medal-heroic svg, #medal-badge.medal-grandmaster svg { height: 56px; }
 
 
 /* =====================================================================
