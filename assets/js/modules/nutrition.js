@@ -106,12 +106,14 @@
   }
 
   function foodRow(f) {
+    const macroLbl = "P " + f.prot + "g · C " + f.carb + "g /100g";
     return el("div", { class: "item", style: "padding:10px 12px;cursor:pointer", onclick: () => openPortion(f) }, [
       el("div", { class: "item-main" }, [
         el("div", { class: "item-title", style: "font-size:14px", text: f.name }),
         el("div", { class: "item-meta" }, [
           el("span", { class: "chip", text: f.kcal + " kcal" }),
-          el("span", { class: "text-faint fs-12", text: "P " + f.prot + "g · C " + f.carb + "g /100g" })
+          el("span", { class: "text-faint fs-12", text: macroLbl }),
+          f.portion ? el("span", { class: "chip accent", text: "🍽️ " + f.portion.label }) : null
         ])
       ]),
       el("button", { class: "icon-btn", html: "＋", title: "Agregar", onclick: (ev) => { ev.stopPropagation(); openPortion(f); } })
@@ -119,28 +121,71 @@
   }
 
   function openPortion(food) {
+    const hasPortion = !!food.portion;
+    // modo "porciones" (platillos: tacos, tortas, caldos, sushi...) vs modo "gramos" (ingredientes crudos)
+    let mode = hasPortion ? "portion" : "grams";
+
     const gramsI = el("input", { class: "input", type: "number", min: 1, step: 1, value: 100 });
+    const portionsI = el("input", { class: "input", type: "number", min: 0.5, step: 0.5, value: 1 });
+    const portionLbl = hasPortion ? el("div", { class: "fs-12 text-faint mt-8", text: "1 porción ≈ " + food.portion.label }) : null;
+
+    const gramsField = el("div", { class: "field" }, [el("label", { text: "Cantidad (gramos)" }), gramsI]);
+    const portionField = hasPortion ? el("div", { class: "field" }, [el("label", { text: "Cantidad (porciones)" }), portionsI, portionLbl]) : null;
+
     const preview = el("div", { class: "grid cols-3", style: "margin-top:12px" });
+    function currentGrams() {
+      if (mode === "portion" && hasPortion) return (Number(portionsI.value) || 0) * food.portion.grams;
+      return Number(gramsI.value) || 0;
+    }
     function paint() {
-      const g = Number(gramsI.value) || 0; const f = g / 100;
+      const g = currentGrams(); const f = g / 100;
       preview.innerHTML = "";
       preview.appendChild(macroBox("Calorías", Math.round(food.kcal * f), "kcal", "var(--warn)"));
       preview.appendChild(macroBox("Proteínas", r1(food.prot * f), "g", "var(--good)"));
       preview.appendChild(macroBox("Carbos", r1(food.carb * f), "g", "var(--accent)"));
     }
     gramsI.addEventListener("input", paint);
+    portionsI.addEventListener("input", paint);
+
+    const fieldsWrap = el("div", {});
+    function paintFields() {
+      fieldsWrap.innerHTML = "";
+      if (mode === "portion" && hasPortion) fieldsWrap.appendChild(portionField);
+      else fieldsWrap.appendChild(gramsField);
+    }
+    paintFields();
+
+    const switchLink = hasPortion ? el("button", {
+      class: "btn sm", style: "margin-top:8px",
+      html: mode === "portion" ? "⚖️ Usar gramos en vez de porciones" : "🍽️ Usar porciones en vez de gramos",
+      onclick: (ev) => {
+        ev.preventDefault();
+        mode = mode === "portion" ? "grams" : "portion";
+        switchLink.innerHTML = mode === "portion" ? "⚖️ Usar gramos en vez de porciones" : "🍽️ Usar porciones en vez de gramos";
+        paintFields(); paint();
+      }
+    }) : null;
+
+    const subInfo = hasPortion
+      ? food.kcal + " kcal por 100 g · porción típica: " + food.portion.label
+      : food.kcal + " kcal por 100 g";
+
     const body = el("div", {}, [
       el("div", { class: "insight info", style: "margin-bottom:14px" }, [
         el("span", { class: "ico", text: "🍽️" }),
-        el("div", { class: "txt", html: "<b>" + food.name + "</b><br><span style='color:var(--txt-faint)'>" + food.cat + " · " + food.kcal + " kcal por 100 g</span>" })
+        el("div", { class: "txt", html: "<b>" + food.name + "</b><br><span style='color:var(--txt-faint)'>" + food.cat + " · " + subInfo + "</span>" })
       ]),
-      el("div", { class: "field" }, [el("label", { text: "Cantidad (gramos)" }), gramsI]),
+      fieldsWrap,
+      switchLink,
       preview,
       el("button", { class: "btn primary block", style: "margin-top:16px", html: "＋ Agregar al día", onclick: () => {
-        const g = Number(gramsI.value) || 0;
-        if (g <= 0) { Audio.play("error"); toast({ icon: "⚠️", msg: "Indica los gramos" }); return; }
+        const g = currentGrams();
+        if (g <= 0) { Audio.play("error"); toast({ icon: "⚠️", msg: "Indica una cantidad válida" }); return; }
         addEntry(food, g); Audio.play("coin");
-        toast({ icon: "🍽️", title: "Agregado", msg: food.name + " (" + Math.round(g) + " g)" });
+        const qtyMsg = mode === "portion" && hasPortion
+          ? (Number(portionsI.value) || 0) + " porción(es) · " + Math.round(g) + " g"
+          : Math.round(g) + " g";
+        toast({ icon: "🍽️", title: "Agregado", msg: food.name + " (" + qtyMsg + ")" });
         UI.closeModal();
         render(document.getElementById("view-nutrition"));
         N.App && N.App.refreshTop();

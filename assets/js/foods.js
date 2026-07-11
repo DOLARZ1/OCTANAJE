@@ -1,6 +1,9 @@
 /* =====================================================================
    NEXUS · FOODS — base de datos nutricional (valores aproximados por 100 g)
    Campos: name, cat, kcal, prot (proteína g), carb (carbohidratos g)
+   portion (opcional): { grams, label } → porción típica del platillo,
+   para que en platillos compuestos (caldos, tortas, sushi, etc.) no
+   tengas que adivinar gramos: eliges "porciones" y ya sabe cuánto pesa.
    Los valores son estimados con fines informativos.
    ===================================================================== */
 (function () {
@@ -9,10 +12,17 @@
 
   const CATS = [
     "Carnes y proteínas", "Frutas", "Verduras", "Cereales y panes",
-    "Lácteos", "Platillos mexicanos", "Comida rápida", "Snacks / chatarra", "Bebidas"
+    "Lácteos", "Platillos mexicanos", "Caldos y sopas",
+    "Comida china y sushi", "Comida rápida", "Snacks / chatarra", "Bebidas"
   ];
 
-  const F = (name, cat, kcal, prot, carb) => ({ name, cat, kcal, prot, carb });
+  const F = (name, cat, kcal, prot, carb, portion) => {
+    const o = { name, cat, kcal, prot, carb };
+    if (portion) o.portion = portion;
+    return o;
+  };
+  // atajo para crear la porción típica de un platillo
+  const P = (grams, label) => ({ grams, label: label || (grams + " g aprox.") });
 
   const FOODS = [
     // ---------- Carnes y proteínas ----------
@@ -33,6 +43,8 @@
     F("Camarón", "Carnes y proteínas", 99, 24, 0),
     F("Huevo", "Carnes y proteínas", 155, 13, 1.1),
     F("Clara de huevo", "Carnes y proteínas", 52, 11, 0.7),
+    F("Espinazo de cerdo (cocido)", "Carnes y proteínas", 215, 22, 0),
+    F("Menudencias de pollo", "Carnes y proteínas", 172, 24, 0.6),
 
     // ---------- Frutas ----------
     F("Manzana", "Frutas", 52, 0.3, 14),
@@ -68,6 +80,8 @@
     F("Champiñón", "Verduras", 22, 3.1, 3.3),
     F("Elote", "Verduras", 86, 3.2, 19),
     F("Nopal", "Verduras", 16, 1.3, 3.3),
+    F("Esquites (elote preparado)", "Verduras", 130, 4, 20, P(250, "1 vaso (~250 g)")),
+    F("Elote preparado (con mayonesa y queso)", "Verduras", 175, 5, 22, P(200, "1 elote (~200 g)")),
 
     // ---------- Cereales y panes ----------
     F("Arroz blanco cocido", "Cereales y panes", 130, 2.7, 28),
@@ -80,6 +94,10 @@
     F("Pasta cocida", "Cereales y panes", 131, 5, 25),
     F("Frijol cocido", "Cereales y panes", 127, 9, 23),
     F("Lenteja cocida", "Cereales y panes", 116, 9, 20),
+    F("Bolillo", "Cereales y panes", 270, 9, 53, P(80, "1 pieza (~80 g)")),
+    F("Telera", "Cereales y panes", 262, 8, 51, P(90, "1 pieza (~90 g)")),
+    F("Concha", "Cereales y panes", 380, 7, 62, P(90, "1 pieza (~90 g)")),
+    F("Croissant", "Cereales y panes", 406, 8, 45, P(70, "1 pieza (~70 g)")),
 
     // ---------- Lácteos ----------
     F("Leche entera", "Lácteos", 61, 3.2, 4.8),
@@ -88,51 +106,106 @@
     F("Queso panela", "Lácteos", 215, 18, 3),
     F("Queso Oaxaca", "Lácteos", 350, 25, 3),
     F("Queso manchego", "Lácteos", 350, 24, 2),
+    F("Queso asadero", "Lácteos", 330, 24, 2.5),
     F("Crema", "Lácteos", 300, 2.5, 3),
     F("Requesón", "Lácteos", 98, 11, 3.4),
 
     // ---------- Platillos mexicanos ----------
-    F("Tacos al pastor", "Platillos mexicanos", 220, 12, 18),
-    F("Tacos de bistec", "Platillos mexicanos", 200, 14, 16),
-    F("Quesadilla", "Platillos mexicanos", 280, 12, 26),
-    F("Enchiladas", "Platillos mexicanos", 180, 8, 20),
-    F("Pozole", "Platillos mexicanos", 90, 6, 9),
-    F("Chilaquiles", "Platillos mexicanos", 190, 6, 22),
-    F("Tamal", "Platillos mexicanos", 230, 5, 30),
-    F("Guacamole", "Platillos mexicanos", 160, 2, 9),
-    F("Mole con pollo", "Platillos mexicanos", 160, 10, 12),
-    F("Frijoles refritos", "Platillos mexicanos", 135, 6, 18),
-    F("Sope", "Platillos mexicanos", 250, 7, 30),
-    F("Tostada", "Platillos mexicanos", 240, 8, 30),
-    F("Chile relleno", "Platillos mexicanos", 210, 9, 12),
-    F("Huevos rancheros", "Platillos mexicanos", 170, 9, 12),
-    F("Carne asada", "Platillos mexicanos", 250, 26, 2),
-    F("Torta de milanesa", "Platillos mexicanos", 260, 12, 28),
+    F("Tacos al pastor", "Platillos mexicanos", 220, 12, 18, P(90, "1 taco (~90 g)")),
+    F("Tacos de bistec", "Platillos mexicanos", 200, 14, 16, P(90, "1 taco (~90 g)")),
+    F("Tacos de canasta", "Platillos mexicanos", 230, 8, 22, P(70, "1 taco (~70 g)")),
+    F("Tacos de barbacoa", "Platillos mexicanos", 240, 15, 15, P(90, "1 taco (~90 g)")),
+    F("Quesadilla", "Platillos mexicanos", 280, 12, 26, P(120, "1 quesadilla (~120 g)")),
+    F("Enchiladas", "Platillos mexicanos", 180, 8, 20, P(300, "3 piezas con salsa (~300 g)")),
+    F("Chilaquiles", "Platillos mexicanos", 190, 6, 22, P(300, "1 plato (~300 g)")),
+    F("Tamal", "Platillos mexicanos", 230, 5, 30, P(150, "1 pieza (~150 g)")),
+    F("Guacamole", "Platillos mexicanos", 160, 2, 9, P(80, "2 cucharadas (~80 g)")),
+    F("Mole con pollo", "Platillos mexicanos", 160, 10, 12, P(350, "1 plato (~350 g)")),
+    F("Frijoles refritos", "Platillos mexicanos", 135, 6, 18, P(150, "1 porción (~150 g)")),
+    F("Sope", "Platillos mexicanos", 250, 7, 30, P(100, "1 pieza (~100 g)")),
+    F("Tostada", "Platillos mexicanos", 240, 8, 30, P(100, "1 pieza (~100 g)")),
+    F("Chile relleno", "Platillos mexicanos", 210, 9, 12, P(180, "1 pieza (~180 g)")),
+    F("Huevos rancheros", "Platillos mexicanos", 170, 9, 12, P(300, "1 plato (~300 g)")),
+    F("Carne asada", "Platillos mexicanos", 250, 26, 2, P(200, "1 porción (~200 g)")),
+    F("Birria de res", "Platillos mexicanos", 210, 18, 5, P(350, "1 plato con caldo (~350 g)")),
+    F("Tinga de pollo", "Platillos mexicanos", 175, 14, 8, P(200, "1 porción (~200 g)")),
+    F("Cochinita pibil", "Platillos mexicanos", 230, 18, 4, P(200, "1 porción (~200 g)")),
+    F("Tlayuda", "Platillos mexicanos", 230, 9, 24, P(350, "1 tlayuda (~350 g)")),
+    F("Aguachile de camarón", "Platillos mexicanos", 110, 15, 5, P(250, "1 plato (~250 g)")),
+    F("Ceviche de camarón", "Platillos mexicanos", 105, 14, 7, P(250, "1 vaso/plato (~250 g)")),
+    F("Flautas", "Platillos mexicanos", 260, 9, 24, P(200, "3 piezas (~200 g)")),
+    F("Gorditas", "Platillos mexicanos", 250, 8, 26, P(120, "1 pieza (~120 g)")),
+    F("Huarache", "Platillos mexicanos", 240, 9, 28, P(280, "1 huarache (~280 g)")),
+    F("Pambazo", "Platillos mexicanos", 300, 10, 34, P(280, "1 pieza (~280 g)")),
+    F("Molletes", "Platillos mexicanos", 260, 11, 28, P(200, "1 porción (~200 g)")),
+    F("Torta ahogada", "Platillos mexicanos", 240, 13, 26, P(350, "1 torta con salsa (~350 g)")),
+    // ---- Tortas (variedad solicitada) ----
+    F("Torta de milanesa", "Platillos mexicanos", 260, 12, 28, P(280, "1 torta (~280 g)")),
+    F("Torta combinada", "Platillos mexicanos", 230, 11, 26, P(260, "1 torta (~260 g)")),
+    F("Torta hawaiana", "Platillos mexicanos", 245, 10, 28, P(260, "1 torta (~260 g)")),
+    F("Torta de chorizo", "Platillos mexicanos", 285, 10, 24, P(250, "1 torta (~250 g)")),
+    F("Torta de queso asadero", "Platillos mexicanos", 255, 12, 27, P(240, "1 torta (~240 g)")),
+    F("Torta mexicana", "Platillos mexicanos", 235, 11, 27, P(270, "1 torta (~270 g)")),
+    F("Torta de jamón", "Platillos mexicanos", 220, 10, 28, P(230, "1 torta (~230 g)")),
+    F("Torta de pierna", "Platillos mexicanos", 250, 13, 25, P(260, "1 torta (~260 g)")),
+    F("Torta de pollo", "Platillos mexicanos", 235, 13, 26, P(260, "1 torta (~260 g)")),
+
+    // ---------- Caldos y sopas ----------
+    F("Caldo de pollo", "Caldos y sopas", 42, 4, 3, P(350, "1 plato (~350 g)")),
+    F("Caldo de res", "Caldos y sopas", 58, 5, 3, P(350, "1 plato (~350 g)")),
+    F("Caldo de hueso (medula)", "Caldos y sopas", 68, 5, 2, P(350, "1 plato (~350 g)")),
+    F("Consomé de espinazo", "Caldos y sopas", 72, 6, 3, P(350, "1 plato (~350 g)")),
+    F("Menudo", "Caldos y sopas", 68, 7, 5, P(400, "1 plato (~400 g)")),
+    F("Pozole", "Caldos y sopas", 90, 6, 9, P(400, "1 plato (~400 g)")),
+    F("Sopa de fideo", "Caldos y sopas", 55, 2, 9, P(300, "1 plato (~300 g)")),
+    F("Sopa de tortilla", "Caldos y sopas", 75, 3, 8, P(300, "1 plato (~300 g)")),
+    F("Sopa de lentejas", "Caldos y sopas", 90, 6, 14, P(300, "1 plato (~300 g)")),
+    F("Crema de elote", "Caldos y sopas", 95, 3, 12, P(300, "1 plato (~300 g)")),
+
+    // ---------- Comida china y sushi ----------
+    F("Arroz frito estilo chino", "Comida china y sushi", 180, 4, 30, P(300, "1 porción (~300 g)")),
+    F("Chow mein", "Comida china y sushi", 150, 6, 20, P(300, "1 porción (~300 g)")),
+    F("Pollo agridulce", "Comida china y sushi", 180, 12, 18, P(300, "1 porción (~300 g)")),
+    F("Pollo con almendras", "Comida china y sushi", 195, 14, 12, P(300, "1 porción (~300 g)")),
+    F("Res con verduras (wok)", "Comida china y sushi", 140, 12, 8, P(300, "1 porción (~300 g)")),
+    F("Rollo primavera", "Comida china y sushi", 180, 4, 20, P(80, "2 piezas (~80 g)")),
+    F("Wonton frito", "Comida china y sushi", 250, 8, 25, P(60, "3 piezas (~60 g)")),
+    F("Sopa wonton", "Comida china y sushi", 55, 4, 6, P(300, "1 plato (~300 g)")),
+    F("Sushi rollo California", "Comida china y sushi", 150, 6, 22, P(200, "8 piezas (~200 g)")),
+    F("Sushi uramaki (camarón empanizado)", "Comida china y sushi", 175, 7, 23, P(200, "8 piezas (~200 g)")),
+    F("Sushi rollo philadelphia", "Comida china y sushi", 190, 7, 20, P(200, "8 piezas (~200 g)")),
+    F("Sashimi de salmón", "Comida china y sushi", 145, 20, 0, P(90, "6 piezas (~90 g)")),
+    F("Nigiri de atún", "Comida china y sushi", 140, 15, 18, P(120, "6 piezas (~120 g)")),
+    F("Gyozas / empanadillas", "Comida china y sushi", 210, 7, 22, P(150, "6 piezas (~150 g)")),
 
     // ---------- Comida rápida ----------
-    F("Hamburguesa", "Comida rápida", 254, 13, 30),
-    F("Hamburguesa con queso", "Comida rápida", 300, 15, 30),
-    F("Pizza", "Comida rápida", 266, 11, 33),
-    F("Hot dog", "Comida rápida", 290, 10, 24),
-    F("Papas a la francesa", "Comida rápida", 312, 3.4, 41),
-    F("Pollo frito", "Comida rápida", 246, 19, 8),
-    F("Nuggets de pollo", "Comida rápida", 296, 15, 16),
-    F("Burrito", "Comida rápida", 206, 8, 24),
-    F("Sándwich", "Comida rápida", 250, 11, 28),
-    F("Alitas", "Comida rápida", 290, 27, 1),
+    F("Hamburguesa", "Comida rápida", 254, 13, 30, P(220, "1 pieza (~220 g)")),
+    F("Hamburguesa con queso", "Comida rápida", 300, 15, 30, P(240, "1 pieza (~240 g)")),
+    F("Pizza (rebanada)", "Comida rápida", 266, 11, 33, P(115, "1 rebanada (~115 g)")),
+    F("Hot dog", "Comida rápida", 290, 10, 24, P(150, "1 pieza (~150 g)")),
+    F("Papas a la francesa", "Comida rápida", 312, 3.4, 41, P(150, "1 orden chica (~150 g)")),
+    F("Pollo frito", "Comida rápida", 246, 19, 8, P(150, "1 pieza (~150 g)")),
+    F("Nuggets de pollo", "Comida rápida", 296, 15, 16, P(100, "6 piezas (~100 g)")),
+    F("Burrito", "Comida rápida", 206, 8, 24, P(250, "1 pieza (~250 g)")),
+    F("Sándwich", "Comida rápida", 250, 11, 28, P(180, "1 pieza (~180 g)")),
+    F("Alitas", "Comida rápida", 290, 27, 1, P(300, "6 piezas (~300 g)")),
+    F("Sub / sándwich submarino", "Comida rápida", 260, 13, 30, P(280, "1 pieza 15 cm (~280 g)")),
 
     // ---------- Snacks / chatarra ----------
     F("Papas fritas (bolsa)", "Snacks / chatarra", 536, 7, 53),
     F("Nachos / Doritos", "Snacks / chatarra", 498, 7, 63),
     F("Chocolate", "Snacks / chatarra", 546, 5, 61),
     F("Galletas", "Snacks / chatarra", 480, 6, 64),
-    F("Dona", "Snacks / chatarra", 452, 5, 51),
+    F("Dona", "Snacks / chatarra", 452, 5, 51, P(60, "1 pieza (~60 g)")),
     F("Palomitas", "Snacks / chatarra", 387, 12, 78),
     F("Cacahuates", "Snacks / chatarra", 567, 26, 16),
     F("Helado", "Snacks / chatarra", 207, 3.5, 24),
-    F("Pastel", "Snacks / chatarra", 350, 5, 50),
-    F("Churros", "Snacks / chatarra", 400, 5, 55),
+    F("Pastel", "Snacks / chatarra", 350, 5, 50, P(100, "1 rebanada (~100 g)")),
+    F("Churros", "Snacks / chatarra", 400, 5, 55, P(50, "1 pieza (~50 g)")),
     F("Gomitas", "Snacks / chatarra", 396, 0, 98),
+    F("Chicharrón de cerdo", "Snacks / chatarra", 545, 61, 0),
+    F("Mazapán", "Snacks / chatarra", 460, 12, 45, P(28, "1 pieza (~28 g)")),
+    F("Obleas con cajeta", "Snacks / chatarra", 380, 3, 60, P(40, "1 pieza (~40 g)")),
 
     // ---------- Bebidas (por 100 ml) ----------
     F("Agua", "Bebidas", 0, 0, 0),
@@ -140,12 +213,14 @@
     F("Refresco light", "Bebidas", 0, 0, 0),
     F("Jugo de naranja", "Bebidas", 45, 0.7, 10),
     F("Cerveza", "Bebidas", 43, 0.5, 3.6),
+    F("Michelada", "Bebidas", 45, 0.4, 4, P(400, "1 vaso (~400 ml)")),
     F("Café negro", "Bebidas", 2, 0.1, 0),
     F("Café con leche", "Bebidas", 55, 3, 6),
     F("Té sin azúcar", "Bebidas", 1, 0, 0),
     F("Leche con chocolate", "Bebidas", 83, 3, 11),
     F("Bebida energética", "Bebidas", 45, 0, 11),
     F("Agua de horchata", "Bebidas", 80, 1, 16),
+    F("Agua de jamaica", "Bebidas", 35, 0, 9),
     F("Licuado de plátano", "Bebidas", 90, 3, 15),
     F("Vino", "Bebidas", 83, 0.1, 2.6),
     F("Limonada", "Bebidas", 40, 0, 10)
