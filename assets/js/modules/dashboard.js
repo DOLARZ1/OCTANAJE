@@ -78,12 +78,7 @@
     ]));
     row2.appendChild(actCard);
 
-    const finCard = el("div", { class: "card" }, [
-      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Gasto por categoría (mes)"])]),
-    ]);
-    const cvFin = el("canvas");
-    finCard.appendChild(el("div", { class: "chart-box" }, [cvFin]));
-    row2.appendChild(finCard);
+    row2.appendChild(incomeExpenseCard(container));
     container.appendChild(row2);
 
     // Logros
@@ -96,14 +91,18 @@
     const achGrid = el("div", { class: "grid cols-4" });
     Gami.allAchievements().forEach((a) => {
       const un = s.achievements.includes(a.id);
-      achGrid.appendChild(el("div", { class: "card", style: "padding:12px;text-align:center;opacity:" + (un ? "1" : ".38"), title: a.desc }, [
-        el("div", { style: "font-size:26px;filter:" + (un ? "none" : "grayscale(1)"), text: a.icon }),
+      const tier = a.tier || "common";
+      achGrid.appendChild(el("div", { class: "card ach-card ach-" + tier + (un ? " ach-on" : ""), style: "padding:12px;text-align:center", title: a.desc }, [
+        el("div", { class: "ach-ico", text: a.icon }),
         el("div", { class: "fs-12 fw-700 mt-8", text: a.name }),
         el("div", { class: "fs-12 text-faint", text: un ? "Desbloqueado" : "Bloqueado" })
       ]));
     });
     achCard.appendChild(achGrid);
     container.appendChild(achCard);
+
+    // Medallas por racha (escalera estilo battle-pass)
+    container.appendChild(buildMedalLadderCard(streak));
 
     // dibujar gráficas
     setTimeout(() => {
@@ -113,8 +112,6 @@
       const h7 = N.Habits.weeklySeries();
       const t7 = N.Tasks.completed7();
       Charts.bars(cvAct, { labels: h7.labels, series: [{ values: h7.values, color: "--accent" }, { values: t7.values, color: "--good" }] }, { height: 180 });
-
-      Charts.doughnut(cvFin, N.Finance.expenseByCategory(), { height: 190, centerLabel: fmt.money(N.Finance.monthExpense()), centerSub: "gasto mes" });
     }, 40);
   }
 
@@ -122,6 +119,87 @@
     return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
       el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
     ])]);
+  }
+
+  // ---------- Ingresos y gastos (medidor radial) ----------
+  let ieDashPeriod = "monthly"; // "daily" | "weekly" | "biweekly" | "monthly"
+
+  function ieLegendRow(idx, label, val, maxV, colorVar) {
+    const pct = maxV > 0 ? Math.round((val / maxV) * 100) : 0;
+    const cvar = "var(" + colorVar + ")";
+    return el("div", { class: "flex items-center gap-12", style: "padding:6px 0" }, [
+      el("div", { style: "width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:#04122b;background:" + cvar + ";box-shadow:0 0 12px " + cvar }, [
+        el("span", { text: "0" + idx })
+      ]),
+      el("div", { class: "item-main" }, [
+        el("div", { class: "item-title", style: "font-size:14px", text: label }),
+        el("div", { class: "text-faint fs-12", text: fmt.money(val) })
+      ]),
+      el("div", { style: "font-size:20px;font-weight:800;color:" + cvar, text: pct + "%" })
+    ]);
+  }
+
+  function incomeExpenseCard(container) {
+    const t = N.Finance.periodTotals(ieDashPeriod);
+    const maxV = Math.max(t.income, t.expense, 1);
+    const bal = t.income - t.expense;
+
+    function segBtn(mode, label) {
+      const b = el("button", { text: label, onclick: () => { ieDashPeriod = mode; N.Audio.play("tab"); render(container); } });
+      if (ieDashPeriod === mode) b.classList.add("on");
+      return b;
+    }
+
+    const card = el("div", { class: "card" }, [
+      el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Ingresos y gastos · " + t.label]),
+        el("div", { class: "seg" }, [
+          segBtn("daily", "Diario"), segBtn("weekly", "Semanal"), segBtn("biweekly", "Quincenal"), segBtn("monthly", "Mensual")
+        ])
+      ])
+    ]);
+    const cv = el("canvas");
+    const legend = el("div", { style: "flex:1;min-width:180px;display:flex;flex-direction:column;gap:8px;justify-content:center" }, [
+      ieLegendRow(1, "Ingresos", t.income, maxV, "--good"),
+      ieLegendRow(2, "Gastos", t.expense, maxV, "--bad")
+    ]);
+    card.appendChild(el("div", { class: "flex", style: "gap:18px;align-items:center;flex-wrap:wrap" }, [
+      el("div", { style: "flex:1;min-width:170px;display:flex;justify-content:center" }, [cv]),
+      legend
+    ]));
+    setTimeout(() => {
+      Charts.multiRing(cv, [
+        { pct: (t.income / maxV) * 100, color: "--good" },
+        { pct: (t.expense / maxV) * 100, color: "--bad" }
+      ], { size: 180, centerLabel: fmt.money(bal), centerSub: "balance" });
+    }, 30);
+    return card;
+  }
+
+  // ---------- Escalera de medallas por racha ----------
+  function buildMedalLadderCard(streak) {
+    const cur = Gami.medalForStreak(streak);
+    const next = Gami.nextMedal(streak);
+    const card = el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "🎖️ Medallas por racha"]),
+        el("span", { class: "chip accent", text: "🔥 " + streak + " día" + (streak === 1 ? "" : "s") })
+      ]),
+      el("div", { class: "flex items-center gap-12", style: "margin-bottom:14px" }, [
+        el("div", { class: "medal-badge medal-" + cur.cls, html: Gami.medalBadgeSvg(cur) }),
+        el("div", {}, [
+          el("div", { class: "fw-700", style: "font-size:16px", text: cur.name }),
+          el("div", { class: "fs-12 text-faint", text: next ? ("Faltan " + (next.minStreak - streak) + " día" + ((next.minStreak - streak) === 1 ? "" : "s") + " para " + next.name) : "¡Rango máximo alcanzado!" })
+        ])
+      ])
+    ]);
+    const strip = el("div", { class: "medal-strip" });
+    Gami.allMedals().forEach((m) => {
+      const reached = streak >= m.minStreak;
+      strip.appendChild(el("div", { class: "medal-mini medal-" + m.cls + (reached ? " on" : " off") + (m.id === cur.id ? " active" : ""), title: m.name + " · racha " + m.minStreak + "+", html: Gami.medalBadgeSvg(m) }));
+    });
+    card.appendChild(strip);
+    return card;
   }
 
   // ---------- Calendario de actividad ----------

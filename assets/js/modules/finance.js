@@ -99,6 +99,85 @@
   }
 
   // ---------------------------------------------------------------
+  //  INGRESOS Y GASTOS — medidor radial combinado (reemplaza el
+  //  antiguo "gastos por categoría"), con temporalidad seleccionable.
+  // ---------------------------------------------------------------
+  let iePeriod = "monthly"; // "daily" | "weekly" | "biweekly" | "monthly"
+
+  function periodRange(period) {
+    const to = DateUtil.todayKey();
+    let from, label;
+    if (period === "daily") { from = to; label = "hoy"; }
+    else if (period === "weekly") { from = DateUtil.addDays(to, -6); label = "últimos 7 días"; }
+    else if (period === "biweekly") { from = DateUtil.addDays(to, -14); label = "últimos 15 días"; }
+    else { from = DateUtil.monthKey() + "-01"; label = "este mes"; }
+    return { from, to, label };
+  }
+
+  function periodTotals(period) {
+    const r = periodRange(period);
+    const list = txs().filter((t) => t.date >= r.from && t.date <= r.to);
+    return {
+      income: sum(list.filter((t) => t.type === "income")),
+      expense: sum(list.filter((t) => t.type === "expense")),
+      label: r.label
+    };
+  }
+
+  function ieLegendRow(idx, label, val, maxV, colorVar) {
+    const pct = maxV > 0 ? Math.round((val / maxV) * 100) : 0;
+    const cvar = "var(" + colorVar + ")";
+    return el("div", { class: "flex items-center gap-12", style: "padding:6px 0" }, [
+      el("div", { style: "width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:#04122b;background:" + cvar + ";box-shadow:0 0 12px " + cvar }, [
+        el("span", { text: "0" + idx })
+      ]),
+      el("div", { class: "item-main" }, [
+        el("div", { class: "item-title", style: "font-size:14px", text: label }),
+        el("div", { class: "text-faint fs-12", text: fmt.money(val) })
+      ]),
+      el("div", { style: "font-size:20px;font-weight:800;color:" + cvar, text: pct + "%" })
+    ]);
+  }
+
+  function incomeExpenseCard(rerender) {
+    const t = periodTotals(iePeriod);
+    const maxV = Math.max(t.income, t.expense, 1);
+    const bal = t.income - t.expense;
+
+    function segBtn(mode, label) {
+      const b = el("button", { text: label, onclick: () => { iePeriod = mode; Audio.play("tab"); rerender(); } });
+      if (iePeriod === mode) b.classList.add("on");
+      return b;
+    }
+
+    const card = el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Ingresos y gastos · " + t.label]),
+        el("div", { class: "seg" }, [
+          segBtn("daily", "Diario"), segBtn("weekly", "Semanal"), segBtn("biweekly", "Quincenal"), segBtn("monthly", "Mensual")
+        ])
+      ])
+    ]);
+    const cv = el("canvas");
+    const legend = el("div", { style: "flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px;justify-content:center" }, [
+      ieLegendRow(1, "Ingresos", t.income, maxV, "--good"),
+      ieLegendRow(2, "Gastos", t.expense, maxV, "--bad")
+    ]);
+    card.appendChild(el("div", { class: "flex", style: "gap:22px;align-items:center;flex-wrap:wrap" }, [
+      el("div", { style: "flex:1;min-width:200px;display:flex;justify-content:center" }, [cv]),
+      legend
+    ]));
+    card.appendChild(el("div", { class: "fs-12 text-faint mt-8", text: (bal >= 0 ? "Balance positivo de " : "Déficit de ") + fmt.money(Math.abs(bal)) + " en el periodo." }));
+    setTimeout(() => {
+      Charts.multiRing(cv, [
+        { pct: (t.income / maxV) * 100, color: "--good" },
+        { pct: (t.expense / maxV) * 100, color: "--bad" }
+      ], { size: 210, centerLabel: fmt.money(bal), centerSub: "balance" });
+    }, 30);
+    return card;
+  }
+
+  // ---------------------------------------------------------------
   //  MOTOR DE IA — genera insights a partir de los datos
   // ---------------------------------------------------------------
   function analyze() {
@@ -417,6 +496,9 @@
     // Panel de mercados y noticias (cotizaciones en vivo + fuentes)
     container.appendChild(marketsCard());
 
+    // Ingresos y gastos — medidor radial combinado con temporalidad
+    container.appendChild(incomeExpenseCard(() => render(container)));
+
     // Gráficas
     const charts = el("div", { class: "grid cols-2 mb-16" });
 
@@ -456,18 +538,24 @@
     charts.appendChild(trendCard);
 
     const catCard = el("div", { class: "card" }, [
-      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Gastos por categoría"])])
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Top categorías de gasto"])])
     ]);
-    const cvCat = el("canvas");
-    catCard.appendChild(el("div", { class: "chart-box" }, [cvCat]));
     const cats = expenseByCategory();
     const legend = el("div", { class: "mt-8" });
-    cats.slice(0, 5).forEach((c) => {
-      legend.appendChild(el("div", { class: "flex items-center justify-between fs-12", style: "padding:3px 0" }, [
-        el("span", { text: (CAT_ICON[c.label] || "•") + " " + c.label }),
-        el("span", { class: "fw-700", text: fmt.money(c.value) })
-      ]));
-    });
+    if (!cats.length) {
+      legend.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "◈" }), el("div", { text: "Sin gastos registrados este mes." })]));
+    } else {
+      cats.slice(0, 8).forEach((c) => {
+        const pct = exp > 0 ? Math.round((c.value / exp) * 100) : 0;
+        legend.appendChild(el("div", { style: "padding:6px 0" }, [
+          el("div", { class: "flex items-center justify-between fs-12" }, [
+            el("span", { text: (CAT_ICON[c.label] || "•") + " " + c.label }),
+            el("span", { class: "fw-700", text: fmt.money(c.value) + " · " + pct + "%" })
+          ]),
+          el("div", { class: "progress mt-8" }, [el("span", { style: "width:" + pct + "%" })])
+        ]));
+      });
+    }
     catCard.appendChild(legend);
     charts.appendChild(catCard);
     container.appendChild(charts);
@@ -483,7 +571,6 @@
           series: [{ values: m.map((x) => x.income), color: "--good" }, { values: m.map((x) => x.expense), color: "--bad" }]
         }, { height: 190 });
       }
-      Charts.doughnut(cvCat, cats, { height: 190, centerLabel: fmt.money(exp), centerSub: "gasto mes" });
     }, 30);
 
     // Movimientos recientes
@@ -602,5 +689,5 @@
     return card;
   }
 
-  N.Finance = { render, monthIncome, monthExpense, monthBalance, expenseByCategory, last6Months, analyze };
+  N.Finance = { render, monthIncome, monthExpense, monthBalance, expenseByCategory, last6Months, analyze, periodTotals, periodRange };
 })();

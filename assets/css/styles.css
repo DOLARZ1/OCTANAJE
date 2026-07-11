@@ -657,3 +657,70 @@ canvas { display: block; width: 100%; }
 .card.habit-off { opacity: .58; }
 .card.habit-off .item-title { color: var(--txt-dim); }
 .check.check-off { border-style: dashed; opacity: .8; cursor: default; }
+
+
+/* =====================================================================
+   MEDALLAS POR RACHA (estilo battle-pass: Bronce → ... → Gran Maestro)
+   ===================================================================== */
+.medal-badge {
+  display: inline-grid; place-items: center; flex: none; line-height: 0;
+  filter: drop-shadow(0 0 6px var(--mc1, #c98a55)) drop-shadow(0 0 12px var(--mc2, #8a5a3c));
+  animation: medalFloat 3.2s ease-in-out infinite;
+}
+.medal-badge svg { display: block; }
+@keyframes medalFloat { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.04); } }
+
+.medal-bronze    { --mc1: #c98a55; --mc2: #8a5a3c; }
+.medal-silver    { --mc1: #e6ecf5; --mc2: #9aa4b2; }
+.medal-gold      { --mc1: #ffe98a; --mc2: #d9a521; }
+.medal-platinum  { --mc1: #c8fff2; --mc2: #5fd3c4; }
+.medal-diamond   { --mc1: #b6e2ff; --mc2: #3fa3ff; }
+.medal-heroic    { --mc1: #ffe600; --mc2: #ff2fb0; animation: medalFloat 2.2s ease-in-out infinite, medalGlow 1.6s ease-in-out infinite; }
+.medal-grandmaster { --mc1: #00e5ff; --mc2: #ff2fb0; animation: medalFloat 2s ease-in-out infinite, medalRainbow 3.5s linear infinite; }
+@keyframes medalGlow {
+  0%, 100% { filter: drop-shadow(0 0 6px var(--mc1)) drop-shadow(0 0 12px var(--mc2)); }
+  50% { filter: drop-shadow(0 0 11px var(--mc1)) drop-shadow(0 0 20px var(--mc2)); }
+}
+@keyframes medalRainbow {
+  0%   { filter: drop-shadow(0 0 9px #00e5ff) drop-shadow(0 0 16px #7c5cff); }
+  33%  { filter: drop-shadow(0 0 9px #7c5cff) drop-shadow(0 0 16px #ff2fb0); }
+  66%  { filter: drop-shadow(0 0 9px #ff2fb0) drop-shadow(0 0 16px #ffe600); }
+  100% { filter: drop-shadow(0 0 9px #00e5ff) drop-shadow(0 0 16px #7c5cff); }
+}
+
+.medal-strip { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
+.medal-mini { display: inline-grid; place-items: center; width: 40px; height: 44px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--border); transition: transform .15s ease; }
+.medal-mini svg { width: 22px; height: 26px; }
+.medal-mini.off { opacity: .28; filter: grayscale(1); }
+.medal-mini.on { opacity: 1; filter: none; }
+.medal-mini.active { border-color: var(--accent); box-shadow: var(--glow); transform: translateY(-3px) scale(1.08); }
+.medal-mini:hover { transform: translateY(-2px); }
+
+
+/* =====================================================================
+   LOGROS — colores neón vivos por rareza (common/rare/epic/legendary)
+   ===================================================================== */
+.ach-card { transition: transform .18s ease, box-shadow .2s ease; }
+.ach-ico { font-size: 26px; filter: grayscale(1); opacity: .35; transition: .2s; }
+.ach-card.ach-on .ach-ico { filter: none; opacity: 1; }
+
+.ach-common.ach-on { border-color: color-mix(in srgb, var(--good) 45%, var(--border)); box-shadow: 0 0 14px color-mix(in srgb, var(--good) 35%, transparent); }
+.ach-common.ach-on .ach-ico { filter: drop-shadow(0 0 6px var(--good)); }
+
+.ach-rare.ach-on { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 45%, transparent); }
+.ach-rare.ach-on .ach-ico { filter: drop-shadow(0 0 7px var(--accent)); }
+
+.ach-epic.ach-on { border-color: color-mix(in srgb, #b14bff 60%, var(--border)); box-shadow: 0 0 18px rgba(177, 75, 255, .55); }
+.ach-epic.ach-on .ach-ico { filter: drop-shadow(0 0 8px #b14bff); }
+
+.ach-legendary.ach-on {
+  border-color: transparent;
+  box-shadow: 0 0 22px rgba(255, 214, 0, .6), 0 0 40px rgba(255, 47, 176, .3);
+  animation: achLegendary 2.4s ease-in-out infinite;
+}
+.ach-legendary.ach-on .ach-ico { filter: drop-shadow(0 0 9px #ffe600) drop-shadow(0 0 16px #ff2fb0); }
+@keyframes achLegendary {
+  0%, 100% { box-shadow: 0 0 18px rgba(255, 214, 0, .5), 0 0 32px rgba(255, 47, 176, .25); }
+  50% { box-shadow: 0 0 28px rgba(255, 214, 0, .75), 0 0 48px rgba(255, 47, 176, .45); }
+}
+.ach-card:hover { transform: translateY(-3px); }

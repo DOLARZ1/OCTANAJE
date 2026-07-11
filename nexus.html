@@ -667,6 +667,73 @@ canvas { display: block; width: 100%; }
 .card.habit-off .item-title { color: var(--txt-dim); }
 .check.check-off { border-style: dashed; opacity: .8; cursor: default; }
 
+
+/* =====================================================================
+   MEDALLAS POR RACHA (estilo battle-pass: Bronce → ... → Gran Maestro)
+   ===================================================================== */
+.medal-badge {
+  display: inline-grid; place-items: center; flex: none; line-height: 0;
+  filter: drop-shadow(0 0 6px var(--mc1, #c98a55)) drop-shadow(0 0 12px var(--mc2, #8a5a3c));
+  animation: medalFloat 3.2s ease-in-out infinite;
+}
+.medal-badge svg { display: block; }
+@keyframes medalFloat { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.04); } }
+
+.medal-bronze    { --mc1: #c98a55; --mc2: #8a5a3c; }
+.medal-silver    { --mc1: #e6ecf5; --mc2: #9aa4b2; }
+.medal-gold      { --mc1: #ffe98a; --mc2: #d9a521; }
+.medal-platinum  { --mc1: #c8fff2; --mc2: #5fd3c4; }
+.medal-diamond   { --mc1: #b6e2ff; --mc2: #3fa3ff; }
+.medal-heroic    { --mc1: #ffe600; --mc2: #ff2fb0; animation: medalFloat 2.2s ease-in-out infinite, medalGlow 1.6s ease-in-out infinite; }
+.medal-grandmaster { --mc1: #00e5ff; --mc2: #ff2fb0; animation: medalFloat 2s ease-in-out infinite, medalRainbow 3.5s linear infinite; }
+@keyframes medalGlow {
+  0%, 100% { filter: drop-shadow(0 0 6px var(--mc1)) drop-shadow(0 0 12px var(--mc2)); }
+  50% { filter: drop-shadow(0 0 11px var(--mc1)) drop-shadow(0 0 20px var(--mc2)); }
+}
+@keyframes medalRainbow {
+  0%   { filter: drop-shadow(0 0 9px #00e5ff) drop-shadow(0 0 16px #7c5cff); }
+  33%  { filter: drop-shadow(0 0 9px #7c5cff) drop-shadow(0 0 16px #ff2fb0); }
+  66%  { filter: drop-shadow(0 0 9px #ff2fb0) drop-shadow(0 0 16px #ffe600); }
+  100% { filter: drop-shadow(0 0 9px #00e5ff) drop-shadow(0 0 16px #7c5cff); }
+}
+
+.medal-strip { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
+.medal-mini { display: inline-grid; place-items: center; width: 40px; height: 44px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--border); transition: transform .15s ease; }
+.medal-mini svg { width: 22px; height: 26px; }
+.medal-mini.off { opacity: .28; filter: grayscale(1); }
+.medal-mini.on { opacity: 1; filter: none; }
+.medal-mini.active { border-color: var(--accent); box-shadow: var(--glow); transform: translateY(-3px) scale(1.08); }
+.medal-mini:hover { transform: translateY(-2px); }
+
+
+/* =====================================================================
+   LOGROS — colores neón vivos por rareza (common/rare/epic/legendary)
+   ===================================================================== */
+.ach-card { transition: transform .18s ease, box-shadow .2s ease; }
+.ach-ico { font-size: 26px; filter: grayscale(1); opacity: .35; transition: .2s; }
+.ach-card.ach-on .ach-ico { filter: none; opacity: 1; }
+
+.ach-common.ach-on { border-color: color-mix(in srgb, var(--good) 45%, var(--border)); box-shadow: 0 0 14px color-mix(in srgb, var(--good) 35%, transparent); }
+.ach-common.ach-on .ach-ico { filter: drop-shadow(0 0 6px var(--good)); }
+
+.ach-rare.ach-on { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 45%, transparent); }
+.ach-rare.ach-on .ach-ico { filter: drop-shadow(0 0 7px var(--accent)); }
+
+.ach-epic.ach-on { border-color: color-mix(in srgb, #b14bff 60%, var(--border)); box-shadow: 0 0 18px rgba(177, 75, 255, .55); }
+.ach-epic.ach-on .ach-ico { filter: drop-shadow(0 0 8px #b14bff); }
+
+.ach-legendary.ach-on {
+  border-color: transparent;
+  box-shadow: 0 0 22px rgba(255, 214, 0, .6), 0 0 40px rgba(255, 47, 176, .3);
+  animation: achLegendary 2.4s ease-in-out infinite;
+}
+.ach-legendary.ach-on .ach-ico { filter: drop-shadow(0 0 9px #ffe600) drop-shadow(0 0 16px #ff2fb0); }
+@keyframes achLegendary {
+  0%, 100% { box-shadow: 0 0 18px rgba(255, 214, 0, .5), 0 0 32px rgba(255, 47, 176, .25); }
+  50% { box-shadow: 0 0 28px rgba(255, 214, 0, .75), 0 0 48px rgba(255, 47, 176, .45); }
+}
+.ach-card:hover { transform: translateY(-3px); }
+
 </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='64' y2='64'><stop offset='0' stop-color='%2300e5ff'/><stop offset='.5' stop-color='%237c5cff'/><stop offset='1' stop-color='%23ff2fb0'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='%23060814'/><polygon points='32,9 51,20 51,44 32,55 13,44 13,20' fill='none' stroke='url(%23g)' stroke-width='4'/><circle cx='32' cy='32' r='6' fill='url(%23g)'/></svg>" />
   <!-- PWA -->
@@ -719,6 +786,7 @@ canvas { display: block; width: 100%; }
         <div class="streak-chip" id="global-streak" title="Racha global de días activos">
           <span class="flame">🔥</span><span id="streak-days">0</span>
         </div>
+        <div class="medal-badge medal-bronze" id="medal-badge" title="Medalla por racha"></div>
 
         <button class="icon-btn" id="settings-btn" title="Ajustes: tema, sonido, moneda, datos">⚙️</button>
       </div>
@@ -1750,26 +1818,104 @@ canvas { display: block; width: 100%; }
     { min: 45, name: "Leyenda" }
   ];
 
+  // tier → intensidad visual del logro (común, raro, épico, legendario)
   const ACHIEVEMENTS = [
-    { id: "first_step", name: "Primer paso", icon: "👣", desc: "Registra tu primera acción", test: (s) => totalActions(s) >= 1 },
-    { id: "streak_3", name: "En marcha", icon: "🔥", desc: "Racha de 3 días", test: (s) => Gami.globalStreak() >= 3 },
-    { id: "streak_7", name: "Semana perfecta", icon: "🗓️", desc: "Racha de 7 días", test: (s) => Gami.globalStreak() >= 7 },
-    { id: "streak_30", name: "Imparable", icon: "⚡", desc: "Racha de 30 días", test: (s) => Gami.globalStreak() >= 30 },
-    { id: "level_5", name: "Nivel 5", icon: "⭐", desc: "Alcanza el nivel 5", test: (s) => s.profile.level >= 5 },
-    { id: "level_10", name: "Nivel 10", icon: "🌟", desc: "Alcanza el nivel 10", test: (s) => s.profile.level >= 10 },
-    { id: "habit_master", name: "Maestro del hábito", icon: "✦", desc: "5 hábitos activos", test: (s) => s.habits.length >= 5 },
-    { id: "saver", name: "Ahorrador", icon: "💰", desc: "Balance mensual positivo", test: (s) => window.NEXUS.Finance && window.NEXUS.Finance.monthBalance() > 0 },
-    { id: "task_crusher", name: "Productivo", icon: "✓", desc: "Completa 10 tareas", test: (s) => s.tasks.filter((t) => t.done).length >= 10 },
-    { id: "athlete", name: "Atleta", icon: "🏆", desc: "Registra 10 entrenamientos", test: (s) => s.workouts.length >= 10 },
-    { id: "achiever", name: "Cumplidor", icon: "◉", desc: "Completa una meta al 100%", test: (s) => s.goals.some((g) => g.current >= g.target && g.target > 0) }
+    { id: "first_step", name: "Primer paso", icon: "👣", desc: "Registra tu primera acción", tier: "common", test: (s) => totalActions(s) >= 1 },
+    { id: "streak_3", name: "En marcha", icon: "🔥", desc: "Racha de 3 días", tier: "common", test: (s) => Gami.globalStreak() >= 3 },
+    { id: "streak_7", name: "Semana perfecta", icon: "🗓️", desc: "Racha de 7 días", tier: "rare", test: (s) => Gami.globalStreak() >= 7 },
+    { id: "streak_30", name: "Imparable", icon: "⚡", desc: "Racha de 30 días", tier: "epic", test: (s) => Gami.globalStreak() >= 30 },
+    { id: "streak_60", name: "Racha volcánica", icon: "🌋", desc: "Racha de 60 días", tier: "epic", test: (s) => Gami.globalStreak() >= 60 },
+    { id: "streak_100", name: "Centenario", icon: "👑", desc: "Racha de 100 días", tier: "legendary", test: (s) => Gami.globalStreak() >= 100 },
+    { id: "level_5", name: "Nivel 5", icon: "⭐", desc: "Alcanza el nivel 5", tier: "common", test: (s) => s.profile.level >= 5 },
+    { id: "level_10", name: "Nivel 10", icon: "🌟", desc: "Alcanza el nivel 10", tier: "rare", test: (s) => s.profile.level >= 10 },
+    { id: "level_20", name: "Nivel 20", icon: "💠", desc: "Alcanza el nivel 20", tier: "epic", test: (s) => s.profile.level >= 20 },
+    { id: "level_30", name: "Nivel 30", icon: "🏵️", desc: "Alcanza el nivel 30", tier: "legendary", test: (s) => s.profile.level >= 30 },
+    { id: "habit_master", name: "Maestro del hábito", icon: "✦", desc: "5 hábitos activos", tier: "rare", test: (s) => s.habits.length >= 5 },
+    { id: "saver", name: "Ahorrador", icon: "💰", desc: "Balance mensual positivo", tier: "rare", test: (s) => window.NEXUS.Finance && window.NEXUS.Finance.monthBalance() > 0 },
+    { id: "saver_5k", name: "Gran ahorrador", icon: "🏦", desc: "Acumula $5,000 en tu alcancía", tier: "epic", test: (s) => (s.finance.savings || []).reduce((a, e) => a + e.amount, 0) >= 5000 },
+    { id: "task_crusher", name: "Productivo", icon: "✓", desc: "Completa 10 tareas", tier: "rare", test: (s) => s.tasks.filter((t) => t.done).length >= 10 },
+    { id: "task_100", name: "Cien tareas", icon: "✅", desc: "Completa 100 tareas", tier: "epic", test: (s) => s.tasks.filter((t) => t.done).length >= 100 },
+    { id: "athlete", name: "Atleta", icon: "🏆", desc: "Registra 10 entrenamientos", tier: "rare", test: (s) => s.workouts.length >= 10 },
+    { id: "athlete_50", name: "Atleta de élite", icon: "🥇", desc: "Registra 50 entrenamientos", tier: "epic", test: (s) => s.workouts.length >= 50 },
+    { id: "achiever", name: "Cumplidor", icon: "◉", desc: "Completa una meta al 100%", tier: "rare", test: (s) => s.goals.some((g) => g.current >= g.target && g.target > 0) },
+    { id: "nutrition_30", name: "Nutrición constante", icon: "🍽️", desc: "Registra 30 alimentos", tier: "rare", test: (s) => ((s.nutrition && s.nutrition.log) || []).length >= 30 },
+    { id: "diamond_rank", name: "Rango Diamante", icon: "💎", desc: "Alcanza el rango Diamante por racha", tier: "epic", test: (s) => Gami.medalForStreak(Gami.globalStreak()).cls === "diamond" },
+    { id: "heroic_rank", name: "Rango Heroico", icon: "⚔️", desc: "Alcanza el rango Heroico por racha", tier: "legendary", test: (s) => Gami.medalForStreak(Gami.globalStreak()).cls === "heroic" },
+    { id: "grandmaster_rank", name: "Gran Maestro", icon: "🎖️", desc: "Alcanza el rango máximo: Gran Maestro", tier: "legendary", test: (s) => Gami.medalForStreak(Gami.globalStreak()).id === "grandmaster" },
+    { id: "all_rounder", name: "Multidisciplinario", icon: "🌐", desc: "Registra actividad en 6 módulos distintos el mismo día", tier: "legendary", test: (s) => {
+      const k = DateUtil.todayKey();
+      const habitsOk = s.habits.some((h) => h.history && h.history[k]);
+      const finOk = s.finance.transactions.some((t) => t.date === k);
+      const tasksOk = s.tasks.some((t) => t.doneAt === k);
+      const workOk = s.workouts.some((w) => w.date === k);
+      const focusOk = (s.focus.sessionsLog && s.focus.sessionsLog[k]) > 0;
+      const nutOk = ((s.nutrition && s.nutrition.log) || []).some((n) => n.date === k);
+      return [habitsOk, finOk, tasksOk, workOk, focusOk, nutOk].filter(Boolean).length >= 6;
+    } }
   ];
 
   function totalActions(s) {
     return Object.keys(s.xpLog).length + s.tasks.length + s.workouts.length + s.finance.transactions.length;
   }
 
+  // ---------------------------------------------------------------
+  //  MEDALLAS POR RACHA — escalera estilo "battle pass" (Free Fire)
+  //  Bronce → Plata → Oro → Platino → Diamante I-V → Heroico (+5★) → Gran Maestro
+  // ---------------------------------------------------------------
+  const MEDALS = [
+    { id: "bronze", name: "Bronce", cls: "bronze", minStreak: 0, colors: ["#8a5a3c", "#c98a55"] },
+    { id: "silver", name: "Plata", cls: "silver", minStreak: 3, colors: ["#9aa4b2", "#e6ecf5"] },
+    { id: "gold", name: "Oro", cls: "gold", minStreak: 7, colors: ["#d9a521", "#ffe98a"] },
+    { id: "platinum", name: "Platino", cls: "platinum", minStreak: 12, colors: ["#5fd3c4", "#c8fff2"] },
+    { id: "diamond1", name: "Diamante I", cls: "diamond", minStreak: 18, colors: ["#3fa3ff", "#b6e2ff"] },
+    { id: "diamond2", name: "Diamante II", cls: "diamond", minStreak: 24, colors: ["#3fa3ff", "#b6e2ff"] },
+    { id: "diamond3", name: "Diamante III", cls: "diamond", minStreak: 30, colors: ["#3fa3ff", "#b6e2ff"] },
+    { id: "diamond4", name: "Diamante IV", cls: "diamond", minStreak: 36, colors: ["#3fa3ff", "#b6e2ff"] },
+    { id: "diamond5", name: "Diamante V", cls: "diamond", minStreak: 42, colors: ["#3fa3ff", "#b6e2ff"] },
+    { id: "heroic", name: "Heroico", cls: "heroic", minStreak: 50, stars: 0, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "heroic1", name: "Heroico · 1★", cls: "heroic", minStreak: 58, stars: 1, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "heroic2", name: "Heroico · 2★", cls: "heroic", minStreak: 66, stars: 2, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "heroic3", name: "Heroico · 3★", cls: "heroic", minStreak: 74, stars: 3, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "heroic4", name: "Heroico · 4★", cls: "heroic", minStreak: 82, stars: 4, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "heroic5", name: "Heroico · 5★", cls: "heroic", minStreak: 90, stars: 5, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "grandmaster", name: "Gran Maestro", cls: "grandmaster", minStreak: 100, stars: 0, colors: ["#00e5ff", "#7c5cff", "#ff2fb0", "#ffe600"] }
+  ];
+
+  // construye el SVG de la medalla (escudo con gema) coloreado por rango
+  function medalBadgeSvg(medal) {
+    const gid = "mg-" + medal.id;
+    const n = medal.colors.length;
+    const stops = medal.colors.map((c, i) => '<stop offset="' + (n > 1 ? Math.round((i / (n - 1)) * 100) : 0) + '%" stop-color="' + c + '"/>').join("");
+    let stars = "";
+    if (medal.stars) {
+      const w = 6, total = medal.stars * w;
+      for (let i = 0; i < medal.stars; i++) {
+        const x = 20 - total / 2 + i * w + w / 2;
+        stars += '<circle cx="' + x + '" cy="41.5" r="1.6" fill="#fff5b8"/>';
+      }
+    }
+    return '<svg viewBox="0 0 40 46" width="30" height="34"><defs><linearGradient id="' + gid + '" x1="2" y1="2" x2="38" y2="44">' + stops + '</linearGradient></defs>' +
+      '<path d="M20 2 L36 9 V23.5 C36 33.5 29 40.5 20 44 C11 40.5 4 33.5 4 23.5 V9 Z" fill="url(#' + gid + ')" stroke="rgba(255,255,255,.55)" stroke-width="1.1"/>' +
+      '<path d="M20 11 L26.5 15.5 L24.3 23 L15.7 23 L13.5 15.5 Z" fill="rgba(255,255,255,.9)"/>' +
+      stars + '</svg>';
+  }
+
+  function medalForStreak(streak) {
+    let m = MEDALS[0];
+    for (let i = 0; i < MEDALS.length; i++) { if (streak >= MEDALS[i].minStreak) m = MEDALS[i]; else break; }
+    return m;
+  }
+  function nextMedal(streak) {
+    for (let i = 0; i < MEDALS.length; i++) { if (streak < MEDALS[i].minStreak) return MEDALS[i]; }
+    return null; // ya está en Gran Maestro
+  }
+
   const Gami = {
     xpForLevel,
+    allMedals() { return MEDALS; },
+    medalForStreak,
+    nextMedal,
+    medalBadgeSvg,
 
     rankName(level) {
       let name = RANKS[0].name;
@@ -1962,12 +2108,7 @@ canvas { display: block; width: 100%; }
     ]));
     row2.appendChild(actCard);
 
-    const finCard = el("div", { class: "card" }, [
-      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Gasto por categoría (mes)"])]),
-    ]);
-    const cvFin = el("canvas");
-    finCard.appendChild(el("div", { class: "chart-box" }, [cvFin]));
-    row2.appendChild(finCard);
+    row2.appendChild(incomeExpenseCard(container));
     container.appendChild(row2);
 
     // Logros
@@ -1980,14 +2121,18 @@ canvas { display: block; width: 100%; }
     const achGrid = el("div", { class: "grid cols-4" });
     Gami.allAchievements().forEach((a) => {
       const un = s.achievements.includes(a.id);
-      achGrid.appendChild(el("div", { class: "card", style: "padding:12px;text-align:center;opacity:" + (un ? "1" : ".38"), title: a.desc }, [
-        el("div", { style: "font-size:26px;filter:" + (un ? "none" : "grayscale(1)"), text: a.icon }),
+      const tier = a.tier || "common";
+      achGrid.appendChild(el("div", { class: "card ach-card ach-" + tier + (un ? " ach-on" : ""), style: "padding:12px;text-align:center", title: a.desc }, [
+        el("div", { class: "ach-ico", text: a.icon }),
         el("div", { class: "fs-12 fw-700 mt-8", text: a.name }),
         el("div", { class: "fs-12 text-faint", text: un ? "Desbloqueado" : "Bloqueado" })
       ]));
     });
     achCard.appendChild(achGrid);
     container.appendChild(achCard);
+
+    // Medallas por racha (escalera estilo battle-pass)
+    container.appendChild(buildMedalLadderCard(streak));
 
     // dibujar gráficas
     setTimeout(() => {
@@ -1997,8 +2142,6 @@ canvas { display: block; width: 100%; }
       const h7 = N.Habits.weeklySeries();
       const t7 = N.Tasks.completed7();
       Charts.bars(cvAct, { labels: h7.labels, series: [{ values: h7.values, color: "--accent" }, { values: t7.values, color: "--good" }] }, { height: 180 });
-
-      Charts.doughnut(cvFin, N.Finance.expenseByCategory(), { height: 190, centerLabel: fmt.money(N.Finance.monthExpense()), centerSub: "gasto mes" });
     }, 40);
   }
 
@@ -2006,6 +2149,87 @@ canvas { display: block; width: 100%; }
     return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
       el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
     ])]);
+  }
+
+  // ---------- Ingresos y gastos (medidor radial) ----------
+  let ieDashPeriod = "monthly"; // "daily" | "weekly" | "biweekly" | "monthly"
+
+  function ieLegendRow(idx, label, val, maxV, colorVar) {
+    const pct = maxV > 0 ? Math.round((val / maxV) * 100) : 0;
+    const cvar = "var(" + colorVar + ")";
+    return el("div", { class: "flex items-center gap-12", style: "padding:6px 0" }, [
+      el("div", { style: "width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:#04122b;background:" + cvar + ";box-shadow:0 0 12px " + cvar }, [
+        el("span", { text: "0" + idx })
+      ]),
+      el("div", { class: "item-main" }, [
+        el("div", { class: "item-title", style: "font-size:14px", text: label }),
+        el("div", { class: "text-faint fs-12", text: fmt.money(val) })
+      ]),
+      el("div", { style: "font-size:20px;font-weight:800;color:" + cvar, text: pct + "%" })
+    ]);
+  }
+
+  function incomeExpenseCard(container) {
+    const t = N.Finance.periodTotals(ieDashPeriod);
+    const maxV = Math.max(t.income, t.expense, 1);
+    const bal = t.income - t.expense;
+
+    function segBtn(mode, label) {
+      const b = el("button", { text: label, onclick: () => { ieDashPeriod = mode; N.Audio.play("tab"); render(container); } });
+      if (ieDashPeriod === mode) b.classList.add("on");
+      return b;
+    }
+
+    const card = el("div", { class: "card" }, [
+      el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Ingresos y gastos · " + t.label]),
+        el("div", { class: "seg" }, [
+          segBtn("daily", "Diario"), segBtn("weekly", "Semanal"), segBtn("biweekly", "Quincenal"), segBtn("monthly", "Mensual")
+        ])
+      ])
+    ]);
+    const cv = el("canvas");
+    const legend = el("div", { style: "flex:1;min-width:180px;display:flex;flex-direction:column;gap:8px;justify-content:center" }, [
+      ieLegendRow(1, "Ingresos", t.income, maxV, "--good"),
+      ieLegendRow(2, "Gastos", t.expense, maxV, "--bad")
+    ]);
+    card.appendChild(el("div", { class: "flex", style: "gap:18px;align-items:center;flex-wrap:wrap" }, [
+      el("div", { style: "flex:1;min-width:170px;display:flex;justify-content:center" }, [cv]),
+      legend
+    ]));
+    setTimeout(() => {
+      Charts.multiRing(cv, [
+        { pct: (t.income / maxV) * 100, color: "--good" },
+        { pct: (t.expense / maxV) * 100, color: "--bad" }
+      ], { size: 180, centerLabel: fmt.money(bal), centerSub: "balance" });
+    }, 30);
+    return card;
+  }
+
+  // ---------- Escalera de medallas por racha ----------
+  function buildMedalLadderCard(streak) {
+    const cur = Gami.medalForStreak(streak);
+    const next = Gami.nextMedal(streak);
+    const card = el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "🎖️ Medallas por racha"]),
+        el("span", { class: "chip accent", text: "🔥 " + streak + " día" + (streak === 1 ? "" : "s") })
+      ]),
+      el("div", { class: "flex items-center gap-12", style: "margin-bottom:14px" }, [
+        el("div", { class: "medal-badge medal-" + cur.cls, html: Gami.medalBadgeSvg(cur) }),
+        el("div", {}, [
+          el("div", { class: "fw-700", style: "font-size:16px", text: cur.name }),
+          el("div", { class: "fs-12 text-faint", text: next ? ("Faltan " + (next.minStreak - streak) + " día" + ((next.minStreak - streak) === 1 ? "" : "s") + " para " + next.name) : "¡Rango máximo alcanzado!" })
+        ])
+      ])
+    ]);
+    const strip = el("div", { class: "medal-strip" });
+    Gami.allMedals().forEach((m) => {
+      const reached = streak >= m.minStreak;
+      strip.appendChild(el("div", { class: "medal-mini medal-" + m.cls + (reached ? " on" : " off") + (m.id === cur.id ? " active" : ""), title: m.name + " · racha " + m.minStreak + "+", html: Gami.medalBadgeSvg(m) }));
+    });
+    card.appendChild(strip);
+    return card;
   }
 
   // ---------- Calendario de actividad ----------
@@ -2588,6 +2812,85 @@ canvas { display: block; width: 100%; }
   }
 
   // ---------------------------------------------------------------
+  //  INGRESOS Y GASTOS — medidor radial combinado (reemplaza el
+  //  antiguo "gastos por categoría"), con temporalidad seleccionable.
+  // ---------------------------------------------------------------
+  let iePeriod = "monthly"; // "daily" | "weekly" | "biweekly" | "monthly"
+
+  function periodRange(period) {
+    const to = DateUtil.todayKey();
+    let from, label;
+    if (period === "daily") { from = to; label = "hoy"; }
+    else if (period === "weekly") { from = DateUtil.addDays(to, -6); label = "últimos 7 días"; }
+    else if (period === "biweekly") { from = DateUtil.addDays(to, -14); label = "últimos 15 días"; }
+    else { from = DateUtil.monthKey() + "-01"; label = "este mes"; }
+    return { from, to, label };
+  }
+
+  function periodTotals(period) {
+    const r = periodRange(period);
+    const list = txs().filter((t) => t.date >= r.from && t.date <= r.to);
+    return {
+      income: sum(list.filter((t) => t.type === "income")),
+      expense: sum(list.filter((t) => t.type === "expense")),
+      label: r.label
+    };
+  }
+
+  function ieLegendRow(idx, label, val, maxV, colorVar) {
+    const pct = maxV > 0 ? Math.round((val / maxV) * 100) : 0;
+    const cvar = "var(" + colorVar + ")";
+    return el("div", { class: "flex items-center gap-12", style: "padding:6px 0" }, [
+      el("div", { style: "width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:#04122b;background:" + cvar + ";box-shadow:0 0 12px " + cvar }, [
+        el("span", { text: "0" + idx })
+      ]),
+      el("div", { class: "item-main" }, [
+        el("div", { class: "item-title", style: "font-size:14px", text: label }),
+        el("div", { class: "text-faint fs-12", text: fmt.money(val) })
+      ]),
+      el("div", { style: "font-size:20px;font-weight:800;color:" + cvar, text: pct + "%" })
+    ]);
+  }
+
+  function incomeExpenseCard(rerender) {
+    const t = periodTotals(iePeriod);
+    const maxV = Math.max(t.income, t.expense, 1);
+    const bal = t.income - t.expense;
+
+    function segBtn(mode, label) {
+      const b = el("button", { text: label, onclick: () => { iePeriod = mode; Audio.play("tab"); rerender(); } });
+      if (iePeriod === mode) b.classList.add("on");
+      return b;
+    }
+
+    const card = el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Ingresos y gastos · " + t.label]),
+        el("div", { class: "seg" }, [
+          segBtn("daily", "Diario"), segBtn("weekly", "Semanal"), segBtn("biweekly", "Quincenal"), segBtn("monthly", "Mensual")
+        ])
+      ])
+    ]);
+    const cv = el("canvas");
+    const legend = el("div", { style: "flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px;justify-content:center" }, [
+      ieLegendRow(1, "Ingresos", t.income, maxV, "--good"),
+      ieLegendRow(2, "Gastos", t.expense, maxV, "--bad")
+    ]);
+    card.appendChild(el("div", { class: "flex", style: "gap:22px;align-items:center;flex-wrap:wrap" }, [
+      el("div", { style: "flex:1;min-width:200px;display:flex;justify-content:center" }, [cv]),
+      legend
+    ]));
+    card.appendChild(el("div", { class: "fs-12 text-faint mt-8", text: (bal >= 0 ? "Balance positivo de " : "Déficit de ") + fmt.money(Math.abs(bal)) + " en el periodo." }));
+    setTimeout(() => {
+      Charts.multiRing(cv, [
+        { pct: (t.income / maxV) * 100, color: "--good" },
+        { pct: (t.expense / maxV) * 100, color: "--bad" }
+      ], { size: 210, centerLabel: fmt.money(bal), centerSub: "balance" });
+    }, 30);
+    return card;
+  }
+
+  // ---------------------------------------------------------------
   //  MOTOR DE IA — genera insights a partir de los datos
   // ---------------------------------------------------------------
   function analyze() {
@@ -2906,6 +3209,9 @@ canvas { display: block; width: 100%; }
     // Panel de mercados y noticias (cotizaciones en vivo + fuentes)
     container.appendChild(marketsCard());
 
+    // Ingresos y gastos — medidor radial combinado con temporalidad
+    container.appendChild(incomeExpenseCard(() => render(container)));
+
     // Gráficas
     const charts = el("div", { class: "grid cols-2 mb-16" });
 
@@ -2945,18 +3251,24 @@ canvas { display: block; width: 100%; }
     charts.appendChild(trendCard);
 
     const catCard = el("div", { class: "card" }, [
-      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Gastos por categoría"])])
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Top categorías de gasto"])])
     ]);
-    const cvCat = el("canvas");
-    catCard.appendChild(el("div", { class: "chart-box" }, [cvCat]));
     const cats = expenseByCategory();
     const legend = el("div", { class: "mt-8" });
-    cats.slice(0, 5).forEach((c) => {
-      legend.appendChild(el("div", { class: "flex items-center justify-between fs-12", style: "padding:3px 0" }, [
-        el("span", { text: (CAT_ICON[c.label] || "•") + " " + c.label }),
-        el("span", { class: "fw-700", text: fmt.money(c.value) })
-      ]));
-    });
+    if (!cats.length) {
+      legend.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "◈" }), el("div", { text: "Sin gastos registrados este mes." })]));
+    } else {
+      cats.slice(0, 8).forEach((c) => {
+        const pct = exp > 0 ? Math.round((c.value / exp) * 100) : 0;
+        legend.appendChild(el("div", { style: "padding:6px 0" }, [
+          el("div", { class: "flex items-center justify-between fs-12" }, [
+            el("span", { text: (CAT_ICON[c.label] || "•") + " " + c.label }),
+            el("span", { class: "fw-700", text: fmt.money(c.value) + " · " + pct + "%" })
+          ]),
+          el("div", { class: "progress mt-8" }, [el("span", { style: "width:" + pct + "%" })])
+        ]));
+      });
+    }
     catCard.appendChild(legend);
     charts.appendChild(catCard);
     container.appendChild(charts);
@@ -2972,7 +3284,6 @@ canvas { display: block; width: 100%; }
           series: [{ values: m.map((x) => x.income), color: "--good" }, { values: m.map((x) => x.expense), color: "--bad" }]
         }, { height: 190 });
       }
-      Charts.doughnut(cvCat, cats, { height: 190, centerLabel: fmt.money(exp), centerSub: "gasto mes" });
     }, 30);
 
     // Movimientos recientes
@@ -3091,7 +3402,7 @@ canvas { display: block; width: 100%; }
     return card;
   }
 
-  N.Finance = { render, monthIncome, monthExpense, monthBalance, expenseByCategory, last6Months, analyze };
+  N.Finance = { render, monthIncome, monthExpense, monthBalance, expenseByCategory, last6Months, analyze, periodTotals, periodRange };
 })();
 
 
@@ -4969,7 +5280,15 @@ canvas { display: block; width: 100%; }
     $("#rank-name").textContent = Gami.rankName(lp.level);
     $("#xp-text").textContent = `${UI.fmt.num(lp.into)} / ${UI.fmt.num(lp.span)} XP`;
     $("#xp-fill").style.width = lp.pct + "%";
-    $("#streak-days").textContent = Gami.globalStreak();
+    const streak = Gami.globalStreak();
+    $("#streak-days").textContent = streak;
+    const medal = Gami.medalForStreak(streak);
+    const badge = $("#medal-badge");
+    if (badge) {
+      badge.className = "medal-badge medal-" + medal.cls;
+      badge.innerHTML = Gami.medalBadgeSvg(medal);
+      badge.title = medal.name + " · racha " + streak + " día" + (streak === 1 ? "" : "s");
+    }
   }
 
   // ---------- Router ----------

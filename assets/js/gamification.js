@@ -21,26 +21,104 @@
     { min: 45, name: "Leyenda" }
   ];
 
+  // tier → intensidad visual del logro (común, raro, épico, legendario)
   const ACHIEVEMENTS = [
-    { id: "first_step", name: "Primer paso", icon: "👣", desc: "Registra tu primera acción", test: (s) => totalActions(s) >= 1 },
-    { id: "streak_3", name: "En marcha", icon: "🔥", desc: "Racha de 3 días", test: (s) => Gami.globalStreak() >= 3 },
-    { id: "streak_7", name: "Semana perfecta", icon: "🗓️", desc: "Racha de 7 días", test: (s) => Gami.globalStreak() >= 7 },
-    { id: "streak_30", name: "Imparable", icon: "⚡", desc: "Racha de 30 días", test: (s) => Gami.globalStreak() >= 30 },
-    { id: "level_5", name: "Nivel 5", icon: "⭐", desc: "Alcanza el nivel 5", test: (s) => s.profile.level >= 5 },
-    { id: "level_10", name: "Nivel 10", icon: "🌟", desc: "Alcanza el nivel 10", test: (s) => s.profile.level >= 10 },
-    { id: "habit_master", name: "Maestro del hábito", icon: "✦", desc: "5 hábitos activos", test: (s) => s.habits.length >= 5 },
-    { id: "saver", name: "Ahorrador", icon: "💰", desc: "Balance mensual positivo", test: (s) => window.NEXUS.Finance && window.NEXUS.Finance.monthBalance() > 0 },
-    { id: "task_crusher", name: "Productivo", icon: "✓", desc: "Completa 10 tareas", test: (s) => s.tasks.filter((t) => t.done).length >= 10 },
-    { id: "athlete", name: "Atleta", icon: "🏆", desc: "Registra 10 entrenamientos", test: (s) => s.workouts.length >= 10 },
-    { id: "achiever", name: "Cumplidor", icon: "◉", desc: "Completa una meta al 100%", test: (s) => s.goals.some((g) => g.current >= g.target && g.target > 0) }
+    { id: "first_step", name: "Primer paso", icon: "👣", desc: "Registra tu primera acción", tier: "common", test: (s) => totalActions(s) >= 1 },
+    { id: "streak_3", name: "En marcha", icon: "🔥", desc: "Racha de 3 días", tier: "common", test: (s) => Gami.globalStreak() >= 3 },
+    { id: "streak_7", name: "Semana perfecta", icon: "🗓️", desc: "Racha de 7 días", tier: "rare", test: (s) => Gami.globalStreak() >= 7 },
+    { id: "streak_30", name: "Imparable", icon: "⚡", desc: "Racha de 30 días", tier: "epic", test: (s) => Gami.globalStreak() >= 30 },
+    { id: "streak_60", name: "Racha volcánica", icon: "🌋", desc: "Racha de 60 días", tier: "epic", test: (s) => Gami.globalStreak() >= 60 },
+    { id: "streak_100", name: "Centenario", icon: "👑", desc: "Racha de 100 días", tier: "legendary", test: (s) => Gami.globalStreak() >= 100 },
+    { id: "level_5", name: "Nivel 5", icon: "⭐", desc: "Alcanza el nivel 5", tier: "common", test: (s) => s.profile.level >= 5 },
+    { id: "level_10", name: "Nivel 10", icon: "🌟", desc: "Alcanza el nivel 10", tier: "rare", test: (s) => s.profile.level >= 10 },
+    { id: "level_20", name: "Nivel 20", icon: "💠", desc: "Alcanza el nivel 20", tier: "epic", test: (s) => s.profile.level >= 20 },
+    { id: "level_30", name: "Nivel 30", icon: "🏵️", desc: "Alcanza el nivel 30", tier: "legendary", test: (s) => s.profile.level >= 30 },
+    { id: "habit_master", name: "Maestro del hábito", icon: "✦", desc: "5 hábitos activos", tier: "rare", test: (s) => s.habits.length >= 5 },
+    { id: "saver", name: "Ahorrador", icon: "💰", desc: "Balance mensual positivo", tier: "rare", test: (s) => window.NEXUS.Finance && window.NEXUS.Finance.monthBalance() > 0 },
+    { id: "saver_5k", name: "Gran ahorrador", icon: "🏦", desc: "Acumula $5,000 en tu alcancía", tier: "epic", test: (s) => (s.finance.savings || []).reduce((a, e) => a + e.amount, 0) >= 5000 },
+    { id: "task_crusher", name: "Productivo", icon: "✓", desc: "Completa 10 tareas", tier: "rare", test: (s) => s.tasks.filter((t) => t.done).length >= 10 },
+    { id: "task_100", name: "Cien tareas", icon: "✅", desc: "Completa 100 tareas", tier: "epic", test: (s) => s.tasks.filter((t) => t.done).length >= 100 },
+    { id: "athlete", name: "Atleta", icon: "🏆", desc: "Registra 10 entrenamientos", tier: "rare", test: (s) => s.workouts.length >= 10 },
+    { id: "athlete_50", name: "Atleta de élite", icon: "🥇", desc: "Registra 50 entrenamientos", tier: "epic", test: (s) => s.workouts.length >= 50 },
+    { id: "achiever", name: "Cumplidor", icon: "◉", desc: "Completa una meta al 100%", tier: "rare", test: (s) => s.goals.some((g) => g.current >= g.target && g.target > 0) },
+    { id: "nutrition_30", name: "Nutrición constante", icon: "🍽️", desc: "Registra 30 alimentos", tier: "rare", test: (s) => ((s.nutrition && s.nutrition.log) || []).length >= 30 },
+    { id: "diamond_rank", name: "Rango Diamante", icon: "💎", desc: "Alcanza el rango Diamante por racha", tier: "epic", test: (s) => Gami.medalForStreak(Gami.globalStreak()).cls === "diamond" },
+    { id: "heroic_rank", name: "Rango Heroico", icon: "⚔️", desc: "Alcanza el rango Heroico por racha", tier: "legendary", test: (s) => Gami.medalForStreak(Gami.globalStreak()).cls === "heroic" },
+    { id: "grandmaster_rank", name: "Gran Maestro", icon: "🎖️", desc: "Alcanza el rango máximo: Gran Maestro", tier: "legendary", test: (s) => Gami.medalForStreak(Gami.globalStreak()).id === "grandmaster" },
+    { id: "all_rounder", name: "Multidisciplinario", icon: "🌐", desc: "Registra actividad en 6 módulos distintos el mismo día", tier: "legendary", test: (s) => {
+      const k = DateUtil.todayKey();
+      const habitsOk = s.habits.some((h) => h.history && h.history[k]);
+      const finOk = s.finance.transactions.some((t) => t.date === k);
+      const tasksOk = s.tasks.some((t) => t.doneAt === k);
+      const workOk = s.workouts.some((w) => w.date === k);
+      const focusOk = (s.focus.sessionsLog && s.focus.sessionsLog[k]) > 0;
+      const nutOk = ((s.nutrition && s.nutrition.log) || []).some((n) => n.date === k);
+      return [habitsOk, finOk, tasksOk, workOk, focusOk, nutOk].filter(Boolean).length >= 6;
+    } }
   ];
 
   function totalActions(s) {
     return Object.keys(s.xpLog).length + s.tasks.length + s.workouts.length + s.finance.transactions.length;
   }
 
+  // ---------------------------------------------------------------
+  //  MEDALLAS POR RACHA — escalera estilo "battle pass" (Free Fire)
+  //  Bronce → Plata → Oro → Platino → Diamante I-V → Heroico (+5★) → Gran Maestro
+  // ---------------------------------------------------------------
+  const MEDALS = [
+    { id: "bronze", name: "Bronce", cls: "bronze", minStreak: 0, colors: ["#8a5a3c", "#c98a55"] },
+    { id: "silver", name: "Plata", cls: "silver", minStreak: 3, colors: ["#9aa4b2", "#e6ecf5"] },
+    { id: "gold", name: "Oro", cls: "gold", minStreak: 7, colors: ["#d9a521", "#ffe98a"] },
+    { id: "platinum", name: "Platino", cls: "platinum", minStreak: 12, colors: ["#5fd3c4", "#c8fff2"] },
+    { id: "diamond1", name: "Diamante I", cls: "diamond", minStreak: 18, colors: ["#3fa3ff", "#b6e2ff"] },
+    { id: "diamond2", name: "Diamante II", cls: "diamond", minStreak: 24, colors: ["#3fa3ff", "#b6e2ff"] },
+    { id: "diamond3", name: "Diamante III", cls: "diamond", minStreak: 30, colors: ["#3fa3ff", "#b6e2ff"] },
+    { id: "diamond4", name: "Diamante IV", cls: "diamond", minStreak: 36, colors: ["#3fa3ff", "#b6e2ff"] },
+    { id: "diamond5", name: "Diamante V", cls: "diamond", minStreak: 42, colors: ["#3fa3ff", "#b6e2ff"] },
+    { id: "heroic", name: "Heroico", cls: "heroic", minStreak: 50, stars: 0, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "heroic1", name: "Heroico · 1★", cls: "heroic", minStreak: 58, stars: 1, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "heroic2", name: "Heroico · 2★", cls: "heroic", minStreak: 66, stars: 2, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "heroic3", name: "Heroico · 3★", cls: "heroic", minStreak: 74, stars: 3, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "heroic4", name: "Heroico · 4★", cls: "heroic", minStreak: 82, stars: 4, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "heroic5", name: "Heroico · 5★", cls: "heroic", minStreak: 90, stars: 5, colors: ["#ff2fb0", "#ffe600"] },
+    { id: "grandmaster", name: "Gran Maestro", cls: "grandmaster", minStreak: 100, stars: 0, colors: ["#00e5ff", "#7c5cff", "#ff2fb0", "#ffe600"] }
+  ];
+
+  // construye el SVG de la medalla (escudo con gema) coloreado por rango
+  function medalBadgeSvg(medal) {
+    const gid = "mg-" + medal.id;
+    const n = medal.colors.length;
+    const stops = medal.colors.map((c, i) => '<stop offset="' + (n > 1 ? Math.round((i / (n - 1)) * 100) : 0) + '%" stop-color="' + c + '"/>').join("");
+    let stars = "";
+    if (medal.stars) {
+      const w = 6, total = medal.stars * w;
+      for (let i = 0; i < medal.stars; i++) {
+        const x = 20 - total / 2 + i * w + w / 2;
+        stars += '<circle cx="' + x + '" cy="41.5" r="1.6" fill="#fff5b8"/>';
+      }
+    }
+    return '<svg viewBox="0 0 40 46" width="30" height="34"><defs><linearGradient id="' + gid + '" x1="2" y1="2" x2="38" y2="44">' + stops + '</linearGradient></defs>' +
+      '<path d="M20 2 L36 9 V23.5 C36 33.5 29 40.5 20 44 C11 40.5 4 33.5 4 23.5 V9 Z" fill="url(#' + gid + ')" stroke="rgba(255,255,255,.55)" stroke-width="1.1"/>' +
+      '<path d="M20 11 L26.5 15.5 L24.3 23 L15.7 23 L13.5 15.5 Z" fill="rgba(255,255,255,.9)"/>' +
+      stars + '</svg>';
+  }
+
+  function medalForStreak(streak) {
+    let m = MEDALS[0];
+    for (let i = 0; i < MEDALS.length; i++) { if (streak >= MEDALS[i].minStreak) m = MEDALS[i]; else break; }
+    return m;
+  }
+  function nextMedal(streak) {
+    for (let i = 0; i < MEDALS.length; i++) { if (streak < MEDALS[i].minStreak) return MEDALS[i]; }
+    return null; // ya está en Gran Maestro
+  }
+
   const Gami = {
     xpForLevel,
+    allMedals() { return MEDALS; },
+    medalForStreak,
+    nextMedal,
+    medalBadgeSvg,
 
     rankName(level) {
       let name = RANKS[0].name;

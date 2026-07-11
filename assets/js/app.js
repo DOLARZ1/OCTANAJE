@@ -34,7 +34,15 @@
     $("#rank-name").textContent = Gami.rankName(lp.level);
     $("#xp-text").textContent = `${UI.fmt.num(lp.into)} / ${UI.fmt.num(lp.span)} XP`;
     $("#xp-fill").style.width = lp.pct + "%";
-    $("#streak-days").textContent = Gami.globalStreak();
+    const streak = Gami.globalStreak();
+    $("#streak-days").textContent = streak;
+    const medal = Gami.medalForStreak(streak);
+    const badge = $("#medal-badge");
+    if (badge) {
+      badge.className = "medal-badge medal-" + medal.cls;
+      badge.innerHTML = Gami.medalBadgeSvg(medal);
+      badge.title = medal.name + " · racha " + streak + " día" + (streak === 1 ? "" : "s");
+    }
   }
 
   // ---------- Router ----------

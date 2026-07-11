@@ -78,7 +78,7 @@ function reg(id, el) { byId[id] = el; return el; }
 // Construir el árbol que index.html necesita
 const ids = ["boot-screen", "app", "level-badge", "rank-name", "xp-text", "xp-fill",
   "streak-days", "sound-toggle", "tabs", "views", "toast-stack", "modal-overlay",
-  "modal", "modal-title", "modal-body", "modal-close", "reset-data", "global-streak", "settings-btn"];
+  "modal", "modal-title", "modal-body", "modal-close", "reset-data", "global-streak", "settings-btn", "medal-badge"];
 ids.forEach((id) => reg(id, makeEl("div")));
 ["dashboard", "habits", "finance", "tasks", "workouts", "goals", "focus", "nutrition"].forEach((v) => reg("view-" + v, makeEl("section")));
 
