@@ -1,4 +1,4 @@
-name: Deploy OCTANAJE to GitHub Pages
+name: Deploy NEXUS to GitHub Pages
 
 on:
   push:
