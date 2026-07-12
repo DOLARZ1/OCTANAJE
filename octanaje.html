@@ -5717,9 +5717,22 @@ canvas { display: block; width: 100%; }
     $("#modal-overlay").addEventListener("click", (e) => { if (e.target.id === "modal-overlay") UI.closeModal(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") UI.closeModal(); });
 
-    // redibujar gráficas al cambiar tamaño
+    // redibujar gráficas al cambiar tamaño (pero no si es por el teclado
+    // virtual del celular abriéndose/cerrándose mientras se escribe en un
+    // campo, ni si el ancho no cambió — solo el alto, típico del teclado)
     let rt = null;
-    window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderCurrent, 250); });
+    let lastW = window.innerWidth;
+    window.addEventListener("resize", () => {
+      clearTimeout(rt);
+      rt = setTimeout(() => {
+        const widthChanged = window.innerWidth !== lastW;
+        lastW = window.innerWidth;
+        const typing = document.activeElement &&
+          (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA");
+        if (typing && !widthChanged) return; // probablemente el teclado virtual, no un cambio real de layout
+        renderCurrent();
+      }, 250);
+    });
   }
 
   // ---------- Init ----------
