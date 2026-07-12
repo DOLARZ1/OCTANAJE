@@ -16,6 +16,11 @@
         else if (k === "text") node.textContent = attrs[k];
         else if (k.startsWith("on") && typeof attrs[k] === "function") node.addEventListener(k.slice(2), attrs[k]);
         else if (k === "dataset") { for (const d in attrs[k]) node.dataset[d] = attrs[k][d]; }
+        // atributos booleanos de HTML (disabled, checked, readonly, required…):
+        // su sola presencia activa el comportamiento sin importar el valor,
+        // así que "false" NO debe agregarse al elemento en absoluto.
+        else if (attrs[k] === false) { /* omitir: no agregar el atributo */ }
+        else if (attrs[k] === true) node.setAttribute(k, "");
         else if (attrs[k] != null) node.setAttribute(k, attrs[k]);
       }
     }
