@@ -4783,26 +4783,43 @@ canvas { display: block; width: 100%; }
     running = true;
     endAt = Date.now() + remaining * 1000;
     Audio.play("toggleOn");
-    clearInterval(handle);
-    handle = setInterval(tick, 250);
+    startTicking();
     paint();
   }
   function pause() {
     if (!running) return;
     remaining = Math.max(0, Math.round((endAt - Date.now()) / 1000));
     running = false;
-    clearInterval(handle);
+    stopTicking();
     Audio.play("tap");
     paint();
   }
+  // el temporizador solo necesita actualizar la pantalla una vez por
+  // segundo (no 4x/seg); además se pausa por completo mientras la app
+  // está en segundo plano (pantalla apagada/otra app) para no gastar
+  // batería redibujando un canvas con brillo sin que nadie lo vea. Al
+  // volver, se resincroniza contra endAt (que no se ve afectado).
+  function startTicking() {
+    clearInterval(handle);
+    if (typeof document !== "undefined" && document.hidden) return; // se activará al volver a estar visible
+    handle = setInterval(tick, 1000);
+  }
+  function stopTicking() { clearInterval(handle); handle = null; }
+  if (typeof document !== "undefined" && document.addEventListener) {
+    document.addEventListener("visibilitychange", () => {
+      if (!running) return;
+      if (document.hidden) { clearInterval(handle); handle = null; }
+      else { tick(); startTicking(); } // resincroniza de inmediato al volver
+    });
+  }
   function reset() {
-    running = false; clearInterval(handle);
+    running = false; stopTicking();
     remaining = secondsFor(mode);
     Audio.play("tap");
     paint();
   }
   function skip() {
-    running = false; clearInterval(handle);
+    running = false; stopTicking();
     Audio.play("tap");
     nextPhase(false);
   }
@@ -4813,7 +4830,7 @@ canvas { display: block; width: 100%; }
   }
 
   function complete() {
-    running = false; clearInterval(handle);
+    running = false; stopTicking();
     if (mode === "work") {
       // registrar sesión
       const c = cfg();
