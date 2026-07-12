@@ -286,13 +286,20 @@
     const dLabel = DateUtil.parse(key).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const body = el("div", {});
 
-    // Hábitos
-    if (s.habits.length) {
+    // Hábitos (solo los programados ese día; los de descanso no cuentan como pendientes)
+    const dayHabits = s.habits.filter((h) => N.Habits.activeOn(h, key));
+    if (dayHabits.length) {
       const sec = section("✦ Hábitos");
-      s.habits.forEach((h) => {
+      dayHabits.forEach((h) => {
         const st = habitDayStatus(h, key);
         sec.appendChild(statusRow(h.icon + " " + h.name, st.done, st.target > 1 ? (st.cur + "/" + st.target) : (st.done ? "hecho" : "pendiente")));
       });
+      body.appendChild(sec);
+    }
+    const restHabits = s.habits.filter((h) => !N.Habits.activeOn(h, key));
+    if (restHabits.length) {
+      const sec = section("💤 Descanso hoy");
+      restHabits.forEach((h) => sec.appendChild(statusRow(h.icon + " " + h.name, true, "descanso (" + N.Habits.daysLabel(h) + ")")));
       body.appendChild(sec);
     }
 

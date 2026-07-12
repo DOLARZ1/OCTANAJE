@@ -330,5 +330,5 @@
     return card;
   }
 
-  N.Habits = { render, todayProgress, weeklySeries, streak };
+  N.Habits = { render, todayProgress, weeklySeries, streak, activeOn, daysLabel };
 })();
