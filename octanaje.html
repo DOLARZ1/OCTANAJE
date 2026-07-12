@@ -760,6 +760,11 @@ canvas { display: block; width: 100%; }
 .card.habit-off .item-title { color: var(--txt-dim); }
 .check.check-off { border-style: dashed; opacity: .8; cursor: default; }
 
+/* Color de prioridad del hábito: franja lateral + resplandor sutil a juego */
+.card.habit-prio { box-shadow: inset 3px 0 0 var(--prio-color, var(--accent)), var(--shadow); }
+.icon-btn.sm { width: 26px; height: 22px; border-radius: 7px; font-size: 10px; }
+.icon-btn.sm[disabled] { pointer-events: none; }
+
 
 /* =====================================================================
    MEDALLAS POR RACHA (estilo battle-pass: Bronce → Plata → Oro →
@@ -2761,9 +2766,35 @@ canvas { display: block; width: 100%; }
     "🎵", "🎧", "🎸", "🎹", "🥁", "🎺", "🎷", "🎻", "🎤", "🎼"
   ];
   const MAX_BOXES = 50;
+  // prioridad visual del hábito (color de borde/etiqueta, no afecta XP)
+  const HPRIO = {
+    high: { label: "Alta", chip: "bad", color: "var(--bad)" },
+    medium: { label: "Media", chip: "warn", color: "var(--warn)" },
+    low: { label: "Baja", chip: "accent", color: "var(--accent)" }
+  };
+  function prioOf(h) { return HPRIO[h.priority] ? h.priority : "medium"; }
 
   function habits() { return Store.get().habits; }
   const today = () => DateUtil.todayKey();
+
+  // orden visual guardado por el usuario (arriba = primero). Si no existe
+  // aún en hábitos viejos, se asigna al vuelo según su posición actual.
+  function sortedHabits() {
+    const arr = habits();
+    arr.forEach((h, i) => { if (h.order == null) h.order = i; });
+    return arr.slice().sort((a, b) => (a.order - b.order));
+  }
+  function moveHabit(h, dir) {
+    const arr = sortedHabits();
+    const i = arr.indexOf(h);
+    const j = i + dir;
+    if (j < 0 || j >= arr.length) return;
+    // intercambia el "order" con el vecino para moverlo una posición
+    const tmp = arr[j].order; arr[j].order = h.order; h.order = tmp;
+    Audio.play("tap");
+    Store.commit();
+    render(document.getElementById("view-habits"));
+  }
 
   // meta diaria (nº de veces). 1 = hábito simple
   function tgt(h) { return Math.max(1, Math.min(MAX_BOXES, parseInt(h.count, 10) || 1)); }
@@ -2867,17 +2898,21 @@ canvas { display: block; width: 100%; }
         { name: "count", label: "Meta diaria (nº de veces)", type: "number", min: 1, step: 1, value: existing ? tgt(existing) : 1 },
         { name: "unit", label: "Unidad (opcional)", value: existing ? existing.unit || "" : "", placeholder: "vasos, páginas…" }
       ]},
+      { name: "priority", label: "Prioridad (color)", type: "select", value: existing ? prioOf(existing) : "medium", options: [
+        { value: "high", label: "🔴 Alta" }, { value: "medium", label: "🟡 Media" }, { value: "low", label: "🔵 Baja" }
+      ]},
       { name: "days", label: "Días activos", type: "weekdays", value: existing ? activeDays(existing) : ALL_DAYS }
     ], (data) => {
       const cnt = Math.max(1, Math.min(MAX_BOXES, parseInt(data.count, 10) || 1));
       let days = typeof data.days === "string" ? data.days.split(",").filter((x) => x !== "").map(Number) : (Array.isArray(data.days) ? data.days : []);
       if (!days.length) days = ALL_DAYS.slice();
       if (existing) {
-        existing.name = data.name; existing.icon = data.icon; existing.count = cnt; existing.unit = data.unit; existing.days = days;
+        existing.name = data.name; existing.icon = data.icon; existing.count = cnt; existing.unit = data.unit; existing.days = days; existing.priority = data.priority;
         delete existing.target;
         toast({ icon: "✏️", msg: "Hábito actualizado" });
       } else {
-        habits().push({ id: Store.uid(), name: data.name, icon: data.icon, count: cnt, unit: data.unit, days: days, history: {}, created: today(), xpEarned: 5 });
+        const maxOrder = habits().reduce((m, h) => Math.max(m, h.order || 0), -1);
+        habits().push({ id: Store.uid(), name: data.name, icon: data.icon, count: cnt, unit: data.unit, days: days, priority: data.priority, order: maxOrder + 1, history: {}, created: today(), xpEarned: 5 });
         Audio.play("add");
         toast({ icon: "✦", title: "Nuevo hábito", msg: data.name });
         Gami.award(5, "Nuevo hábito creado");
@@ -2969,8 +3004,9 @@ canvas { display: block; width: 100%; }
       return;
     }
 
+    const ordered = sortedHabits();
     const list = el("div", { class: "grid cols-2" });
-    arr.forEach((h) => list.appendChild(habitCard(h)));
+    ordered.forEach((h, i) => list.appendChild(habitCard(h, i, ordered.length)));
     container.appendChild(list);
   }
 
@@ -2984,13 +3020,14 @@ canvas { display: block; width: 100%; }
     ]);
   }
 
-  function habitCard(h) {
+  function habitCard(h, idx, total) {
     const st = streak(h);
     const done = doneToday(h);
     const comp = completion30(h);
     const target = tgt(h);
     const cur = dayVal(h, today());
     const active = activeToday(h);
+    const pr = HPRIO[prioOf(h)];
 
     // heatmap 35 días (completo = brillante, parcial = tenue)
     const heat = el("div", { class: "heat mt-8" });
@@ -3001,8 +3038,15 @@ canvas { display: block; width: 100%; }
       heat.appendChild(cell);
     });
 
-    const card = el("div", { class: "card" + (active ? "" : " habit-off") }, [
+    const card = el("div", {
+      class: "card habit-prio" + (active ? "" : " habit-off"),
+      style: "--prio-color:" + pr.color
+    }, [
       el("div", { class: "flex items-center gap-12" }, [
+        el("div", { class: "flex", style: "flex-direction:column;gap:2px;flex:none" }, [
+          el("button", { class: "icon-btn sm", title: "Subir", disabled: idx === 0, style: idx === 0 ? "opacity:.3;cursor:default" : "", onclick: () => idx > 0 && moveHabit(h, -1), html: "▲" }),
+          el("button", { class: "icon-btn sm", title: "Bajar", disabled: idx === total - 1, style: idx === total - 1 ? "opacity:.3;cursor:default" : "", onclick: () => idx < total - 1 && moveHabit(h, 1), html: "▼" })
+        ]),
         el("button", {
           class: "check" + (done ? " on" : "") + (active ? "" : " check-off"),
           title: !active ? "Hoy descansa" : (done ? "Marcar como no hecho" : "Completar hoy"),
@@ -3012,6 +3056,7 @@ canvas { display: block; width: 100%; }
         el("div", { class: "item-main" }, [
           el("div", { class: "item-title" }, [el("span", { text: h.icon + " " }), h.name]),
           el("div", { class: "item-meta" }, [
+            el("span", { class: "chip " + pr.chip, html: "● " + pr.label }),
             el("span", { class: "chip warn", html: "🔥 " + st + " día" + (st === 1 ? "" : "s") }),
             el("span", { class: "chip", html: "📆 " + daysLabel(h) }),
             !active ? el("span", { class: "chip", text: "💤 hoy descansa" }) : null,

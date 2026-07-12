@@ -749,6 +749,11 @@ canvas { display: block; width: 100%; }
 .card.habit-off .item-title { color: var(--txt-dim); }
 .check.check-off { border-style: dashed; opacity: .8; cursor: default; }
 
+/* Color de prioridad del hábito: franja lateral + resplandor sutil a juego */
+.card.habit-prio { box-shadow: inset 3px 0 0 var(--prio-color, var(--accent)), var(--shadow); }
+.icon-btn.sm { width: 26px; height: 22px; border-radius: 7px; font-size: 10px; }
+.icon-btn.sm[disabled] { pointer-events: none; }
+
 
 /* =====================================================================
    MEDALLAS POR RACHA (estilo battle-pass: Bronce → Plata → Oro →
