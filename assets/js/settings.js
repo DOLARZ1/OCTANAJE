@@ -17,7 +17,7 @@
   function themeRow() {
     const cur = Store.get().settings.theme || "dark";
     const seg = el("div", { class: "seg", style: "flex-wrap:wrap" });
-    [["light", "☀️ Claro"], ["gray", "◐ Gris"], ["dark", "🌙 Oscuro"], ["purple", "🟣 Morado"], ["neon", "⚡ Dark Brillante"]].forEach(([val, label]) => {
+    [["light", "☀️ Claro"], ["gray", "◐ Gris"], ["dark", "🌙 Oscuro"], ["purple", "🟣 Morado"], ["neon", "🔴 Dark"]].forEach(([val, label]) => {
       const b = el("button", { text: label, onclick: () => { if (N.App) N.App.applyTheme(val); Audio.play("tap"); open(); } });
       if (val === cur) b.classList.add("on");
       seg.appendChild(b);
@@ -25,7 +25,7 @@
     return el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:10px" }, [
       el("div", {}, [
         el("div", { class: "set-title", text: "🎨 Tema" }),
-        el("div", { class: "set-desc", text: "Elige entre claro, gris, oscuro, morado o dark brillante." })
+        el("div", { class: "set-desc", text: "Elige entre claro, gris, oscuro, morado o dark (rojo neón)." })
       ]),
       seg
     ]);

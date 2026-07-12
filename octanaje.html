@@ -129,29 +129,29 @@ input, select, textarea { font-family: inherit; }
   --blur: 16px;
 }
 
-/* Dark Brillante — variante del oscuro con neones mucho más vívidos e
-   intensos: fondo casi negro + acentos eléctricos muy saturados y brillo
-   ampliado en todos los componentes (cards, botones, barras, etc). */
+/* Dark — variante muy oscura dominada por neón rojo brillante e intenso:
+   fondo casi negro con matiz rojizo + acentos rojo/naranja muy saturados
+   y brillo ampliado en todos los componentes (cards, botones, barras). */
 [data-theme="neon"] {
-  --bg: #020108;
-  --bg-2: #060212;
-  --panel: rgba(18, 8, 34, .55);
-  --panel-solid: #0d0620;
-  --panel-2: rgba(28, 14, 52, .62);
-  --txt: #f6f2ff;
-  --txt-dim: #c2a9f2;
-  --txt-faint: #7d5cb8;
-  --border: rgba(200, 90, 255, .16);
-  --border-strong: rgba(200, 90, 255, .34);
-  --accent: #00fff2;
-  --accent-2: #ff00e5;
-  --accent-3: #faff00;
+  --bg: #050002;
+  --bg-2: #0a0004;
+  --panel: rgba(32, 4, 10, .55);
+  --panel-solid: #170308;
+  --panel-2: rgba(46, 8, 16, .62);
+  --txt: #fff1ee;
+  --txt-dim: #e3a7a7;
+  --txt-faint: #9a5c5c;
+  --border: rgba(255, 40, 40, .18);
+  --border-strong: rgba(255, 40, 40, .36);
+  --accent: #ff0033;
+  --accent-2: #ff5500;
+  --accent-3: #ff2f6b;
   --good: #00ff9d;
-  --warn: #ffea00;
-  --bad: #ff0844;
-  --glow: 0 0 30px rgba(0, 255, 242, .6);
-  --shadow: 0 20px 60px rgba(0, 0, 0, .7);
-  --grid-line: rgba(0, 255, 242, .14);
+  --warn: #ffae00;
+  --bad: #ff0044;
+  --glow: 0 0 32px rgba(255, 0, 51, .65);
+  --shadow: 0 20px 60px rgba(0, 0, 0, .75);
+  --grid-line: rgba(255, 40, 40, .16);
   --blur: 18px;
 }
 
@@ -190,11 +190,34 @@ input, select, textarea { font-family: inherit; }
 .boot-screen.hide { opacity: 0; pointer-events: none; }
 .boot-logo {
   color: #ffd700;
-  filter: drop-shadow(0 0 10px #ff1a1a) drop-shadow(0 0 22px #ffd700) drop-shadow(0 0 36px #ff1a1a);
-  animation: spin 3s ease-in-out infinite;
+  filter:
+    drop-shadow(0 0 8px #fff8dc)
+    drop-shadow(0 0 16px #ff1a1a)
+    drop-shadow(0 0 30px #ffd700)
+    drop-shadow(0 0 48px #ff1a1a)
+    drop-shadow(0 0 70px rgba(255, 26, 26, .6));
+  animation: spin 3s ease-in-out infinite, logoPulse 1.6s ease-in-out infinite;
 }
 .boot-logo svg { display: block; }
 @keyframes spin { 0%,100% { transform: rotate(0) scale(1);} 50% { transform: rotate(180deg) scale(1.1);} }
+@keyframes logoPulse {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 8px #fff8dc)
+      drop-shadow(0 0 16px #ff1a1a)
+      drop-shadow(0 0 30px #ffd700)
+      drop-shadow(0 0 48px #ff1a1a)
+      drop-shadow(0 0 70px rgba(255, 26, 26, .6));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 14px #fff8dc)
+      drop-shadow(0 0 28px #ff1a1a)
+      drop-shadow(0 0 50px #ffd700)
+      drop-shadow(0 0 78px #ff1a1a)
+      drop-shadow(0 0 110px rgba(255, 26, 26, .75));
+  }
+}
 .boot-title {
   font-family: "Orbitron", "Segoe UI", system-ui, sans-serif;
   font-size: 40px; font-weight: 800; letter-spacing: 10px;
@@ -228,11 +251,31 @@ input, select, textarea { font-family: inherit; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-hex {
   display: inline-grid; place-items: center; color: #ffd700;
-  filter: drop-shadow(0 0 6px #ff1a1a) drop-shadow(0 0 14px #ffd700) drop-shadow(0 0 22px #ff1a1a);
-  animation: pulse 3.4s ease-in-out infinite;
+  filter:
+    drop-shadow(0 0 5px #fff8dc)
+    drop-shadow(0 0 10px #ff1a1a)
+    drop-shadow(0 0 18px #ffd700)
+    drop-shadow(0 0 30px #ff1a1a);
+  animation: brandHexGlow 2.2s ease-in-out infinite;
 }
 .brand-hex svg { display: block; }
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.6;} }
+@keyframes brandHexGlow {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 5px #fff8dc)
+      drop-shadow(0 0 10px #ff1a1a)
+      drop-shadow(0 0 18px #ffd700)
+      drop-shadow(0 0 30px #ff1a1a);
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 9px #fff8dc)
+      drop-shadow(0 0 18px #ff1a1a)
+      drop-shadow(0 0 30px #ffd700)
+      drop-shadow(0 0 46px #ff1a1a);
+  }
+}
 .brand-text { display: flex; flex-direction: column; line-height: 1; }
 .brand-name {
   font-family: "Orbitron", "Segoe UI", system-ui, sans-serif;
@@ -245,7 +288,7 @@ input, select, textarea { font-family: inherit; }
   background-size: 250% 100%;
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
-  filter: drop-shadow(0 0 6px rgba(255, 26, 26, .75)) drop-shadow(0 0 10px rgba(255, 215, 0, .5));
+  filter: drop-shadow(0 0 6px #ff1a1a) drop-shadow(0 0 12px #ffd700) drop-shadow(0 0 20px #ff1a1a);
   animation: nexusShine 6s linear infinite;
 }
 @keyframes nexusShine {
@@ -5413,7 +5456,7 @@ canvas { display: block; width: 100%; }
   function themeRow() {
     const cur = Store.get().settings.theme || "dark";
     const seg = el("div", { class: "seg", style: "flex-wrap:wrap" });
-    [["light", "☀️ Claro"], ["gray", "◐ Gris"], ["dark", "🌙 Oscuro"], ["purple", "🟣 Morado"], ["neon", "⚡ Dark Brillante"]].forEach(([val, label]) => {
+    [["light", "☀️ Claro"], ["gray", "◐ Gris"], ["dark", "🌙 Oscuro"], ["purple", "🟣 Morado"], ["neon", "🔴 Dark"]].forEach(([val, label]) => {
       const b = el("button", { text: label, onclick: () => { if (N.App) N.App.applyTheme(val); Audio.play("tap"); open(); } });
       if (val === cur) b.classList.add("on");
       seg.appendChild(b);
@@ -5421,7 +5464,7 @@ canvas { display: block; width: 100%; }
     return el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:10px" }, [
       el("div", {}, [
         el("div", { class: "set-title", text: "🎨 Tema" }),
-        el("div", { class: "set-desc", text: "Elige entre claro, gris, oscuro, morado o dark brillante." })
+        el("div", { class: "set-desc", text: "Elige entre claro, gris, oscuro, morado o dark (rojo neón)." })
       ]),
       seg
     ]);
