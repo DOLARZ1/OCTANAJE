@@ -51,10 +51,27 @@
     N.App && N.App.refreshTop();
   }
 
+  // elimina un registro y refresca el detalle de ESE día (para el historial,
+  // donde puede no ser el día de hoy) además del fondo de la vista principal
+  function removeEntryFromDay(e, dateKey) {
+    const a = log(); const i = a.indexOf(e); if (i >= 0) a.splice(i, 1);
+    Audio.play("delete");
+    if (e.xpEarned) Gami.remove(e.xpEarned); else Store.commit();
+    const bg = document.getElementById("view-nutrition");
+    if (bg) render(bg);
+    N.App && N.App.refreshTop();
+    openDayDetail(dateKey);
+  }
+
   function dayTotals(key) {
     return log().filter((x) => x.date === key).reduce((t, x) => {
       t.kcal += x.kcal; t.prot += x.prot; t.carb += x.carb; return t;
     }, { kcal: 0, prot: 0, carb: 0 });
+  }
+  // lista de días (más reciente primero) que tienen al menos un alimento registrado
+  function historyDays() {
+    const set = new Set(log().map((x) => x.date));
+    return Array.from(set).sort().reverse();
   }
   function weekSeries(macro) {
     const days = DateUtil.lastNDays(7);
@@ -225,21 +242,111 @@
     UI.openModal("🎯 Metas diarias", body);
   }
 
+  // ---------------- Historial: ver/revisar un día específico ----------------
+  function openHistory() {
+    const days = historyDays();
+    const dateI = el("input", { class: "input", type: "date", value: today(), max: today() });
+    const goBtn = el("button", { class: "btn primary block", style: "margin-top:8px", html: "🔍 Ver ese día", onclick: () => {
+      if (!dateI.value) { Audio.play("error"); toast({ icon: "⚠️", msg: "Elige una fecha" }); return; }
+      openDayDetail(dateI.value);
+    } });
+
+    const listWrap = el("div", { style: "margin-top:16px" });
+    if (!days.length) {
+      listWrap.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "📖" }), el("div", { text: "Aún no hay días registrados." })]));
+    } else {
+      listWrap.appendChild(el("div", { class: "card-title", style: "margin-bottom:8px", text: "Días con registro (" + days.length + ")" }));
+      days.slice(0, 60).forEach((dk) => {
+        const t = dayTotals(dk);
+        const dLbl = DateUtil.parse(dk).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+        listWrap.appendChild(el("div", { class: "item", style: "padding:10px 12px;cursor:pointer", onclick: () => openDayDetail(dk) }, [
+          el("div", { class: "item-main" }, [
+            el("div", { class: "item-title", style: "font-size:14px", text: dLbl + (dk === today() ? " · hoy" : "") }),
+            el("div", { class: "item-meta" }, [
+              el("span", { class: "chip warn", text: t.kcal + " kcal" }),
+              el("span", { class: "text-faint fs-12", text: "P " + r1(t.prot) + "g · C " + r1(t.carb) + "g" })
+            ])
+          ]),
+          el("span", { text: "›", style: "font-size:20px;color:var(--txt-faint)" })
+        ]));
+      });
+    }
+
+    const body = el("div", {}, [
+      el("p", { class: "text-dim fs-13", style: "margin-bottom:10px", text: "Elige una fecha para ver exactamente lo que comiste ese día (no mezclado con otros días):" }),
+      el("div", { class: "field" }, [el("label", { text: "Fecha" }), dateI]),
+      goBtn,
+      listWrap
+    ]);
+    UI.openModal("📖 Historial de alimentación", body);
+  }
+
+  // detalle de UN solo día: totales de ese día exclusivamente + lista de alimentos
+  function openDayDetail(dateKey) {
+    const t = dayTotals(dateKey);
+    const g = goals();
+    const items = log().filter((x) => x.date === dateKey).slice().reverse();
+    const dLbl = DateUtil.parse(dateKey).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+    const body = el("div", {}, [
+      el("div", { class: "insight info", style: "margin-bottom:14px" }, [
+        el("span", { class: "ico", text: "📅" }),
+        el("div", { class: "txt", html: "Totales <b>solo de este día</b> (" + dLbl + "), sin sumar otros días." })
+      ]),
+      el("div", { class: "grid cols-3 mb-16" }, [
+        macroBox("Calorías", t.kcal, "kcal", "var(--warn)"),
+        macroBox("Proteínas", r1(t.prot), "g", "var(--good)"),
+        macroBox("Carbos", r1(t.carb), "g", "var(--accent)")
+      ]),
+      el("div", { class: "fs-12 text-faint mb-16", text: pctOf(t.kcal, g.kcal) + "% de tu meta de calorías (" + g.kcal + " kcal) ese día." })
+    ]);
+
+    if (!items.length) {
+      body.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "🍽️" }), el("div", { text: "No hay alimentos registrados este día." })]));
+    } else {
+      items.forEach((e) => {
+        body.appendChild(el("div", { class: "item" }, [
+          el("div", { class: "item-main" }, [
+            el("div", { class: "item-title", text: e.name }),
+            el("div", { class: "item-meta" }, [
+              el("span", { class: "chip", text: e.grams + " g" }),
+              el("span", { class: "chip warn", text: e.kcal + " kcal" }),
+              el("span", { class: "text-faint fs-12", text: "P " + e.prot + "g · C " + e.carb + "g" })
+            ])
+          ]),
+          el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => removeEntryFromDay(e, dateKey) })
+        ]));
+      });
+    }
+    body.appendChild(el("button", { class: "btn block mt-16", html: "📄 Descargar PDF de este día", onclick: () => { UI.closeModal(); exportPDF("day", dateKey); } }));
+    UI.openModal("📖 " + dLbl, body);
+  }
+
   // ---------------- Exportar resumen a PDF ----------------
   function openPdfModal() {
+    const dateI = el("input", { class: "input", type: "date", value: today(), max: today() });
     const body = el("div", {}, [
       el("p", { class: "text-dim fs-13", style: "margin-bottom:16px", text: "Elige el periodo del resumen de consumo a descargar en PDF:" }),
       el("button", { class: "btn primary block", style: "margin-bottom:10px", html: "📅 Diario (hoy)", onclick: () => { UI.closeModal(); exportPDF("daily"); } }),
       el("button", { class: "btn block", style: "margin-bottom:10px", html: "🗓️ Semanal (últimos 7 días)", onclick: () => { UI.closeModal(); exportPDF("weekly"); } }),
-      el("button", { class: "btn block", html: "📆 Mensual (este mes)", onclick: () => { UI.closeModal(); exportPDF("monthly"); } }),
+      el("button", { class: "btn block", style: "margin-bottom:16px", html: "📆 Mensual (este mes)", onclick: () => { UI.closeModal(); exportPDF("monthly"); } }),
+      el("div", { class: "card", style: "padding:12px" }, [
+        el("div", { class: "fs-12 fw-700 mb-8", text: "🔎 Elegir un día específico (de hace tiempo)" }),
+        dateI,
+        el("button", { class: "btn primary block mt-8", html: "📄 PDF de ese día", onclick: () => {
+          if (!dateI.value) { Audio.play("error"); toast({ icon: "⚠️", msg: "Elige una fecha" }); return; }
+          UI.closeModal(); exportPDF("day", dateI.value);
+        } })
+      ]),
       el("p", { class: "fs-12 text-faint", style: "margin-top:16px", html: "Se abrirá la ventana de impresión: elige <b>\"Guardar como PDF\"</b> como destino." })
     ]);
     UI.openModal("📄 Descargar PDF de alimentación", body);
   }
 
-  function rangeFor(period) {
+  function rangeFor(period, dayKey) {
     const to = today();
     let from, label;
+    if (period === "day") { from = dayKey || to; return { from: from, to: from, label: "Día específico" }; }
     if (period === "daily") { from = to; label = "Diario"; }
     else if (period === "weekly") { from = DateUtil.addDays(to, -6); label = "Semanal"; }
     else {
@@ -251,8 +358,9 @@
   function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   function pctOf(v, g) { return g > 0 ? Math.round((v / g) * 100) : 0; }
 
-  function exportPDF(period) {
-    const r = rangeFor(period);
+  function exportPDF(period, dayKey) {
+    const r = rangeFor(period, dayKey);
+    const isSingleDay = r.from === r.to;
     const g = goals();
     const list = log().filter((x) => x.date >= r.from && x.date <= r.to)
       .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
@@ -314,17 +422,28 @@
       "@media print{body{padding:0}}" +
       "</style></head><body>" +
       "<div class='hd'><div><div class='logo'>▲ OCTAN<span>AJE</span></div><div class='sub'>Salud y Disciplina</div></div>" +
-      "<div style='text-align:right'><h1>Resumen de alimentación</h1><div class='sub'>" + r.label + " · " + (r.from === r.to ? fromLbl : fromLbl + " → " + toLbl) + "</div></div></div>" +
-      "<div class='kpis'>" +
-      "<div class='kpi'><div class='n'>" + nDays + "</div><div class='l'>Días con registro</div></div>" +
-      "<div class='kpi'><div class='n'>" + grand.kcal + "</div><div class='l'>Kcal totales</div></div>" +
-      "<div class='kpi'><div class='n'>" + avg.kcal + "</div><div class='l'>Kcal / día (prom)</div></div>" +
-      "<div class='kpi'><div class='n'>" + r1(grand.prot) + "</div><div class='l'>Proteínas (g)</div></div>" +
-      "<div class='kpi'><div class='n'>" + r1(grand.carb) + "</div><div class='l'>Carbohidratos (g)</div></div>" +
-      "</div>" +
-      "<div class='types'><b>Metas diarias:</b> " + g.kcal + " kcal &nbsp;·&nbsp; " + g.prot + " g proteína &nbsp;·&nbsp; " + g.carb + " g carbohidratos &nbsp;·&nbsp; <b>Promedio del periodo:</b> P " + avg.prot + "g · C " + avg.carb + "g</div>" +
+      "<div style='text-align:right'><h1>Resumen de alimentación</h1><div class='sub'>" + (isSingleDay ? fromLbl : r.label + " · " + fromLbl + " → " + toLbl) + "</div></div></div>" +
+      (isSingleDay
+        ? "<div class='kpis'>" +
+          "<div class='kpi'><div class='n'>" + grand.kcal + "</div><div class='l'>Kcal de este día</div></div>" +
+          "<div class='kpi'><div class='n'>" + r1(grand.prot) + "</div><div class='l'>Proteínas (g)</div></div>" +
+          "<div class='kpi'><div class='n'>" + r1(grand.carb) + "</div><div class='l'>Carbohidratos (g)</div></div>" +
+          "<div class='kpi'><div class='n'>" + pctOf(grand.kcal, g.kcal) + "%</div><div class='l'>De tu meta diaria</div></div>" +
+          "</div>"
+        : "<div class='kpis'>" +
+          "<div class='kpi'><div class='n'>" + nDays + "</div><div class='l'>Días con registro</div></div>" +
+          "<div class='kpi'><div class='n'>" + grand.kcal + "</div><div class='l'>Kcal totales del periodo</div></div>" +
+          "<div class='kpi'><div class='n'>" + avg.kcal + "</div><div class='l'>Kcal / día (promedio)</div></div>" +
+          "<div class='kpi'><div class='n'>" + r1(grand.prot) + "</div><div class='l'>Proteínas totales (g)</div></div>" +
+          "<div class='kpi'><div class='n'>" + r1(grand.carb) + "</div><div class='l'>Carbohidratos totales (g)</div></div>" +
+          "</div>"
+      ) +
+      "<div class='types'><b>Metas diarias:</b> " + g.kcal + " kcal &nbsp;·&nbsp; " + g.prot + " g proteína &nbsp;·&nbsp; " + g.carb + " g carbohidratos" +
+      (isSingleDay ? "" : " &nbsp;·&nbsp; <b>Promedio del periodo:</b> P " + avg.prot + "g · C " + avg.carb + "g") + "</div>" +
       "<table><thead><tr><th>Alimento / platillo</th><th class='c'>Cantidad</th><th class='c'>Kcal</th><th class='c'>Prot (g)</th><th class='c'>Carb (g)</th></tr></thead><tbody>" + rows +
-      "<tr class='dh'><td><b>TOTAL DEL PERIODO</b></td><td></td><td style='text-align:center'><b>" + grand.kcal + "</b></td><td style='text-align:center'><b>" + r1(grand.prot) + "</b></td><td style='text-align:center'><b>" + r1(grand.carb) + "</b></td></tr>" +
+      (isSingleDay ? "" :
+        "<tr class='dh'><td><b>TOTAL DEL PERIODO (" + nDays + " día" + (nDays === 1 ? "" : "s") + ", NO es un solo día)</b></td><td></td><td style='text-align:center'><b>" + grand.kcal + "</b></td><td style='text-align:center'><b>" + r1(grand.prot) + "</b></td><td style='text-align:center'><b>" + r1(grand.carb) + "</b></td></tr>"
+      ) +
       "</tbody></table>" +
       "<div class='ft'>Generado por OCTANAJE · " + new Date().toLocaleString("es-MX") + "</div>" +
       "</body></html>";
@@ -355,6 +474,7 @@
       ]),
       el("div", { class: "flex gap-8", style: "flex-wrap:wrap" }, [
         el("button", { class: "btn", onclick: openGoals, html: "🎯 Metas" }),
+        el("button", { class: "btn", onclick: openHistory, html: "📖 Historial" }),
         el("button", { class: "btn", onclick: openPdfModal, html: "📄 PDF" }),
         el("button", { class: "btn primary", onclick: openBrowser, html: "＋ Agregar alimento" })
       ])
