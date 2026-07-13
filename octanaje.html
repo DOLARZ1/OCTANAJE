@@ -5095,6 +5095,19 @@ canvas { display: block; width: 100%; }
       el("div", { class: "txt", html: "Consejo: elige una sola tarea, silencia distracciones y trabaja hasta que suene la alarma. Cada sesión completa suma <b>+20 XP</b>." })
     ]));
 
+    // aclaración de funcionamiento (letras pequeñas, al final de la vista)
+    // para evitar confundir estas limitaciones con un mal funcionamiento
+    container.appendChild(el("p", {
+      class: "fs-12 text-faint mt-16",
+      style: "line-height:1.6",
+      html:
+        "ℹ️ <b>Cómo funciona la alarma:</b> mientras una sesión está activa, OCTANAJE mantiene la pantalla encendida (Wake Lock) para que la cuenta no se congele y la alarma suene puntual. " +
+        "Esto solo aplica si la app permanece visible en la pantalla, aunque esté \"en reposo\"/atenuada. " +
+        "Si bloqueas el teléfono manualmente, cambias a otra app, o el sistema cierra la pestaña en segundo plano para ahorrar batería, el temporizador puede pausarse y la alarma sonará hasta que vuelvas a abrir la app — esto lo controla el sistema operativo, no OCTANAJE. " +
+        "Revisa también que el volumen del dispositivo no esté en silencio y que el sonido esté activado en Ajustes; probamos varias alarmas (Timbre/Sirena/Campana) y una vibración de respaldo para que sea difícil pasarlas por alto. " +
+        "Para recordatorios críticos que deban sonar con el teléfono bloqueado o la app cerrada, usa el botón \"Añadir a Google Calendar\" (Hábitos/Tareas/Metas) o \"Configurar horario\" en Ajustes: esos sí usan la alarma nativa de tu calendario/sistema."
+    }));
+
     paint();
     const days = DateUtil.lastNDays(7);
     setTimeout(() => N.Charts.bars(spark, { labels: days.map((d) => DateUtil.weekday(d)), series: [{ values: days.map((d) => c.focusLog[d] || 0), color: "--accent" }] }, { height: 150 }), 30);
