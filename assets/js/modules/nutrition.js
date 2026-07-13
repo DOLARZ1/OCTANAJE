@@ -26,11 +26,70 @@
     if (!s.nutrition || typeof s.nutrition !== "object") s.nutrition = {};
     if (!Array.isArray(s.nutrition.log)) s.nutrition.log = [];
     if (!s.nutrition.goals) s.nutrition.goals = Object.assign({}, DEFAULT_GOALS);
+    if (!Array.isArray(s.nutrition.customFoods)) s.nutrition.customFoods = [];
+    if (!Array.isArray(s.nutrition.favorites)) s.nutrition.favorites = [];
     return s.nutrition;
   }
   function log() { return nut().log; }
   function goals() { return nut().goals; }
   const r1 = (x) => Math.round(x * 10) / 10;
+
+  // ---------------- Alimentos personalizados (guardados por el usuario) ----------------
+  function customFoods() { return nut().customFoods; }
+  // catálogo completo = base de datos incluida + los que el usuario agregó
+  function allFoods() { return N.FOODS.concat(customFoods()); }
+
+  function addCustomFood(data) {
+    const food = {
+      id: Store.uid(), custom: true,
+      name: data.name.trim(), cat: data.cat || "Platillos mexicanos",
+      kcal: Math.max(0, Number(data.kcal) || 0),
+      prot: Math.max(0, Number(data.prot) || 0),
+      carb: Math.max(0, Number(data.carb) || 0)
+    };
+    if (data.portionGrams && Number(data.portionGrams) > 0) {
+      food.portion = { grams: Number(data.portionGrams), label: (data.portionLabel && data.portionLabel.trim()) || (Number(data.portionGrams) + " g aprox.") };
+    }
+    customFoods().push(food);
+    Store.commit();
+    return food;
+  }
+  function updateCustomFood(food, data) {
+    food.name = data.name.trim(); food.cat = data.cat || food.cat;
+    food.kcal = Math.max(0, Number(data.kcal) || 0);
+    food.prot = Math.max(0, Number(data.prot) || 0);
+    food.carb = Math.max(0, Number(data.carb) || 0);
+    if (data.portionGrams && Number(data.portionGrams) > 0) {
+      food.portion = { grams: Number(data.portionGrams), label: (data.portionLabel && data.portionLabel.trim()) || (Number(data.portionGrams) + " g aprox.") };
+    } else {
+      delete food.portion;
+    }
+    Store.commit();
+  }
+  function removeCustomFood(food) {
+    const arr = customFoods(); const i = arr.indexOf(food);
+    if (i >= 0) arr.splice(i, 1);
+    // si estaba marcado como favorito, se limpia también
+    const favs = nut().favorites; const fi = favs.indexOf(food.name);
+    if (fi >= 0) favs.splice(fi, 1);
+    Store.commit();
+  }
+
+  // ---------------- Favoritos ----------------
+  const FAV_CAT = "⭐ Favoritos";
+  function isFavorite(food) { return nut().favorites.includes(food.name); }
+  function toggleFavorite(food) {
+    const favs = nut().favorites;
+    const i = favs.indexOf(food.name);
+    if (i >= 0) { favs.splice(i, 1); } else { favs.push(food.name); }
+    Store.commit();
+    Audio.play("tap");
+    return i < 0; // true si quedó marcado como favorito
+  }
+  function favoriteFoods() {
+    const set = new Set(nut().favorites);
+    return allFoods().filter((f) => set.has(f.name)).sort((a, b) => a.name.localeCompare(b.name));
+  }
 
   function addEntry(food, grams) {
     const f = grams / 100;
@@ -87,12 +146,19 @@
 
   function openBrowser() {
     const search = el("input", { class: "input", placeholder: "🔍 Buscar alimento…", value: browseQuery });
-    const listWrap = el("div", { style: "max-height:46vh;overflow-y:auto;margin-top:10px" });
+    const listWrap = el("div", { style: "max-height:42vh;overflow-y:auto;margin-top:10px" });
+    const addBtn = el("button", { class: "btn primary block", style: "margin-top:10px", html: "＋ Agregar alimento nuevo a la lista", onclick: () => openCustomFoodForm() });
 
     function renderList() {
       listWrap.innerHTML = "";
       const q = browseQuery.trim().toLowerCase();
-      let items = N.FOODS.filter((f) => (browseCat === "Todos" || f.cat === browseCat) && (!q || f.name.toLowerCase().includes(q)));
+      if (browseCat === FAV_CAT) {
+        const favs = favoriteFoods().filter((f) => !q || f.name.toLowerCase().includes(q));
+        if (!favs.length) { listWrap.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "⭐" }), el("div", { text: "Aún no tienes favoritos. Toca la ⭐ de un alimento para agregarlo." })])); return; }
+        favs.forEach((f) => listWrap.appendChild(foodRow(f)));
+        return;
+      }
+      let items = allFoods().filter((f) => (browseCat === "Todos" || f.cat === browseCat) && (!q || f.name.toLowerCase().includes(q)));
       items = items.slice().sort((a, b) => a.name.localeCompare(b.name));
       if (!items.length) { listWrap.appendChild(el("div", { class: "empty", text: "Sin resultados." })); return; }
       if (browseCat === "Todos") {
@@ -111,30 +177,74 @@
     search.addEventListener("input", () => { browseQuery = search.value; renderList(); });
 
     const chips = el("div", { class: "flex gap-8", style: "flex-wrap:wrap;margin-top:10px" });
-    ["Todos"].concat(N.FOOD_CATS).forEach((cat) => {
+    [FAV_CAT, "Todos"].concat(N.FOOD_CATS).forEach((cat) => {
       const c = el("button", { class: "chip" + (cat === browseCat ? " accent" : ""), text: cat, style: "cursor:pointer" });
       c.addEventListener("click", () => { browseCat = cat; Audio.play("tap"); openBrowser(); });
       chips.appendChild(c);
     });
 
-    const body = el("div", {}, [search, chips, listWrap]);
+    const body = el("div", {}, [search, chips, listWrap, addBtn]);
     UI.openModal("🍽️ Alimentos", body);
     renderList();
   }
 
   function foodRow(f) {
     const macroLbl = "P " + f.prot + "g · C " + f.carb + "g /100g";
+    const fav = isFavorite(f);
     return el("div", { class: "item", style: "padding:10px 12px;cursor:pointer", onclick: () => openPortion(f) }, [
+      el("button", {
+        class: "icon-btn", title: fav ? "Quitar de favoritos" : "Agregar a favoritos",
+        style: fav ? "color:var(--warn)" : "",
+        onclick: (ev) => { ev.stopPropagation(); toggleFavorite(f); openBrowser(); },
+        html: fav ? "⭐" : "☆"
+      }),
       el("div", { class: "item-main" }, [
-        el("div", { class: "item-title", style: "font-size:14px", text: f.name }),
+        el("div", { class: "item-title", style: "font-size:14px" }, [f.name, f.custom ? el("span", { class: "chip", style: "margin-left:6px;font-size:10px", text: "propio" }) : null]),
         el("div", { class: "item-meta" }, [
           el("span", { class: "chip", text: f.kcal + " kcal" }),
           el("span", { class: "text-faint fs-12", text: macroLbl }),
           f.portion ? el("span", { class: "chip accent", text: "🍽️ " + f.portion.label }) : null
         ])
       ]),
+      f.custom ? el("button", { class: "icon-btn", title: "Editar", onclick: (ev) => { ev.stopPropagation(); openCustomFoodForm(f); }, html: "✏️" }) : null,
+      f.custom ? el("button", { class: "icon-btn", title: "Eliminar de la lista", onclick: (ev) => {
+        ev.stopPropagation();
+        UI.confirmBox("Eliminar alimento", "¿Eliminar \"" + f.name + "\" de tu lista? (los registros ya guardados en tu historial no se borran)", () => {
+          removeCustomFood(f); Audio.play("delete"); toast({ icon: "🗑️", msg: "Alimento eliminado de la lista" }); openBrowser();
+        }, "Eliminar");
+      }, html: "🗑️" }) : null,
       el("button", { class: "icon-btn", html: "＋", title: "Agregar", onclick: (ev) => { ev.stopPropagation(); openPortion(f); } })
     ]);
+  }
+
+  // ---------------- Crear / editar un alimento personalizado ----------------
+  function openCustomFoodForm(existing) {
+    const catOptions = N.FOOD_CATS.map((c) => ({ value: c, label: c }));
+    const body = UI.form([
+      { name: "name", label: "Nombre del alimento/platillo", value: existing ? existing.name : "", placeholder: "Ej. Torta de mi tía", required: true },
+      { name: "cat", label: "Categoría", type: "select", value: existing ? existing.cat : "Platillos mexicanos", options: catOptions },
+      { type: "row", fields: [
+        { name: "kcal", label: "Calorías /100g", type: "number", min: 0, step: 1, value: existing ? existing.kcal : "", required: true },
+        { name: "prot", label: "Proteínas /100g", type: "number", min: 0, step: 0.1, value: existing ? existing.prot : "" }
+      ]},
+      { name: "carb", label: "Carbohidratos /100g (g)", type: "number", min: 0, step: 0.1, value: existing ? existing.carb : "" },
+      { type: "row", fields: [
+        { name: "portionGrams", label: "Porción típica (gramos, opcional)", type: "number", min: 0, step: 1, value: existing && existing.portion ? existing.portion.grams : "" },
+        { name: "portionLabel", label: "Descripción de la porción", value: existing && existing.portion ? existing.portion.label : "", placeholder: "Ej. 1 pieza (~200 g)" }
+      ]}
+    ], (data) => {
+      if (!data.name || !data.name.trim()) { Audio.play("error"); toast({ icon: "⚠️", msg: "Ponle un nombre al alimento" }); return; }
+      if (existing) {
+        updateCustomFood(existing, data);
+        toast({ icon: "✏️", title: "Alimento actualizado", msg: existing.name });
+      } else {
+        const f = addCustomFood(data);
+        Audio.play("add");
+        toast({ icon: "🍽️", title: "Alimento agregado a tu lista", msg: f.name + " · ahora aparece en el buscador" });
+      }
+      openBrowser();
+    }, existing ? "Guardar cambios" : "Agregar a mi lista");
+    UI.openModal(existing ? "Editar alimento" : "＋ Agregar alimento a la lista", body);
   }
 
   function openPortion(food) {
@@ -513,6 +623,26 @@
         color: m.color
       })), { size: 230, centerLabel: fmt.num(t.kcal), centerSub: "kcal hoy" });
     }, 30);
+
+    // Acceso rápido a favoritos (comidas más frecuentes)
+    const favs = favoriteFoods();
+    if (favs.length) {
+      const favCard = el("div", { class: "card mb-16" }, [
+        el("div", { class: "card-head" }, [
+          el("div", { class: "card-title" }, [el("span", { class: "dot" }), "⭐ Favoritos"]),
+          el("button", { class: "btn sm", html: "Ver todos", onclick: () => { browseCat = FAV_CAT; openBrowser(); } })
+        ])
+      ]);
+      const chipsWrap = el("div", { class: "flex gap-8", style: "flex-wrap:wrap" });
+      favs.slice(0, 10).forEach((f) => {
+        chipsWrap.appendChild(el("button", {
+          class: "chip accent", style: "cursor:pointer;padding:8px 14px", onclick: () => openPortion(f),
+          html: "⭐ " + f.name + " · " + f.kcal + " kcal"
+        }));
+      });
+      favCard.appendChild(chipsWrap);
+      container.appendChild(favCard);
+    }
 
     // Tendencia semanal de calorías
     const trend = el("div", { class: "card mb-16" }, [
