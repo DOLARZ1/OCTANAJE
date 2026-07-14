@@ -30,6 +30,7 @@
     if (!Array.isArray(s.nutrition.favorites)) s.nutrition.favorites = [];
     if (!Array.isArray(s.nutrition.customCats)) s.nutrition.customCats = [];
     if (!s.nutrition.catNames || typeof s.nutrition.catNames !== "object") s.nutrition.catNames = {};
+    if (!s.nutrition.catIcons || typeof s.nutrition.catIcons !== "object") s.nutrition.catIcons = {};
     return s.nutrition;
   }
   function log() { return nut().log; }
@@ -43,11 +44,33 @@
   // la etiqueta que el usuario quiere ver para cada clave (built-in o personalizada).
   function customCats() { return nut().customCats; }
   function catNames() { return nut().catNames; }
+  function catIcons() { return nut().catIcons; }
   // lista completa de claves de categoría, en orden: las de la app + las que agregó el usuario
   function allCatKeys() { return N.FOOD_CATS.concat(customCats()); }
   // etiqueta visible de una categoría (la renombrada si existe, o la original)
   function catLabel(key) { return catNames()[key] || key; }
   function isBuiltinCat(key) { return N.FOOD_CATS.includes(key); }
+
+  // íconos por defecto de las categorías que ya vienen con la app
+  const DEFAULT_CAT_ICON = {
+    "Carnes y proteínas": "🥩", "Frutas": "🍎", "Verduras": "🥦",
+    "Cereales y panes": "🍞", "Lácteos": "🧀", "Platillos mexicanos": "🌮",
+    "Caldos y sopas": "🍲", "Comida china y sushi": "🥢", "Comida rápida": "🍔",
+    "Snacks / chatarra": "🍟", "Bebidas": "🥤"
+  };
+  // catálogo de emojis para elegir al crear/editar una categoría
+  const CAT_ICON_CHOICES = [
+    "🍽️", "🥩", "🍗", "🐷", "🐟", "🍎", "🍌", "🥦", "🥕", "🌽",
+    "🍞", "🥖", "🫓", "🧀", "🥛", "🌮", "🌯", "🍲", "🍜", "🥢",
+    "🍣", "🍔", "🍕", "🌭", "🍟", "🍿", "🍪", "🍩", "🍰", "🍫",
+    "🍭", "🥤", "☕", "🍺", "🍷", "🥗", "🍳", "🥚", "🍤", "🥙",
+    "🍱", "🍛", "🍚", "🍦", "🥧", "🧁", "🥨", "🍉", "🍇", "🥑"
+  ];
+  function catIcon(key) { return catIcons()[key] || DEFAULT_CAT_ICON[key] || "🍽️"; }
+  function setCatIcon(key, icon) {
+    if (!icon) { delete catIcons()[key]; } else { catIcons()[key] = icon; }
+    Store.commit();
+  }
 
   function addCategory(name) {
     const clean = (name || "").trim();
@@ -222,7 +245,7 @@
         items.forEach((f) => { (groups[f.cat] = groups[f.cat] || []).push(f); });
         allCatKeys().forEach((cat) => {
           if (!groups[cat]) return;
-          listWrap.appendChild(el("div", { class: "card-title", style: "margin:12px 0 6px", text: catLabel(cat) }));
+          listWrap.appendChild(el("div", { class: "card-title", style: "margin:12px 0 6px", text: catIcon(cat) + " " + catLabel(cat) }));
           groups[cat].forEach((f) => listWrap.appendChild(foodRow(f)));
         });
       } else {
@@ -234,7 +257,8 @@
 
     const chips = el("div", { class: "flex gap-8", style: "flex-wrap:wrap;margin-top:10px" });
     [FAV_CAT, "Todos"].concat(allCatKeys()).forEach((cat) => {
-      const c = el("button", { class: "chip" + (cat === browseCat ? " accent" : ""), text: cat === FAV_CAT || cat === "Todos" ? cat : catLabel(cat), style: "cursor:pointer" });
+      const label = cat === FAV_CAT || cat === "Todos" ? cat : catIcon(cat) + " " + catLabel(cat);
+      const c = el("button", { class: "chip" + (cat === browseCat ? " accent" : ""), text: label, style: "cursor:pointer" });
       c.addEventListener("click", () => { browseCat = cat; Audio.play("tap"); openBrowser(browseDate); });
       chips.appendChild(c);
     });
@@ -295,9 +319,27 @@
     UI.openModal("🕐 Registrar día anterior", body);
   }
 
-  // ---------------- Gestor de categorías: agregar nuevas / renombrar cualquiera ----------------
+  // ---------------- Gestor de categorías: agregar nuevas / renombrar cualquiera / cambiar ícono ----------------
+  // selector visual de emoji: un botón que muestra el ícono actual y despliega
+  // una cuadrícula de opciones para elegir otro
+  function iconPicker(initialIcon, onPick) {
+    const btn = el("button", { type: "button", class: "btn sm", html: initialIcon + " Cambiar ícono" });
+    const grid = el("div", { class: "flex gap-8", style: "flex-wrap:wrap;margin-top:8px;display:none" });
+    CAT_ICON_CHOICES.forEach((ic) => {
+      const opt = el("button", {
+        type: "button", class: "icon-btn", style: "font-size:18px",
+        onclick: () => { onPick(ic); btn.innerHTML = ic + " Cambiar ícono"; grid.style.display = "none"; }
+      }, [ic]);
+      grid.appendChild(opt);
+    });
+    btn.addEventListener("click", () => { grid.style.display = grid.style.display === "none" ? "flex" : "none"; });
+    return { btn, grid, wrap: el("div", {}, [btn, grid]) };
+  }
+
   function openCategoryManager() {
     const newNameI = el("input", { class: "input", placeholder: "Ej. Postres, Comida vegana…" });
+    let newIcon = "🍽️";
+    const newIconPicker = iconPicker(newIcon, (ic) => { newIcon = ic; });
     const listWrap = el("div", { style: "margin-top:14px" });
 
     function renderCatList() {
@@ -306,32 +348,37 @@
         const label = catLabel(key);
         const count = allFoods().filter((f) => f.cat === key).length;
         const editI = el("input", { class: "input", value: label, style: "flex:1" });
+        let pickedIcon = catIcon(key);
+        const picker = iconPicker(pickedIcon, (ic) => { pickedIcon = ic; });
         const saveBtn = el("button", {
-          class: "icon-btn", title: "Guardar nombre", html: "💾",
+          class: "icon-btn", title: "Guardar cambios", html: "💾",
           onclick: () => {
             const res = renameCategory(key, editI.value);
             if (!res.ok) { Audio.play("error"); toast({ icon: "⚠️", msg: res.msg }); return; }
+            setCatIcon(key, pickedIcon === DEFAULT_CAT_ICON[key] ? null : pickedIcon);
             Audio.play("tap");
-            toast({ icon: "🏷️", msg: "Categoría renombrada" });
+            toast({ icon: pickedIcon, msg: "Categoría actualizada" });
             openBrowser(browseDate);
             openCategoryManager();
           }
         });
         const canDelete = !isBuiltinCat(key) && count === 0;
-        listWrap.appendChild(el("div", { class: "item", style: "padding:10px 12px;gap:8px" }, [
-          editI, saveBtn,
-          canDelete ? el("button", {
-            class: "icon-btn", title: "Eliminar categoría", html: "🗑️",
-            onclick: () => {
-              UI.confirmBox("Eliminar categoría", "¿Eliminar la categoría \"" + label + "\"?", () => {
-                const res = removeCategory(key);
-                if (!res.ok) { Audio.play("error"); toast({ icon: "⚠️", msg: res.msg }); return; }
-                Audio.play("delete");
-                toast({ icon: "🗑️", msg: "Categoría eliminada" });
-                openCategoryManager();
-              }, "Eliminar");
-            }
-          }) : el("span", { class: "text-faint fs-12", style: "white-space:nowrap", text: isBuiltinCat(key) ? "de la app" : count + " alim." })
+        listWrap.appendChild(el("div", { class: "item", style: "padding:10px 12px;gap:8px;flex-wrap:wrap" }, [
+          el("div", { class: "flex gap-8", style: "flex:1;min-width:220px;align-items:center" }, [editI, saveBtn,
+            canDelete ? el("button", {
+              class: "icon-btn", title: "Eliminar categoría", html: "🗑️",
+              onclick: () => {
+                UI.confirmBox("Eliminar categoría", "¿Eliminar la categoría \"" + label + "\"?", () => {
+                  const res = removeCategory(key);
+                  if (!res.ok) { Audio.play("error"); toast({ icon: "⚠️", msg: res.msg }); return; }
+                  Audio.play("delete");
+                  toast({ icon: "🗑️", msg: "Categoría eliminada" });
+                  openCategoryManager();
+                }, "Eliminar");
+              }
+            }) : el("span", { class: "text-faint fs-12", style: "white-space:nowrap", text: isBuiltinCat(key) ? "de la app" : count + " alim." })
+          ]),
+          picker.wrap
         ]));
       });
     }
@@ -342,16 +389,18 @@
       onclick: () => {
         const res = addCategory(newNameI.value);
         if (!res.ok) { Audio.play("error"); toast({ icon: "⚠️", msg: res.msg }); return; }
+        setCatIcon(res.key, newIcon);
         Audio.play("add");
         newNameI.value = "";
-        toast({ icon: "🏷️", title: "Categoría agregada", msg: res.key });
-        renderCatList();
+        toast({ icon: newIcon, title: "Categoría agregada", msg: res.key });
+        openCategoryManager();
       }
     });
 
     const body = el("div", {}, [
-      el("p", { class: "text-dim fs-13", style: "margin-bottom:10px", text: "Escribe el nombre de tu nueva categoría, o edita el nombre de cualquiera existente (incluidas las de la app) y guarda con 💾." }),
+      el("p", { class: "text-dim fs-13", style: "margin-bottom:10px", text: "Escribe el nombre de tu nueva categoría y elige su ícono, o edita cualquiera existente (incluidas las de la app: nombre, ícono) y guarda con 💾." }),
       el("div", { class: "field" }, [el("label", { text: "Nombre de la categoría nueva" }), newNameI]),
+      newIconPicker.wrap,
       addBtn,
       el("div", { class: "card-title mt-16", style: "margin-bottom:6px", text: "Categorías actuales" }),
       listWrap
@@ -383,7 +432,7 @@
 
     const nameI = el("input", { class: "input", value: existing ? existing.name : "", placeholder: "Ej. Torta de mi tía" });
     const catI = el("select", { class: "select" }, allCatKeys().map((c) => {
-      const o = el("option", { value: c, text: catLabel(c) });
+      const o = el("option", { value: c, text: catIcon(c) + " " + catLabel(c) });
       if ((existing ? existing.cat : "Platillos mexicanos") === c) o.setAttribute("selected", "");
       return o;
     }));
@@ -594,7 +643,7 @@
       dateBanner,
       el("div", { class: "insight info", style: "margin-bottom:14px" }, [
         el("span", { class: "ico", text: "🍽️" }),
-        el("div", { class: "txt", html: "<b>" + food.name + "</b><br><span style='color:var(--txt-faint)'>" + catLabel(food.cat) + " · " + subInfo + "</span>" })
+        el("div", { class: "txt", html: "<b>" + food.name + "</b><br><span style='color:var(--txt-faint)'>" + catIcon(food.cat) + " " + catLabel(food.cat) + " · " + subInfo + "</span>" })
       ]),
       fieldsWrap,
       switchLink,
