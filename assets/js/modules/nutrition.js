@@ -218,22 +218,130 @@
   }
 
   // ---------------- Crear / editar un alimento personalizado ----------------
+  // Soporta 2 modos de captura, según lo que sepas del alimento:
+  //  · "por pieza/porción": metes el peso de 1 pieza + sus kcal/prot/carb TAL
+  //    CUAL (ej. "1 huevo = 50 g, 70 kcal"), y la app calcula solo el
+  //    equivalente por 100 g que se guarda internamente.
+  //  · "por 100 g": el modo clásico, para ingredientes crudos tipo báscula.
+  // En ambos casos el resultado queda guardado igual en tu lista, y podrás
+  // agregarlo después eligiendo porciones o gramos como cualquier otro.
   function openCustomFoodForm(existing) {
-    const catOptions = N.FOOD_CATS.map((c) => ({ value: c, label: c }));
-    const body = UI.form([
-      { name: "name", label: "Nombre del alimento/platillo", value: existing ? existing.name : "", placeholder: "Ej. Torta de mi tía", required: true },
-      { name: "cat", label: "Categoría", type: "select", value: existing ? existing.cat : "Platillos mexicanos", options: catOptions },
-      { type: "row", fields: [
-        { name: "kcal", label: "Calorías /100g", type: "number", min: 0, step: 1, value: existing ? existing.kcal : "", required: true },
-        { name: "prot", label: "Proteínas /100g", type: "number", min: 0, step: 0.1, value: existing ? existing.prot : "" }
-      ]},
-      { name: "carb", label: "Carbohidratos /100g (g)", type: "number", min: 0, step: 0.1, value: existing ? existing.carb : "" },
-      { type: "row", fields: [
-        { name: "portionGrams", label: "Porción típica (gramos, opcional)", type: "number", min: 0, step: 1, value: existing && existing.portion ? existing.portion.grams : "" },
-        { name: "portionLabel", label: "Descripción de la porción", value: existing && existing.portion ? existing.portion.label : "", placeholder: "Ej. 1 pieza (~200 g)" }
-      ]}
-    ], (data) => {
-      if (!data.name || !data.name.trim()) { Audio.play("error"); toast({ icon: "⚠️", msg: "Ponle un nombre al alimento" }); return; }
+    // si el alimento ya tiene una porción típica, por comodidad partimos en
+    // modo "pieza" con los valores ya convertidos de vuelta a esa porción
+    let mode = existing && existing.portion ? "piece" : "per100";
+    let initPieceGrams = "", initPieceLabel = "1 pieza", initKcalPiece = "", initProtPiece = "", initCarbPiece = "";
+    if (existing && existing.portion) {
+      const f = existing.portion.grams / 100;
+      initPieceGrams = existing.portion.grams;
+      initPieceLabel = existing.portion.label;
+      initKcalPiece = Math.round(existing.kcal * f);
+      initProtPiece = r1(existing.prot * f);
+      initCarbPiece = r1(existing.carb * f);
+    }
+
+    const nameI = el("input", { class: "input", value: existing ? existing.name : "", placeholder: "Ej. Torta de mi tía" });
+    const catI = el("select", { class: "select" }, N.FOOD_CATS.map((c) => {
+      const o = el("option", { value: c, text: c });
+      if ((existing ? existing.cat : "Platillos mexicanos") === c) o.setAttribute("selected", "");
+      return o;
+    }));
+
+    // --- campos modo "por 100 g" ---
+    const kcal100I = el("input", { class: "input", type: "number", min: 0, step: 1, value: existing ? existing.kcal : "" });
+    const prot100I = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: existing ? existing.prot : "" });
+    const carb100I = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: existing ? existing.carb : "" });
+    const portionGramsI = el("input", { class: "input", type: "number", min: 0, step: 1, value: existing && existing.portion ? existing.portion.grams : "", placeholder: "Opcional" });
+    const portionLabelI = el("input", { class: "input", value: existing && existing.portion ? existing.portion.label : "", placeholder: "Ej. 1 pieza (~200 g)" });
+
+    // --- campos modo "por pieza / porción" ---
+    const pieceGramsI = el("input", { class: "input", type: "number", min: 1, step: 1, value: initPieceGrams, placeholder: "Ej. 50" });
+    const pieceLabelI = el("input", { class: "input", value: initPieceLabel, placeholder: "Ej. 1 pieza mediana" });
+    const kcalPieceI = el("input", { class: "input", type: "number", min: 0, step: 1, value: initKcalPiece, placeholder: "Ej. 70" });
+    const protPieceI = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: initProtPiece, placeholder: "Ej. 6" });
+    const carbPieceI = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: initCarbPiece, placeholder: "Ej. 0.5" });
+
+    const preview = el("div", { class: "fs-12 text-faint mt-8" });
+    function paintPreview() {
+      if (mode === "piece") {
+        const g = Number(pieceGramsI.value) || 0;
+        if (g > 0) {
+          const f = 100 / g;
+          preview.textContent = "≈ equivalente a " + Math.round((Number(kcalPieceI.value) || 0) * f) + " kcal, P " +
+            r1((Number(protPieceI.value) || 0) * f) + "g, C " + r1((Number(carbPieceI.value) || 0) * f) + "g por cada 100 g.";
+        } else preview.textContent = "";
+      } else {
+        preview.textContent = "";
+      }
+    }
+    [pieceGramsI, kcalPieceI, protPieceI, carbPieceI].forEach((i) => i.addEventListener("input", paintPreview));
+
+    const per100Group = el("div", {}, [
+      el("div", { class: "row" }, [
+        el("div", { class: "field" }, [el("label", { text: "Calorías /100 g *" }), kcal100I]),
+        el("div", { class: "field" }, [el("label", { text: "Proteínas /100 g (g)" }), prot100I])
+      ]),
+      el("div", { class: "field" }, [el("label", { text: "Carbohidratos /100 g (g)" }), carb100I]),
+      el("div", { class: "row" }, [
+        el("div", { class: "field" }, [el("label", { text: "Porción típica (gramos, opcional)" }), portionGramsI]),
+        el("div", { class: "field" }, [el("label", { text: "Descripción de la porción" }), portionLabelI])
+      ])
+    ]);
+    const pieceGroup = el("div", {}, [
+      el("div", { class: "row" }, [
+        el("div", { class: "field" }, [el("label", { text: "Peso de 1 pieza/porción (g) *" }), pieceGramsI]),
+        el("div", { class: "field" }, [el("label", { text: "¿Cómo se llama esa porción?" }), pieceLabelI])
+      ]),
+      el("div", { class: "insight info", style: "margin:8px 0" }, [
+        el("span", { class: "ico", text: "💡" }),
+        el("div", { class: "txt", text: "Escribe las calorías/proteínas/carbohidratos de ESA pieza completa (no por 100 g). La app hace la conversión sola." })
+      ]),
+      el("div", { class: "row" }, [
+        el("div", { class: "field" }, [el("label", { text: "Calorías de la pieza *" }), kcalPieceI]),
+        el("div", { class: "field" }, [el("label", { text: "Proteínas de la pieza (g)" }), protPieceI])
+      ]),
+      el("div", { class: "field" }, [el("label", { text: "Carbohidratos de la pieza (g)" }), carbPieceI]),
+      preview
+    ]);
+
+    const fieldsWrap = el("div", {});
+    const switchBtn = el("button", { type: "button", class: "btn sm", style: "margin:6px 0 10px" });
+    function paintMode() {
+      fieldsWrap.innerHTML = "";
+      fieldsWrap.appendChild(mode === "piece" ? pieceGroup : per100Group);
+      switchBtn.innerHTML = mode === "piece" ? "⚖️ Prefiero capturar por 100 g" : "🍽️ Prefiero capturar por pieza/porción";
+      paintPreview();
+    }
+    switchBtn.addEventListener("click", () => { mode = mode === "piece" ? "per100" : "piece"; paintMode(); });
+    paintMode();
+
+    const submitBtn = el("button", { class: "btn primary block mt-8", html: existing ? "Guardar cambios" : "＋ Agregar a mi lista" });
+    submitBtn.addEventListener("click", () => {
+      if (!nameI.value || !nameI.value.trim()) { Audio.play("error"); toast({ icon: "⚠️", msg: "Ponle un nombre al alimento" }); return; }
+
+      let data;
+      if (mode === "piece") {
+        const g = Number(pieceGramsI.value) || 0;
+        if (g <= 0) { Audio.play("error"); toast({ icon: "⚠️", msg: "Indica cuánto pesa esa pieza/porción" }); return; }
+        const f = 100 / g;
+        data = {
+          name: nameI.value, cat: catI.value,
+          kcal: Math.round((Number(kcalPieceI.value) || 0) * f),
+          prot: r1((Number(protPieceI.value) || 0) * f),
+          carb: r1((Number(carbPieceI.value) || 0) * f),
+          portionGrams: g,
+          portionLabel: (pieceLabelI.value && pieceLabelI.value.trim()) || (g + " g aprox.")
+        };
+      } else {
+        data = {
+          name: nameI.value, cat: catI.value,
+          kcal: Number(kcal100I.value) || 0,
+          prot: Number(prot100I.value) || 0,
+          carb: Number(carb100I.value) || 0,
+          portionGrams: Number(portionGramsI.value) || 0,
+          portionLabel: portionLabelI.value
+        };
+      }
+
       if (existing) {
         updateCustomFood(existing, data);
         toast({ icon: "✏️", title: "Alimento actualizado", msg: existing.name });
@@ -243,7 +351,15 @@
         toast({ icon: "🍽️", title: "Alimento agregado a tu lista", msg: f.name + " · ahora aparece en el buscador" });
       }
       openBrowser();
-    }, existing ? "Guardar cambios" : "Agregar a mi lista");
+    });
+
+    const body = el("div", {}, [
+      el("div", { class: "field" }, [el("label", { text: "Nombre del alimento/platillo *" }), nameI]),
+      el("div", { class: "field" }, [el("label", { text: "Categoría" }), catI]),
+      switchBtn,
+      fieldsWrap,
+      submitBtn
+    ]);
     UI.openModal(existing ? "Editar alimento" : "＋ Agregar alimento a la lista", body);
   }
 
