@@ -5188,11 +5188,55 @@ canvas { display: block; width: 100%; }
     if (!s.nutrition.goals) s.nutrition.goals = Object.assign({}, DEFAULT_GOALS);
     if (!Array.isArray(s.nutrition.customFoods)) s.nutrition.customFoods = [];
     if (!Array.isArray(s.nutrition.favorites)) s.nutrition.favorites = [];
+    if (!Array.isArray(s.nutrition.customCats)) s.nutrition.customCats = [];
+    if (!s.nutrition.catNames || typeof s.nutrition.catNames !== "object") s.nutrition.catNames = {};
     return s.nutrition;
   }
   function log() { return nut().log; }
   function goals() { return nut().goals; }
   const r1 = (x) => Math.round(x * 10) / 10;
+
+  // ---------------- Categorías (agregar nuevas / renombrar cualquiera) ----------------
+  // Cada alimento guarda una "clave" de categoría fija e interna (p.ej. "Bebidas"),
+  // que nunca cambia aunque la renombres — así la lógica de mililitros/gramos y el
+  // filtrado siguen funcionando sin importar el nombre visible. catNames guarda solo
+  // la etiqueta que el usuario quiere ver para cada clave (built-in o personalizada).
+  function customCats() { return nut().customCats; }
+  function catNames() { return nut().catNames; }
+  // lista completa de claves de categoría, en orden: las de la app + las que agregó el usuario
+  function allCatKeys() { return N.FOOD_CATS.concat(customCats()); }
+  // etiqueta visible de una categoría (la renombrada si existe, o la original)
+  function catLabel(key) { return catNames()[key] || key; }
+  function isBuiltinCat(key) { return N.FOOD_CATS.includes(key); }
+
+  function addCategory(name) {
+    const clean = (name || "").trim();
+    if (!clean) return { ok: false, msg: "Escribe un nombre para la categoría" };
+    const dup = allCatKeys().some((k) => catLabel(k).toLowerCase() === clean.toLowerCase());
+    if (dup) return { ok: false, msg: "Ya existe una categoría con ese nombre" };
+    customCats().push(clean);
+    Store.commit();
+    return { ok: true, key: clean };
+  }
+  function renameCategory(key, newLabel) {
+    const clean = (newLabel || "").trim();
+    if (!clean) return { ok: false, msg: "Escribe un nombre válido" };
+    const dup = allCatKeys().some((k) => k !== key && catLabel(k).toLowerCase() === clean.toLowerCase());
+    if (dup) return { ok: false, msg: "Ya existe otra categoría con ese nombre" };
+    if (clean === key) { delete catNames()[key]; } else { catNames()[key] = clean; }
+    Store.commit();
+    return { ok: true };
+  }
+  function removeCategory(key) {
+    const inUse = allFoods().some((f) => f.cat === key);
+    if (inUse) return { ok: false, msg: "No se puede eliminar: hay alimentos usando esta categoría" };
+    const arr = customCats(); const i = arr.indexOf(key);
+    if (i < 0) return { ok: false, msg: "Esa categoría no se puede eliminar" };
+    arr.splice(i, 1);
+    delete catNames()[key];
+    Store.commit();
+    return { ok: true };
+  }
 
   // ---------------- Alimentos personalizados (guardados por el usuario) ----------------
   function customFoods() { return nut().customFoods; }
@@ -5336,9 +5380,9 @@ canvas { display: block; width: 100%; }
       if (browseCat === "Todos") {
         const groups = {};
         items.forEach((f) => { (groups[f.cat] = groups[f.cat] || []).push(f); });
-        N.FOOD_CATS.forEach((cat) => {
+        allCatKeys().forEach((cat) => {
           if (!groups[cat]) return;
-          listWrap.appendChild(el("div", { class: "card-title", style: "margin:12px 0 6px", text: cat }));
+          listWrap.appendChild(el("div", { class: "card-title", style: "margin:12px 0 6px", text: catLabel(cat) }));
           groups[cat].forEach((f) => listWrap.appendChild(foodRow(f)));
         });
       } else {
@@ -5349,11 +5393,12 @@ canvas { display: block; width: 100%; }
     search.addEventListener("input", () => { browseQuery = search.value; renderList(); });
 
     const chips = el("div", { class: "flex gap-8", style: "flex-wrap:wrap;margin-top:10px" });
-    [FAV_CAT, "Todos"].concat(N.FOOD_CATS).forEach((cat) => {
-      const c = el("button", { class: "chip" + (cat === browseCat ? " accent" : ""), text: cat, style: "cursor:pointer" });
+    [FAV_CAT, "Todos"].concat(allCatKeys()).forEach((cat) => {
+      const c = el("button", { class: "chip" + (cat === browseCat ? " accent" : ""), text: cat === FAV_CAT || cat === "Todos" ? cat : catLabel(cat), style: "cursor:pointer" });
       c.addEventListener("click", () => { browseCat = cat; Audio.play("tap"); openBrowser(browseDate); });
       chips.appendChild(c);
     });
+    chips.appendChild(el("button", { class: "chip accent", style: "cursor:pointer", html: "🏷️ Categorías", onclick: () => openCategoryManager() }));
 
     const banner = isBackdate ? el("div", { class: "insight warn", style: "margin-bottom:10px" }, [
       el("span", { class: "ico", text: "🕐" }),
@@ -5410,6 +5455,70 @@ canvas { display: block; width: 100%; }
     UI.openModal("🕐 Registrar día anterior", body);
   }
 
+  // ---------------- Gestor de categorías: agregar nuevas / renombrar cualquiera ----------------
+  function openCategoryManager() {
+    const newNameI = el("input", { class: "input", placeholder: "Ej. Postres, Comida vegana…" });
+    const listWrap = el("div", { style: "margin-top:14px" });
+
+    function renderCatList() {
+      listWrap.innerHTML = "";
+      allCatKeys().forEach((key) => {
+        const label = catLabel(key);
+        const count = allFoods().filter((f) => f.cat === key).length;
+        const editI = el("input", { class: "input", value: label, style: "flex:1" });
+        const saveBtn = el("button", {
+          class: "icon-btn", title: "Guardar nombre", html: "💾",
+          onclick: () => {
+            const res = renameCategory(key, editI.value);
+            if (!res.ok) { Audio.play("error"); toast({ icon: "⚠️", msg: res.msg }); return; }
+            Audio.play("tap");
+            toast({ icon: "🏷️", msg: "Categoría renombrada" });
+            openBrowser(browseDate);
+            openCategoryManager();
+          }
+        });
+        const canDelete = !isBuiltinCat(key) && count === 0;
+        listWrap.appendChild(el("div", { class: "item", style: "padding:10px 12px;gap:8px" }, [
+          editI, saveBtn,
+          canDelete ? el("button", {
+            class: "icon-btn", title: "Eliminar categoría", html: "🗑️",
+            onclick: () => {
+              UI.confirmBox("Eliminar categoría", "¿Eliminar la categoría \"" + label + "\"?", () => {
+                const res = removeCategory(key);
+                if (!res.ok) { Audio.play("error"); toast({ icon: "⚠️", msg: res.msg }); return; }
+                Audio.play("delete");
+                toast({ icon: "🗑️", msg: "Categoría eliminada" });
+                openCategoryManager();
+              }, "Eliminar");
+            }
+          }) : el("span", { class: "text-faint fs-12", style: "white-space:nowrap", text: isBuiltinCat(key) ? "de la app" : count + " alim." })
+        ]));
+      });
+    }
+    renderCatList();
+
+    const addBtn = el("button", {
+      class: "btn primary block mt-8", html: "＋ Agregar categoría nueva",
+      onclick: () => {
+        const res = addCategory(newNameI.value);
+        if (!res.ok) { Audio.play("error"); toast({ icon: "⚠️", msg: res.msg }); return; }
+        Audio.play("add");
+        newNameI.value = "";
+        toast({ icon: "🏷️", title: "Categoría agregada", msg: res.key });
+        renderCatList();
+      }
+    });
+
+    const body = el("div", {}, [
+      el("p", { class: "text-dim fs-13", style: "margin-bottom:10px", text: "Escribe el nombre de tu nueva categoría, o edita el nombre de cualquiera existente (incluidas las de la app) y guarda con 💾." }),
+      el("div", { class: "field" }, [el("label", { text: "Nombre de la categoría nueva" }), newNameI]),
+      addBtn,
+      el("div", { class: "card-title mt-16", style: "margin-bottom:6px", text: "Categorías actuales" }),
+      listWrap
+    ]);
+    UI.openModal("🏷️ Categorías de alimentos", body);
+  }
+
   // ---------------- Crear / editar un alimento personalizado ----------------
   // Soporta 2 modos de captura, según lo que sepas del alimento:
   //  · "por pieza/porción": metes el peso de 1 pieza + sus kcal/prot/carb TAL
@@ -5433,8 +5542,8 @@ canvas { display: block; width: 100%; }
     }
 
     const nameI = el("input", { class: "input", value: existing ? existing.name : "", placeholder: "Ej. Torta de mi tía" });
-    const catI = el("select", { class: "select" }, N.FOOD_CATS.map((c) => {
-      const o = el("option", { value: c, text: c });
+    const catI = el("select", { class: "select" }, allCatKeys().map((c) => {
+      const o = el("option", { value: c, text: catLabel(c) });
       if ((existing ? existing.cat : "Platillos mexicanos") === c) o.setAttribute("selected", "");
       return o;
     }));
@@ -5645,7 +5754,7 @@ canvas { display: block; width: 100%; }
       dateBanner,
       el("div", { class: "insight info", style: "margin-bottom:14px" }, [
         el("span", { class: "ico", text: "🍽️" }),
-        el("div", { class: "txt", html: "<b>" + food.name + "</b><br><span style='color:var(--txt-faint)'>" + food.cat + " · " + subInfo + "</span>" })
+        el("div", { class: "txt", html: "<b>" + food.name + "</b><br><span style='color:var(--txt-faint)'>" + catLabel(food.cat) + " · " + subInfo + "</span>" })
       ]),
       fieldsWrap,
       switchLink,
@@ -5935,6 +6044,7 @@ canvas { display: block; width: 100%; }
         el("button", { class: "btn", onclick: openGoals, html: "🎯 Metas" }),
         el("button", { class: "btn", onclick: openHistory, html: "📖 Historial" }),
         el("button", { class: "btn", onclick: openBackdatePicker, html: "🕐 Registrar día anterior" }),
+        el("button", { class: "btn", onclick: () => openCategoryManager(), html: "🏷️ Categorías" }),
         el("button", { class: "btn", onclick: openPdfModal, html: "📄 PDF" }),
         el("button", { class: "btn primary", onclick: () => openBrowser(), html: "＋ Agregar alimento" })
       ])
