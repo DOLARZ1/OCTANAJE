@@ -16,9 +16,13 @@
     "Comida china y sushi", "Comida rápida", "Snacks / chatarra", "Bebidas"
   ];
 
-  const F = (name, cat, kcal, prot, carb, portion) => {
+  // unit (opcional, 7º parámetro): fuerza "ml" para alimentos que son
+  // líquidos aunque vivan en una categoría que normalmente no es de bebidas
+  // (ej. la leche está en "Lácteos", pero se mide en mililitros).
+  const F = (name, cat, kcal, prot, carb, portion, unit) => {
     const o = { name, cat, kcal, prot, carb };
     if (portion) o.portion = portion;
+    if (unit) o.unit = unit;
     return o;
   };
   // atajo para crear la porción típica de un platillo
@@ -127,8 +131,12 @@
     F("Croissant", "Cereales y panes", 406, 8, 45, P(70, "1 pieza (~70 g)")),
 
     // ---------- Lácteos ----------
-    F("Leche entera", "Lácteos", 61, 3.2, 4.8),
-    F("Leche descremada", "Lácteos", 34, 3.4, 5),
+    F("Leche entera", "Lácteos", 61, 3.2, 4.8, null, "ml"),
+    F("Leche descremada", "Lácteos", 34, 3.4, 5, null, "ml"),
+    F("Leche deslactosada", "Lácteos", 45, 3.3, 4.9, null, "ml"),
+    F("Leche de almendras", "Lácteos", 15, 0.5, 0.6, null, "ml"),
+    F("Leche de soya", "Lácteos", 33, 2.9, 1.5, null, "ml"),
+    F("Yogur bebible", "Lácteos", 62, 2.5, 10, null, "ml"),
     F("Yogur natural", "Lácteos", 59, 10, 3.6),
     F("Queso panela", "Lácteos", 215, 18, 3),
     F("Queso Oaxaca", "Lácteos", 350, 25, 3),

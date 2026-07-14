@@ -31,6 +31,7 @@
     if (!Array.isArray(s.nutrition.customCats)) s.nutrition.customCats = [];
     if (!s.nutrition.catNames || typeof s.nutrition.catNames !== "object") s.nutrition.catNames = {};
     if (!s.nutrition.catIcons || typeof s.nutrition.catIcons !== "object") s.nutrition.catIcons = {};
+    if (!Array.isArray(s.nutrition.drinkCats)) s.nutrition.drinkCats = [];
     return s.nutrition;
   }
   function log() { return nut().log; }
@@ -160,11 +161,13 @@
 
   function addEntry(food, grams, dateKey) {
     const f = grams / 100;
-    log().push({
+    const entry = {
       id: Store.uid(), name: food.name, cat: food.cat, grams: Math.round(grams),
       kcal: Math.round(food.kcal * f), prot: r1(food.prot * f), carb: r1(food.carb * f),
       date: dateKey || today(), xpEarned: 2
-    });
+    };
+    if (food.unit) entry.unit = food.unit; // conserva "ml" explícito (ej. leche) para el historial/PDF
+    log().push(entry);
     Store.commit();
     Gami.award(2, "Alimento registrado 🍽️");
   }
@@ -172,10 +175,27 @@
     return DateUtil.parse(dateKey).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
   }
   // ---------------- Unidad según el tipo de alimento (bebidas = mililitros) ----------------
+  // Un alimento se mide en mililitros si:
+  //  a) tiene el campo explícito unit:"ml" (ej. la leche, que vive en "Lácteos"), o
+  //  b) su categoría es "Bebidas" (o la categoría personalizada marcada como bebida).
+  // Se acepta tanto el objeto alimento completo como solo su .cat (para registros
+  // ya guardados en el historial, que no conservan el objeto alimento original).
   const DRINK_CAT = "Bebidas";
-  function isDrinkCat(cat) { return cat === DRINK_CAT; }
-  function unitWord(cat) { return isDrinkCat(cat) ? "ml" : "g"; }
-  function unitLabel(cat) { return isDrinkCat(cat) ? "mililitros" : "gramos"; }
+  function isDrinkFood(food) {
+    if (food && typeof food === "object" && food.unit === "ml") return true;
+    const cat = (food && typeof food === "object") ? food.cat : food;
+    return cat === DRINK_CAT || nut().drinkCats.includes(cat);
+  }
+  function unitWord(food) { return isDrinkFood(food) ? "ml" : "g"; }
+  function unitLabel(food) { return isDrinkFood(food) ? "mililitros" : "gramos"; }
+  // marca/desmarca una categoría completa como "de bebidas" (todo lo que
+  // esté en esa categoría se mide en ml, útil para categorías nuevas del usuario)
+  function isDrinkCategory(catKey) { return catKey === DRINK_CAT || nut().drinkCats.includes(catKey); }
+  function toggleDrinkCategory(catKey) {
+    const arr = nut().drinkCats; const i = arr.indexOf(catKey);
+    if (i >= 0) arr.splice(i, 1); else arr.push(catKey);
+    Store.commit();
+  }
 
   function removeEntry(e) {
     const a = log(); a.splice(a.indexOf(e), 1);
@@ -275,7 +295,7 @@
   }
 
   function foodRow(f) {
-    const u = unitWord(f.cat);
+    const u = unitWord(f);
     const macroLbl = "P " + f.prot + "g · C " + f.carb + "g /100" + u;
     const fav = isFavorite(f);
     return el("div", { class: "item", style: "padding:10px 12px;cursor:pointer", onclick: () => openPortion(f, browseDate) }, [
@@ -458,7 +478,7 @@
     const pieceHint = el("div", { class: "txt" });
 
     const preview = el("div", { class: "fs-12 text-faint mt-8" });
-    function unitTag() { return isDrinkCat(catI.value) ? "ml" : "g"; }
+    function unitTag() { return isDrinkCategory(catI.value) ? "ml" : "g"; }
     function paintPreview() {
       const u = unitTag();
       if (mode === "piece") {
@@ -478,11 +498,11 @@
       lblProt100.textContent = "Proteínas /100 " + u + " (g)";
       lblCarb100.textContent = "Carbohidratos /100 " + u + " (g)";
       lblPortionGrams.textContent = "Porción típica (" + u + ", opcional)";
-      lblPieceGrams.textContent = (isDrinkCat(catI.value) ? "Volumen de 1 porción (ml) *" : "Peso de 1 pieza/porción (g) *");
-      lblKcalPiece.textContent = isDrinkCat(catI.value) ? "Calorías de esa cantidad *" : "Calorías de la pieza *";
-      lblProtPiece.textContent = isDrinkCat(catI.value) ? "Proteínas de esa cantidad (g)" : "Proteínas de la pieza (g)";
-      lblCarbPiece.textContent = isDrinkCat(catI.value) ? "Carbohidratos de esa cantidad (g)" : "Carbohidratos de la pieza (g)";
-      pieceHint.textContent = isDrinkCat(catI.value)
+      lblPieceGrams.textContent = (isDrinkCategory(catI.value) ? "Volumen de 1 porción (ml) *" : "Peso de 1 pieza/porción (g) *");
+      lblKcalPiece.textContent = isDrinkCategory(catI.value) ? "Calorías de esa cantidad *" : "Calorías de la pieza *";
+      lblProtPiece.textContent = isDrinkCategory(catI.value) ? "Proteínas de esa cantidad (g)" : "Proteínas de la pieza (g)";
+      lblCarbPiece.textContent = isDrinkCategory(catI.value) ? "Carbohidratos de esa cantidad (g)" : "Carbohidratos de la pieza (g)";
+      pieceHint.textContent = isDrinkCategory(catI.value)
         ? "Escribe las calorías/proteínas/carbohidratos de ESA cantidad en ml (no por 100 ml). La app hace la conversión sola."
         : "Escribe las calorías/proteínas/carbohidratos de ESA pieza completa (no por 100 g). La app hace la conversión sola.";
       switchBtn.innerHTML = mode === "piece" ? "⚖️ Prefiero capturar por 100 " + u : "🍽️ Prefiero capturar por pieza/porción";
@@ -583,8 +603,8 @@
     const targetDate = dateKey || today();
     const isBackdate = targetDate !== today();
     const hasPortion = !!food.portion;
-    const isDrink = isDrinkCat(food.cat);
-    const u = unitWord(food.cat); // "ml" para bebidas, "g" para el resto
+    const isDrink = isDrinkFood(food);
+    const u = unitWord(food); // "ml" para bebidas, "g" para el resto
     // modo "porciones" (platillos: tacos, tortas, caldos, sushi...) vs modo "gramos/mililitros" (ingredientes/bebidas sueltas)
     let mode = hasPortion ? "portion" : "grams";
 
@@ -592,7 +612,7 @@
     const portionsI = el("input", { class: "input", type: "number", min: 0.5, step: 0.5, value: 1 });
     const portionLbl = hasPortion ? el("div", { class: "fs-12 text-faint mt-8", text: "1 porción ≈ " + food.portion.label }) : null;
 
-    const gramsField = el("div", { class: "field" }, [el("label", { text: "Cantidad (" + unitLabel(food.cat) + ")" }), gramsI]);
+    const gramsField = el("div", { class: "field" }, [el("label", { text: "Cantidad (" + unitLabel(food) + ")" }), gramsI]);
     const portionField = hasPortion ? el("div", { class: "field" }, [el("label", { text: "Cantidad (porciones)" }), portionsI, portionLbl]) : null;
 
     const preview = el("div", { class: "grid cols-3", style: "margin-top:12px" });
@@ -618,14 +638,14 @@
     }
     paintFields();
 
-    const switchLabel = mode === "portion" ? "⚖️ Usar " + unitLabel(food.cat) + " en vez de porciones" : "🍽️ Usar porciones en vez de " + unitLabel(food.cat);
+    const switchLabel = mode === "portion" ? "⚖️ Usar " + unitLabel(food) + " en vez de porciones" : "🍽️ Usar porciones en vez de " + unitLabel(food);
     const switchLink = hasPortion ? el("button", {
       class: "btn sm", style: "margin-top:8px",
       html: switchLabel,
       onclick: (ev) => {
         ev.preventDefault();
         mode = mode === "portion" ? "grams" : "portion";
-        switchLink.innerHTML = mode === "portion" ? "⚖️ Usar " + unitLabel(food.cat) + " en vez de porciones" : "🍽️ Usar porciones en vez de " + unitLabel(food.cat);
+        switchLink.innerHTML = mode === "portion" ? "⚖️ Usar " + unitLabel(food) + " en vez de porciones" : "🍽️ Usar porciones en vez de " + unitLabel(food);
         paintFields(); paint();
       }
     }) : null;
@@ -765,7 +785,7 @@
           el("div", { class: "item-main" }, [
             el("div", { class: "item-title", text: e.name }),
             el("div", { class: "item-meta" }, [
-              el("span", { class: "chip", text: e.grams + " " + unitWord(e.cat) }),
+              el("span", { class: "chip", text: e.grams + " " + unitWord(e) }),
               el("span", { class: "chip warn", text: e.kcal + " kcal" }),
               el("span", { class: "text-faint fs-12", text: "P " + e.prot + "g · C " + e.carb + "g" })
             ])
@@ -847,7 +867,7 @@
         items.forEach((x) => {
           rows += "<tr>" +
             "<td>" + esc(x.name) + "</td>" +
-            "<td style='text-align:center'>" + x.grams + " " + unitWord(x.cat) + "</td>" +
+            "<td style='text-align:center'>" + x.grams + " " + unitWord(x) + "</td>" +
             "<td style='text-align:center'>" + x.kcal + "</td>" +
             "<td style='text-align:center'>" + r1(x.prot) + "</td>" +
             "<td style='text-align:center'>" + r1(x.carb) + "</td>" +
@@ -1018,7 +1038,7 @@
           el("div", { class: "item-main" }, [
             el("div", { class: "item-title", text: e.name }),
             el("div", { class: "item-meta" }, [
-              el("span", { class: "chip", text: e.grams + " " + unitWord(e.cat) }),
+              el("span", { class: "chip", text: e.grams + " " + unitWord(e) }),
               el("span", { class: "chip warn", text: e.kcal + " kcal" }),
               el("span", { class: "text-faint fs-12", text: "P " + e.prot + "g · C " + e.carb + "g" })
             ])
