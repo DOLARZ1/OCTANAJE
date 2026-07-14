@@ -5251,15 +5251,18 @@ canvas { display: block; width: 100%; }
     return allFoods().filter((f) => set.has(f.name)).sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  function addEntry(food, grams) {
+  function addEntry(food, grams, dateKey) {
     const f = grams / 100;
     log().push({
       id: Store.uid(), name: food.name, cat: food.cat, grams: Math.round(grams),
       kcal: Math.round(food.kcal * f), prot: r1(food.prot * f), carb: r1(food.carb * f),
-      date: today(), xpEarned: 2
+      date: dateKey || today(), xpEarned: 2
     });
     Store.commit();
     Gami.award(2, "Alimento registrado 🍽️");
+  }
+  function dayLabel(dateKey) {
+    return DateUtil.parse(dateKey).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
   }
 
   function removeEntry(e) {
@@ -5303,8 +5306,12 @@ canvas { display: block; width: 100%; }
   // ---------------- Buscador de alimentos ----------------
   let browseCat = "Todos";
   let browseQuery = "";
+  let browseDate = null; // fecha destino del registro; null = hoy
 
-  function openBrowser() {
+  function openBrowser(dateKey) {
+    browseDate = dateKey || null;
+    const isBackdate = !!browseDate && browseDate !== today();
+
     const search = el("input", { class: "input", placeholder: "🔍 Buscar alimento…", value: browseQuery });
     const listWrap = el("div", { style: "max-height:42vh;overflow-y:auto;margin-top:10px" });
     const addBtn = el("button", { class: "btn primary block", style: "margin-top:10px", html: "＋ Agregar alimento nuevo a la lista", onclick: () => openCustomFoodForm() });
@@ -5339,23 +5346,28 @@ canvas { display: block; width: 100%; }
     const chips = el("div", { class: "flex gap-8", style: "flex-wrap:wrap;margin-top:10px" });
     [FAV_CAT, "Todos"].concat(N.FOOD_CATS).forEach((cat) => {
       const c = el("button", { class: "chip" + (cat === browseCat ? " accent" : ""), text: cat, style: "cursor:pointer" });
-      c.addEventListener("click", () => { browseCat = cat; Audio.play("tap"); openBrowser(); });
+      c.addEventListener("click", () => { browseCat = cat; Audio.play("tap"); openBrowser(browseDate); });
       chips.appendChild(c);
     });
 
-    const body = el("div", {}, [search, chips, listWrap, addBtn]);
-    UI.openModal("🍽️ Alimentos", body);
+    const banner = isBackdate ? el("div", { class: "insight warn", style: "margin-bottom:10px" }, [
+      el("span", { class: "ico", text: "🕐" }),
+      el("div", { class: "txt", html: "Estás registrando para <b>" + dayLabel(browseDate) + "</b>, no para hoy." })
+    ]) : null;
+
+    const body = el("div", {}, [banner, search, chips, listWrap, addBtn]);
+    UI.openModal(isBackdate ? "🍽️ Alimentos · " + dayLabel(browseDate) : "🍽️ Alimentos", body);
     renderList();
   }
 
   function foodRow(f) {
     const macroLbl = "P " + f.prot + "g · C " + f.carb + "g /100g";
     const fav = isFavorite(f);
-    return el("div", { class: "item", style: "padding:10px 12px;cursor:pointer", onclick: () => openPortion(f) }, [
+    return el("div", { class: "item", style: "padding:10px 12px;cursor:pointer", onclick: () => openPortion(f, browseDate) }, [
       el("button", {
         class: "icon-btn", title: fav ? "Quitar de favoritos" : "Agregar a favoritos",
         style: fav ? "color:var(--warn)" : "",
-        onclick: (ev) => { ev.stopPropagation(); toggleFavorite(f); openBrowser(); },
+        onclick: (ev) => { ev.stopPropagation(); toggleFavorite(f); openBrowser(browseDate); },
         html: fav ? "⭐" : "☆"
       }),
       el("div", { class: "item-main" }, [
@@ -5370,11 +5382,26 @@ canvas { display: block; width: 100%; }
       f.custom ? el("button", { class: "icon-btn", title: "Eliminar de la lista", onclick: (ev) => {
         ev.stopPropagation();
         UI.confirmBox("Eliminar alimento", "¿Eliminar \"" + f.name + "\" de tu lista? (los registros ya guardados en tu historial no se borran)", () => {
-          removeCustomFood(f); Audio.play("delete"); toast({ icon: "🗑️", msg: "Alimento eliminado de la lista" }); openBrowser();
+          removeCustomFood(f); Audio.play("delete"); toast({ icon: "🗑️", msg: "Alimento eliminado de la lista" }); openBrowser(browseDate);
         }, "Eliminar");
       }, html: "🗑️" }) : null,
-      el("button", { class: "icon-btn", html: "＋", title: "Agregar", onclick: (ev) => { ev.stopPropagation(); openPortion(f); } })
+      el("button", { class: "icon-btn", html: "＋", title: "Agregar", onclick: (ev) => { ev.stopPropagation(); openPortion(f, browseDate); } })
     ]);
+  }
+
+  // ---------------- Registrar un día anterior (olvidaste anotar a tiempo) ----------------
+  function openBackdatePicker() {
+    const dateI = el("input", { class: "input", type: "date", value: DateUtil.addDays(today(), -1), max: today() });
+    const body = el("div", {}, [
+      el("p", { class: "text-dim fs-13", style: "margin-bottom:10px", text: "Elige el día que quieres registrar (por ejemplo si se te olvidó anotar ayer o antier):" }),
+      el("div", { class: "field" }, [el("label", { text: "Fecha" }), dateI]),
+      el("button", { class: "btn primary block mt-8", html: "🍽️ Elegir alimentos de ese día", onclick: () => {
+        if (!dateI.value) { Audio.play("error"); toast({ icon: "⚠️", msg: "Elige una fecha" }); return; }
+        UI.closeModal();
+        openBrowser(dateI.value);
+      } })
+    ]);
+    UI.openModal("🕐 Registrar día anterior", body);
   }
 
   // ---------------- Crear / editar un alimento personalizado ----------------
@@ -5523,7 +5550,9 @@ canvas { display: block; width: 100%; }
     UI.openModal(existing ? "Editar alimento" : "＋ Agregar alimento a la lista", body);
   }
 
-  function openPortion(food) {
+  function openPortion(food, dateKey) {
+    const targetDate = dateKey || today();
+    const isBackdate = targetDate !== today();
     const hasPortion = !!food.portion;
     // modo "porciones" (platillos: tacos, tortas, caldos, sushi...) vs modo "gramos" (ingredientes crudos)
     let mode = hasPortion ? "portion" : "grams";
@@ -5573,7 +5602,13 @@ canvas { display: block; width: 100%; }
       ? food.kcal + " kcal por 100 g · porción típica: " + food.portion.label
       : food.kcal + " kcal por 100 g";
 
+    const dateBanner = isBackdate ? el("div", { class: "insight warn", style: "margin-bottom:14px" }, [
+      el("span", { class: "ico", text: "🕐" }),
+      el("div", { class: "txt", html: "Se registrará en <b>" + dayLabel(targetDate) + "</b>, no en hoy." })
+    ]) : null;
+
     const body = el("div", {}, [
+      dateBanner,
       el("div", { class: "insight info", style: "margin-bottom:14px" }, [
         el("span", { class: "ico", text: "🍽️" }),
         el("div", { class: "txt", html: "<b>" + food.name + "</b><br><span style='color:var(--txt-faint)'>" + food.cat + " · " + subInfo + "</span>" })
@@ -5584,17 +5619,20 @@ canvas { display: block; width: 100%; }
       el("button", { class: "btn primary block", style: "margin-top:16px", html: "＋ Agregar al día", onclick: () => {
         const g = currentGrams();
         if (g <= 0) { Audio.play("error"); toast({ icon: "⚠️", msg: "Indica una cantidad válida" }); return; }
-        addEntry(food, g); Audio.play("coin");
+        addEntry(food, g, targetDate); Audio.play("coin");
         const qtyMsg = mode === "portion" && hasPortion
           ? (Number(portionsI.value) || 0) + " porción(es) · " + Math.round(g) + " g"
           : Math.round(g) + " g";
-        toast({ icon: "🍽️", title: "Agregado", msg: food.name + " (" + qtyMsg + ")" });
+        toast({ icon: "🍽️", title: "Agregado" + (isBackdate ? " a " + dayLabel(targetDate) : ""), msg: food.name + " (" + qtyMsg + ")" });
         UI.closeModal();
-        render(document.getElementById("view-nutrition"));
+        if (isBackdate) { openDayDetail(targetDate); }
+        else {
+          render(document.getElementById("view-nutrition"));
+        }
         N.App && N.App.refreshTop();
       } })
     ]);
-    UI.openModal("Agregar " + food.name, body);
+    UI.openModal((isBackdate ? "Agregar (" + dayLabel(targetDate) + ") · " : "Agregar ") + food.name, body);
     paint();
   }
 
@@ -5704,7 +5742,8 @@ canvas { display: block; width: 100%; }
         ]));
       });
     }
-    body.appendChild(el("button", { class: "btn block mt-16", html: "📄 Descargar PDF de este día", onclick: () => { UI.closeModal(); exportPDF("day", dateKey); } }));
+    body.appendChild(el("button", { class: "btn primary block mt-16", html: "＋ Agregar alimento a este día", onclick: () => { UI.closeModal(); openBrowser(dateKey); } }));
+    body.appendChild(el("button", { class: "btn block mt-8", html: "📄 Descargar PDF de este día", onclick: () => { UI.closeModal(); exportPDF("day", dateKey); } }));
     UI.openModal("📖 " + dLbl, body);
   }
 
@@ -5861,8 +5900,9 @@ canvas { display: block; width: 100%; }
       el("div", { class: "flex gap-8", style: "flex-wrap:wrap" }, [
         el("button", { class: "btn", onclick: openGoals, html: "🎯 Metas" }),
         el("button", { class: "btn", onclick: openHistory, html: "📖 Historial" }),
+        el("button", { class: "btn", onclick: openBackdatePicker, html: "🕐 Registrar día anterior" }),
         el("button", { class: "btn", onclick: openPdfModal, html: "📄 PDF" }),
-        el("button", { class: "btn primary", onclick: openBrowser, html: "＋ Agregar alimento" })
+        el("button", { class: "btn primary", onclick: () => openBrowser(), html: "＋ Agregar alimento" })
       ])
     ]));
 
@@ -5933,7 +5973,7 @@ canvas { display: block; width: 100%; }
     const listCard = el("div", { class: "card" }, [
       el("div", { class: "card-head" }, [
         el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Consumido hoy"]),
-        el("button", { class: "btn sm", html: "🍽️ Ver alimentos", onclick: openBrowser })
+        el("button", { class: "btn sm", html: "🍽️ Ver alimentos", onclick: () => openBrowser() })
       ])
     ]);
     const todayItems = log().filter((x) => x.date === today()).slice().reverse();
