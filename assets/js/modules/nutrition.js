@@ -12,13 +12,14 @@
   const DateUtil = Store.DateUtil;
 
   const today = () => DateUtil.todayKey();
-  const DEFAULT_GOALS = { kcal: 2000, prot: 120, carb: 250 };
+  const DEFAULT_GOALS = { kcal: 2000, prot: 120, carb: 250, fat: 65 };
 
-  // Configuración de los 3 macros (orden = anillo externo → interno)
+  // Configuración de los 4 macros completos (orden = anillo externo → interno)
   const MACROS = [
     { key: "kcal", label: "Calorías", unit: "kcal", color: "--warn" },
     { key: "prot", label: "Proteínas", unit: "g", color: "--good" },
-    { key: "carb", label: "Carbohidratos", unit: "g", color: "--accent" }
+    { key: "carb", label: "Carbohidratos", unit: "g", color: "--accent" },
+    { key: "fat", label: "Grasas", unit: "g", color: "--bad" }
   ];
 
   function nut() {
@@ -26,6 +27,7 @@
     if (!s.nutrition || typeof s.nutrition !== "object") s.nutrition = {};
     if (!Array.isArray(s.nutrition.log)) s.nutrition.log = [];
     if (!s.nutrition.goals) s.nutrition.goals = Object.assign({}, DEFAULT_GOALS);
+    if (s.nutrition.goals.fat == null) s.nutrition.goals.fat = DEFAULT_GOALS.fat; // usuarios previos sin el 4º macro
     if (!Array.isArray(s.nutrition.customFoods)) s.nutrition.customFoods = [];
     if (!Array.isArray(s.nutrition.favorites)) s.nutrition.favorites = [];
     if (!Array.isArray(s.nutrition.customCats)) s.nutrition.customCats = [];
@@ -113,7 +115,8 @@
       name: data.name.trim(), cat: data.cat || "Platillos mexicanos",
       kcal: Math.max(0, Number(data.kcal) || 0),
       prot: Math.max(0, Number(data.prot) || 0),
-      carb: Math.max(0, Number(data.carb) || 0)
+      carb: Math.max(0, Number(data.carb) || 0),
+      fat: Math.max(0, Number(data.fat) || 0)
     };
     if (data.portionGrams && Number(data.portionGrams) > 0) {
       food.portion = { grams: Number(data.portionGrams), label: (data.portionLabel && data.portionLabel.trim()) || (Number(data.portionGrams) + " g aprox.") };
@@ -127,6 +130,7 @@
     food.kcal = Math.max(0, Number(data.kcal) || 0);
     food.prot = Math.max(0, Number(data.prot) || 0);
     food.carb = Math.max(0, Number(data.carb) || 0);
+    food.fat = Math.max(0, Number(data.fat) || 0);
     if (data.portionGrams && Number(data.portionGrams) > 0) {
       food.portion = { grams: Number(data.portionGrams), label: (data.portionLabel && data.portionLabel.trim()) || (Number(data.portionGrams) + " g aprox.") };
     } else {
@@ -163,7 +167,7 @@
     const f = grams / 100;
     const entry = {
       id: Store.uid(), name: food.name, cat: food.cat, grams: Math.round(grams),
-      kcal: Math.round(food.kcal * f), prot: r1(food.prot * f), carb: r1(food.carb * f),
+      kcal: Math.round(food.kcal * f), prot: r1(food.prot * f), carb: r1(food.carb * f), fat: r1((food.fat || 0) * f),
       date: dateKey || today(), xpEarned: 2
     };
     if (food.unit) entry.unit = food.unit; // conserva "ml" explícito (ej. leche) para el historial/PDF
@@ -219,8 +223,8 @@
 
   function dayTotals(key) {
     return log().filter((x) => x.date === key).reduce((t, x) => {
-      t.kcal += x.kcal; t.prot += x.prot; t.carb += x.carb; return t;
-    }, { kcal: 0, prot: 0, carb: 0 });
+      t.kcal += x.kcal; t.prot += x.prot; t.carb += x.carb; t.fat += (x.fat || 0); return t;
+    }, { kcal: 0, prot: 0, carb: 0, fat: 0 });
   }
   // lista de días (más reciente primero) que tienen al menos un alimento registrado
   function historyDays() {
@@ -296,7 +300,7 @@
 
   function foodRow(f) {
     const u = unitWord(f);
-    const macroLbl = "P " + f.prot + "g · C " + f.carb + "g /100" + u;
+    const macroLbl = "P " + f.prot + "g · C " + f.carb + "g · G " + (f.fat || 0) + "g /100" + u;
     const fav = isFavorite(f);
     return el("div", { class: "item", style: "padding:10px 12px;cursor:pointer", onclick: () => openPortion(f, browseDate) }, [
       el("button", {
@@ -440,7 +444,7 @@
     // si el alimento ya tiene una porción típica, por comodidad partimos en
     // modo "pieza" con los valores ya convertidos de vuelta a esa porción
     let mode = existing && existing.portion ? "piece" : "per100";
-    let initPieceGrams = "", initPieceLabel = "1 pieza", initKcalPiece = "", initProtPiece = "", initCarbPiece = "";
+    let initPieceGrams = "", initPieceLabel = "1 pieza", initKcalPiece = "", initProtPiece = "", initCarbPiece = "", initFatPiece = "";
     if (existing && existing.portion) {
       const f = existing.portion.grams / 100;
       initPieceGrams = existing.portion.grams;
@@ -448,6 +452,7 @@
       initKcalPiece = Math.round(existing.kcal * f);
       initProtPiece = r1(existing.prot * f);
       initCarbPiece = r1(existing.carb * f);
+      initFatPiece = r1((existing.fat || 0) * f);
     }
 
     const nameI = el("input", { class: "input", value: existing ? existing.name : "", placeholder: "Ej. Torta de mi tía" });
@@ -461,6 +466,7 @@
     const kcal100I = el("input", { class: "input", type: "number", min: 0, step: 1, value: existing ? existing.kcal : "" });
     const prot100I = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: existing ? existing.prot : "" });
     const carb100I = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: existing ? existing.carb : "" });
+    const fat100I = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: existing ? (existing.fat || 0) : "" });
     const portionGramsI = el("input", { class: "input", type: "number", min: 0, step: 1, value: existing && existing.portion ? existing.portion.grams : "", placeholder: "Opcional" });
     const portionLabelI = el("input", { class: "input", value: existing && existing.portion ? existing.portion.label : "", placeholder: "Ej. 1 vaso (~250 ml)" });
 
@@ -470,11 +476,12 @@
     const kcalPieceI = el("input", { class: "input", type: "number", min: 0, step: 1, value: initKcalPiece, placeholder: "Ej. 70" });
     const protPieceI = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: initProtPiece, placeholder: "Ej. 6" });
     const carbPieceI = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: initCarbPiece, placeholder: "Ej. 0.5" });
+    const fatPieceI = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: initFatPiece, placeholder: "Ej. 5" });
 
     // --- etiquetas dinámicas: cambian a "ml"/"mililitros" si la categoría es Bebidas ---
-    const lblKcal100 = el("label", {}); const lblProt100 = el("label", {}); const lblCarb100 = el("label", {});
+    const lblKcal100 = el("label", {}); const lblProt100 = el("label", {}); const lblCarb100 = el("label", {}); const lblFat100 = el("label", {});
     const lblPortionGrams = el("label", {}); const lblPieceGrams = el("label", {});
-    const lblKcalPiece = el("label", {}); const lblProtPiece = el("label", {}); const lblCarbPiece = el("label", {});
+    const lblKcalPiece = el("label", {}); const lblProtPiece = el("label", {}); const lblCarbPiece = el("label", {}); const lblFatPiece = el("label", {});
     const pieceHint = el("div", { class: "txt" });
 
     const preview = el("div", { class: "fs-12 text-faint mt-8" });
@@ -486,7 +493,8 @@
         if (g > 0) {
           const f = 100 / g;
           preview.textContent = "≈ equivalente a " + Math.round((Number(kcalPieceI.value) || 0) * f) + " kcal, P " +
-            r1((Number(protPieceI.value) || 0) * f) + "g, C " + r1((Number(carbPieceI.value) || 0) * f) + "g por cada 100" + u + ".";
+            r1((Number(protPieceI.value) || 0) * f) + "g, C " + r1((Number(carbPieceI.value) || 0) * f) + "g, G " +
+            r1((Number(fatPieceI.value) || 0) * f) + "g por cada 100" + u + ".";
         } else preview.textContent = "";
       } else {
         preview.textContent = "";
@@ -497,26 +505,31 @@
       lblKcal100.textContent = "Calorías /100 " + u + " *";
       lblProt100.textContent = "Proteínas /100 " + u + " (g)";
       lblCarb100.textContent = "Carbohidratos /100 " + u + " (g)";
+      lblFat100.textContent = "Grasas /100 " + u + " (g)";
       lblPortionGrams.textContent = "Porción típica (" + u + ", opcional)";
       lblPieceGrams.textContent = (isDrinkCategory(catI.value) ? "Volumen de 1 porción (ml) *" : "Peso de 1 pieza/porción (g) *");
       lblKcalPiece.textContent = isDrinkCategory(catI.value) ? "Calorías de esa cantidad *" : "Calorías de la pieza *";
       lblProtPiece.textContent = isDrinkCategory(catI.value) ? "Proteínas de esa cantidad (g)" : "Proteínas de la pieza (g)";
       lblCarbPiece.textContent = isDrinkCategory(catI.value) ? "Carbohidratos de esa cantidad (g)" : "Carbohidratos de la pieza (g)";
+      lblFatPiece.textContent = isDrinkCategory(catI.value) ? "Grasas de esa cantidad (g)" : "Grasas de la pieza (g)";
       pieceHint.textContent = isDrinkCategory(catI.value)
-        ? "Escribe las calorías/proteínas/carbohidratos de ESA cantidad en ml (no por 100 ml). La app hace la conversión sola."
-        : "Escribe las calorías/proteínas/carbohidratos de ESA pieza completa (no por 100 g). La app hace la conversión sola.";
+        ? "Escribe las calorías/proteínas/carbohidratos/grasas de ESA cantidad en ml (no por 100 ml). La app hace la conversión sola."
+        : "Escribe las calorías/proteínas/carbohidratos/grasas de ESA pieza completa (no por 100 g). La app hace la conversión sola.";
       switchBtn.innerHTML = mode === "piece" ? "⚖️ Prefiero capturar por 100 " + u : "🍽️ Prefiero capturar por pieza/porción";
       paintPreview();
     }
     catI.addEventListener("change", paintLabels);
-    [pieceGramsI, kcalPieceI, protPieceI, carbPieceI].forEach((i) => i.addEventListener("input", paintPreview));
+    [pieceGramsI, kcalPieceI, protPieceI, carbPieceI, fatPieceI].forEach((i) => i.addEventListener("input", paintPreview));
 
     const per100Group = el("div", {}, [
       el("div", { class: "row" }, [
         el("div", { class: "field" }, [lblKcal100, kcal100I]),
         el("div", { class: "field" }, [lblProt100, prot100I])
       ]),
-      el("div", { class: "field" }, [lblCarb100, carb100I]),
+      el("div", { class: "row" }, [
+        el("div", { class: "field" }, [lblCarb100, carb100I]),
+        el("div", { class: "field" }, [lblFat100, fat100I])
+      ]),
       el("div", { class: "row" }, [
         el("div", { class: "field" }, [lblPortionGrams, portionGramsI]),
         el("div", { class: "field" }, [el("label", { text: "Descripción de la porción" }), portionLabelI])
@@ -535,7 +548,10 @@
         el("div", { class: "field" }, [lblKcalPiece, kcalPieceI]),
         el("div", { class: "field" }, [lblProtPiece, protPieceI])
       ]),
-      el("div", { class: "field" }, [lblCarbPiece, carbPieceI]),
+      el("div", { class: "row" }, [
+        el("div", { class: "field" }, [lblCarbPiece, carbPieceI]),
+        el("div", { class: "field" }, [lblFatPiece, fatPieceI])
+      ]),
       preview
     ]);
 
@@ -564,6 +580,7 @@
           kcal: Math.round((Number(kcalPieceI.value) || 0) * f),
           prot: r1((Number(protPieceI.value) || 0) * f),
           carb: r1((Number(carbPieceI.value) || 0) * f),
+          fat: r1((Number(fatPieceI.value) || 0) * f),
           portionGrams: g,
           portionLabel: (pieceLabelI.value && pieceLabelI.value.trim()) || (g + " g aprox.")
         };
@@ -573,6 +590,7 @@
           kcal: Number(kcal100I.value) || 0,
           prot: Number(prot100I.value) || 0,
           carb: Number(carb100I.value) || 0,
+          fat: Number(fat100I.value) || 0,
           portionGrams: Number(portionGramsI.value) || 0,
           portionLabel: portionLabelI.value
         };
@@ -615,7 +633,7 @@
     const gramsField = el("div", { class: "field" }, [el("label", { text: "Cantidad (" + unitLabel(food) + ")" }), gramsI]);
     const portionField = hasPortion ? el("div", { class: "field" }, [el("label", { text: "Cantidad (porciones)" }), portionsI, portionLbl]) : null;
 
-    const preview = el("div", { class: "grid cols-3", style: "margin-top:12px" });
+    const preview = el("div", { class: "grid cols-4", style: "margin-top:12px" });
     function currentGrams() {
       if (mode === "portion" && hasPortion) return (Number(portionsI.value) || 0) * food.portion.grams;
       return Number(gramsI.value) || 0;
@@ -626,6 +644,7 @@
       preview.appendChild(macroBox("Calorías", Math.round(food.kcal * f), "kcal", "var(--warn)"));
       preview.appendChild(macroBox("Proteínas", r1(food.prot * f), "g", "var(--good)"));
       preview.appendChild(macroBox("Carbos", r1(food.carb * f), "g", "var(--accent)"));
+      preview.appendChild(macroBox("Grasas", r1((food.fat || 0) * f), "g", "var(--bad)"));
     }
     gramsI.addEventListener("input", paint);
     portionsI.addEventListener("input", paint);
@@ -703,15 +722,17 @@
       { type: "row", fields: [
         { name: "prot", label: "Proteínas (g)", type: "number", min: 0, value: g.prot },
         { name: "carb", label: "Carbohidratos (g)", type: "number", min: 0, value: g.carb }
-      ]}
+      ]},
+      { name: "fat", label: "Grasas (g)", type: "number", min: 0, value: g.fat != null ? g.fat : DEFAULT_GOALS.fat }
     ], (data) => {
       const gg = goals();
       gg.kcal = Math.max(0, Number(data.kcal) || 0);
       gg.prot = Math.max(0, Number(data.prot) || 0);
       gg.carb = Math.max(0, Number(data.carb) || 0);
+      gg.fat = Math.max(0, Number(data.fat) || 0);
       Store.commit();
       Audio.play("tap");
-      toast({ icon: "🎯", title: "Metas guardadas", msg: gg.kcal + " kcal · P " + gg.prot + "g · C " + gg.carb + "g" });
+      toast({ icon: "🎯", title: "Metas guardadas", msg: gg.kcal + " kcal · P " + gg.prot + "g · C " + gg.carb + "g · G " + gg.fat + "g" });
       UI.closeModal();
       render(document.getElementById("view-nutrition"));
     }, "Guardar metas");
@@ -769,10 +790,11 @@
         el("span", { class: "ico", text: "📅" }),
         el("div", { class: "txt", html: "Totales <b>solo de este día</b> (" + dLbl + "), sin sumar otros días." })
       ]),
-      el("div", { class: "grid cols-3 mb-16" }, [
+      el("div", { class: "grid cols-4 mb-16" }, [
         macroBox("Calorías", t.kcal, "kcal", "var(--warn)"),
         macroBox("Proteínas", r1(t.prot), "g", "var(--good)"),
-        macroBox("Carbos", r1(t.carb), "g", "var(--accent)")
+        macroBox("Carbos", r1(t.carb), "g", "var(--accent)"),
+        macroBox("Grasas", r1(t.fat), "g", "var(--bad)")
       ]),
       el("div", { class: "fs-12 text-faint mb-16", text: pctOf(t.kcal, g.kcal) + "% de tu meta de calorías (" + g.kcal + " kcal) ese día." })
     ]);
@@ -787,7 +809,7 @@
             el("div", { class: "item-meta" }, [
               el("span", { class: "chip", text: e.grams + " " + unitWord(e) }),
               el("span", { class: "chip warn", text: e.kcal + " kcal" }),
-              el("span", { class: "text-faint fs-12", text: "P " + e.prot + "g · C " + e.carb + "g" })
+              el("span", { class: "text-faint fs-12", text: "P " + e.prot + "g · C " + e.carb + "g · G " + (e.fat || 0) + "g" })
             ])
           ]),
           el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => removeEntryFromDay(e, dateKey) })
@@ -847,23 +869,23 @@
     list.forEach((x) => { (byDay[x.date] = byDay[x.date] || []).push(x); });
     const dayKeys = Object.keys(byDay).sort();
 
-    const grand = list.reduce((t, x) => { t.kcal += x.kcal; t.prot += x.prot; t.carb += x.carb; return t; }, { kcal: 0, prot: 0, carb: 0 });
+    const grand = list.reduce((t, x) => { t.kcal += x.kcal; t.prot += x.prot; t.carb += x.carb; t.fat += (x.fat || 0); return t; }, { kcal: 0, prot: 0, carb: 0, fat: 0 });
     const nDays = dayKeys.length || 1;
-    const avg = { kcal: Math.round(grand.kcal / nDays), prot: r1(grand.prot / nDays), carb: r1(grand.carb / nDays) };
+    const avg = { kcal: Math.round(grand.kcal / nDays), prot: r1(grand.prot / nDays), carb: r1(grand.carb / nDays), fat: r1(grand.fat / nDays) };
 
     const fromLbl = DateUtil.parse(r.from).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
     const toLbl = DateUtil.parse(r.to).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 
     let rows = "";
     if (!list.length) {
-      rows = '<tr><td colspan="5" style="text-align:center;color:#888;padding:24px">Sin alimentos registrados en este periodo.</td></tr>';
+      rows = '<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">Sin alimentos registrados en este periodo.</td></tr>';
     } else {
       dayKeys.forEach((dk) => {
         const items = byDay[dk];
-        const dt = items.reduce((t, x) => { t.kcal += x.kcal; t.prot += x.prot; t.carb += x.carb; return t; }, { kcal: 0, prot: 0, carb: 0 });
+        const dt = items.reduce((t, x) => { t.kcal += x.kcal; t.prot += x.prot; t.carb += x.carb; t.fat += (x.fat || 0); return t; }, { kcal: 0, prot: 0, carb: 0, fat: 0 });
         const dLbl = DateUtil.parse(dk).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
-        rows += "<tr class='dh'><td colspan='5'>" + esc(dLbl) +
-          " &nbsp;·&nbsp; <b>" + dt.kcal + " kcal</b> (" + pctOf(dt.kcal, g.kcal) + "% de meta) · P " + r1(dt.prot) + "g · C " + r1(dt.carb) + "g</td></tr>";
+        rows += "<tr class='dh'><td colspan='6'>" + esc(dLbl) +
+          " &nbsp;·&nbsp; <b>" + dt.kcal + " kcal</b> (" + pctOf(dt.kcal, g.kcal) + "% de meta) · P " + r1(dt.prot) + "g · C " + r1(dt.carb) + "g · G " + r1(dt.fat) + "g</td></tr>";
         items.forEach((x) => {
           rows += "<tr>" +
             "<td>" + esc(x.name) + "</td>" +
@@ -871,6 +893,7 @@
             "<td style='text-align:center'>" + x.kcal + "</td>" +
             "<td style='text-align:center'>" + r1(x.prot) + "</td>" +
             "<td style='text-align:center'>" + r1(x.carb) + "</td>" +
+            "<td style='text-align:center'>" + r1(x.fat || 0) + "</td>" +
             "</tr>";
         });
       });
@@ -905,6 +928,7 @@
           "<div class='kpi'><div class='n'>" + grand.kcal + "</div><div class='l'>Kcal de este día</div></div>" +
           "<div class='kpi'><div class='n'>" + r1(grand.prot) + "</div><div class='l'>Proteínas (g)</div></div>" +
           "<div class='kpi'><div class='n'>" + r1(grand.carb) + "</div><div class='l'>Carbohidratos (g)</div></div>" +
+          "<div class='kpi'><div class='n'>" + r1(grand.fat) + "</div><div class='l'>Grasas (g)</div></div>" +
           "<div class='kpi'><div class='n'>" + pctOf(grand.kcal, g.kcal) + "%</div><div class='l'>De tu meta diaria</div></div>" +
           "</div>"
         : "<div class='kpis'>" +
@@ -913,13 +937,14 @@
           "<div class='kpi'><div class='n'>" + avg.kcal + "</div><div class='l'>Kcal / día (promedio)</div></div>" +
           "<div class='kpi'><div class='n'>" + r1(grand.prot) + "</div><div class='l'>Proteínas totales (g)</div></div>" +
           "<div class='kpi'><div class='n'>" + r1(grand.carb) + "</div><div class='l'>Carbohidratos totales (g)</div></div>" +
+          "<div class='kpi'><div class='n'>" + r1(grand.fat) + "</div><div class='l'>Grasas totales (g)</div></div>" +
           "</div>"
       ) +
-      "<div class='types'><b>Metas diarias:</b> " + g.kcal + " kcal &nbsp;·&nbsp; " + g.prot + " g proteína &nbsp;·&nbsp; " + g.carb + " g carbohidratos" +
-      (isSingleDay ? "" : " &nbsp;·&nbsp; <b>Promedio del periodo:</b> P " + avg.prot + "g · C " + avg.carb + "g") + "</div>" +
-      "<table><thead><tr><th>Alimento / platillo</th><th class='c'>Cantidad</th><th class='c'>Kcal</th><th class='c'>Prot (g)</th><th class='c'>Carb (g)</th></tr></thead><tbody>" + rows +
+      "<div class='types'><b>Metas diarias:</b> " + g.kcal + " kcal &nbsp;·&nbsp; " + g.prot + " g proteína &nbsp;·&nbsp; " + g.carb + " g carbohidratos &nbsp;·&nbsp; " + (g.fat != null ? g.fat : DEFAULT_GOALS.fat) + " g grasas" +
+      (isSingleDay ? "" : " &nbsp;·&nbsp; <b>Promedio del periodo:</b> P " + avg.prot + "g · C " + avg.carb + "g · G " + avg.fat + "g") + "</div>" +
+      "<table><thead><tr><th>Alimento / platillo</th><th class='c'>Cantidad</th><th class='c'>Kcal</th><th class='c'>Prot (g)</th><th class='c'>Carb (g)</th><th class='c'>Grasa (g)</th></tr></thead><tbody>" + rows +
       (isSingleDay ? "" :
-        "<tr class='dh'><td><b>TOTAL DEL PERIODO (" + nDays + " día" + (nDays === 1 ? "" : "s") + ", NO es un solo día)</b></td><td></td><td style='text-align:center'><b>" + grand.kcal + "</b></td><td style='text-align:center'><b>" + r1(grand.prot) + "</b></td><td style='text-align:center'><b>" + r1(grand.carb) + "</b></td></tr>"
+        "<tr class='dh'><td><b>TOTAL DEL PERIODO (" + nDays + " día" + (nDays === 1 ? "" : "s") + ", NO es un solo día)</b></td><td></td><td style='text-align:center'><b>" + grand.kcal + "</b></td><td style='text-align:center'><b>" + r1(grand.prot) + "</b></td><td style='text-align:center'><b>" + r1(grand.carb) + "</b></td><td style='text-align:center'><b>" + r1(grand.fat) + "</b></td></tr>"
       ) +
       "</tbody></table>" +
       "<div class='ft'>Generado por OCTANAJE · " + new Date().toLocaleString("es-MX") + "</div>" +
@@ -959,12 +984,12 @@
       ])
     ]));
 
-    // KPIs de hoy
+    // KPIs de hoy (4 macros + alimentos registrados)
     container.appendChild(el("div", { class: "grid cols-4 mb-16" }, [
       kpi("Calorías hoy", fmt.num(t.kcal), "meta " + fmt.num(g.kcal) + " kcal", "warn"),
       kpi("Proteínas", fmt.num(r1(t.prot)) + " g", "meta " + g.prot + " g", "good"),
       kpi("Carbohidratos", fmt.num(r1(t.carb)) + " g", "meta " + g.carb + " g", "accent"),
-      kpi("Alimentos", log().filter((x) => x.date === today()).length + "", "registrados hoy", "accent")
+      kpi("Grasas", fmt.num(r1(t.fat)) + " g", "meta " + (g.fat != null ? g.fat : DEFAULT_GOALS.fat) + " g", "bad")
     ]));
 
     // Medidor radial de anillos + leyenda
@@ -1023,13 +1048,16 @@
     setTimeout(() => Charts.bars(tcv, { labels: weekSeries("kcal").labels, series: [{ values: weekSeries("kcal").values, color: "--warn" }] }, { height: 160 }), 30);
 
     // Consumido hoy
+    const todayItems = log().filter((x) => x.date === today()).slice().reverse();
     const listCard = el("div", { class: "card" }, [
       el("div", { class: "card-head" }, [
-        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Consumido hoy"]),
+        el("div", {}, [
+          el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Consumido hoy"]),
+          el("div", { class: "card-sub", text: todayItems.length + " alimento(s) registrado(s)" })
+        ]),
         el("button", { class: "btn sm", html: "🍽️ Ver alimentos", onclick: () => openBrowser() })
       ])
     ]);
-    const todayItems = log().filter((x) => x.date === today()).slice().reverse();
     if (!todayItems.length) {
       listCard.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "🍽️" }), el("div", { text: "Aún no registras alimentos hoy." })]));
     } else {
@@ -1040,7 +1068,7 @@
             el("div", { class: "item-meta" }, [
               el("span", { class: "chip", text: e.grams + " " + unitWord(e) }),
               el("span", { class: "chip warn", text: e.kcal + " kcal" }),
-              el("span", { class: "text-faint fs-12", text: "P " + e.prot + "g · C " + e.carb + "g" })
+              el("span", { class: "text-faint fs-12", text: "P " + e.prot + "g · C " + e.carb + "g · G " + (e.fat || 0) + "g" })
             ])
           ]),
           el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => removeEntry(e) })
