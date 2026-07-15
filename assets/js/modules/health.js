@@ -16,7 +16,7 @@
 (function () {
   "use strict";
   const N = window.NEXUS;
-  const { Store, UI, Audio, Gami } = N;
+  const { Store, UI, Audio, Gami, Charts } = N;
   const { el, fmt, toast } = UI;
   const DateUtil = Store.DateUtil;
 
@@ -72,6 +72,7 @@
       s.health.profile = { name: "", sex: "F", age: null, weight: null, height: null, activity: "moderate", goal: "maintain", pace: "moderate", lastCheck: "" };
     }
     if (!Array.isArray(s.health.history)) s.health.history = [];
+    if (!Array.isArray(s.health.weights)) s.health.weights = [];
     return s.health;
   }
   function profile() {
@@ -81,6 +82,7 @@
     return pr;
   }
   function history() { return health().history; }
+  function weights() { return health().weights; }
 
   // ---------------- Cálculos ----------------
   // IMC = peso(kg) / estatura(m)^2
@@ -175,6 +177,165 @@
   }
   function hasCheck(key) { return history().some((h) => h.date === key); }
   function checksOnDay(key) { return history().filter((h) => h.date === key); }
+
+  // ---------------- Registro de peso de báscula ----------------
+  // A diferencia de la revisión completa (openForm, con edad/estatura/
+  // actividad/objetivo), esto es una captura rápida: solo fecha + peso
+  // (y una nota opcional) — pensado para pesarte seguido sin fricción.
+  // Solo se guarda UN peso por día: si ya pesaste ese día, se actualiza.
+  function weightOnDay(key) { return weights().find((w) => w.date === key); }
+  function weightsSorted() { return weights().slice().sort((a, b) => a.date.localeCompare(b.date)); }
+  function saveWeight(val, dateKey, note) {
+    const key = dateKey || today();
+    let w = weightOnDay(key);
+    if (w) { w.weight = val; w.note = note || ""; }
+    else { w = { id: Store.uid(), date: key, weight: val, note: note || "" }; weights().push(w); }
+    Store.commit();
+    Gami.award(3, "Peso de báscula registrado ⚖️");
+    return w;
+  }
+  function removeWeight(w) {
+    const arr = weights(); const i = arr.indexOf(w);
+    if (i >= 0) arr.splice(i, 1);
+    Store.commit();
+  }
+  function weightStats() {
+    const list = weightsSorted();
+    if (!list.length) return null;
+    const last = list[list.length - 1];
+    const first = list[0];
+    const prev = list.length > 1 ? list[list.length - 2] : null;
+    let min = list[0], max = list[0];
+    list.forEach((w) => { if (w.weight < min.weight) min = w; if (w.weight > max.weight) max = w; });
+    return {
+      last, first, prev, min, max,
+      diffFromFirst: r1(last.weight - first.weight),
+      diffFromPrev: prev ? r1(last.weight - prev.weight) : 0
+    };
+  }
+
+  // ---------------- Formulario rápido: registrar peso de báscula ----------------
+  function openWeightForm(presetDate) {
+    const dateKey = presetDate || today();
+    const isBackdate = dateKey !== today();
+    const existing = weightOnDay(dateKey);
+
+    const dateI = el("input", { class: "input", type: "date", value: dateKey, max: today() });
+    const weightI = el("input", { class: "input", type: "number", min: 1, step: 0.1, value: existing ? existing.weight : "", placeholder: "Ej. 78.4" });
+    const noteI = el("textarea", { class: "textarea", placeholder: "Ej. En ayunas, después de entrenar…", text: existing ? existing.note : "" });
+
+    const submitBtn = el("button", {
+      class: "btn primary block mt-8", html: existing ? "💾 Actualizar peso" : "⚖️ Guardar peso",
+      onclick: () => {
+        const val = Number(weightI.value) || 0;
+        if (!val || val <= 0) { Audio.play("error"); toast({ icon: "⚠️", msg: "Escribe un peso válido" }); return; }
+        if (!dateI.value) { Audio.play("error"); toast({ icon: "⚠️", msg: "Elige una fecha" }); return; }
+        const already = weightOnDay(dateI.value);
+        saveWeight(val, dateI.value, noteI.value);
+        Audio.play(already ? "tap" : "levelup");
+        toast({ icon: "⚖️", title: already ? "Peso actualizado" : "Peso guardado", msg: val + " kg · " + dayLabelFor(dateI.value) });
+        UI.closeModal();
+        render(document.getElementById("view-health"));
+      }
+    });
+
+    const banner = isBackdate ? el("div", { class: "insight warn", style: "margin-bottom:14px" }, [
+      el("span", { class: "ico", text: "🕐" }),
+      el("div", { class: "txt", text: "Este peso se guardará con la fecha que elijas abajo, no forzosamente hoy." })
+    ]) : null;
+
+    const body = el("div", {}, [
+      banner,
+      existing ? el("div", { class: "insight info", style: "margin-bottom:14px" }, [
+        el("span", { class: "ico", text: "ℹ️" }),
+        el("div", { class: "txt", text: "Ya registraste un peso ese día (" + existing.weight + " kg). Si guardas, se actualizará." })
+      ]) : null,
+      el("div", { class: "field" }, [el("label", { text: "Fecha" }), dateI]),
+      el("div", { class: "field" }, [el("label", { text: "Peso (kg)" }), weightI]),
+      el("div", { class: "field" }, [el("label", { text: "Nota (opcional)" }), noteI]),
+      submitBtn
+    ]);
+    UI.openModal("⚖️ Registrar peso de báscula", body);
+  }
+
+  // ---------------- Historial de pesos (modal) ----------------
+  function weightRow(w) {
+    const dLbl = dayLabelFor(w.date);
+    return el("div", { class: "item" }, [
+      el("div", { class: "item-main" }, [
+        el("div", { class: "item-title", text: w.weight + " kg · " + dLbl }),
+        w.note ? el("div", { class: "item-meta" }, [el("span", { class: "text-faint fs-12", text: "📝 " + w.note })]) : null
+      ]),
+      el("button", { class: "icon-btn", html: "✏️", title: "Editar", onclick: () => { UI.closeModal(); openWeightForm(w.date); } }),
+      el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => {
+        UI.confirmBox("Eliminar peso", "¿Eliminar el peso registrado el " + dLbl + "?", () => {
+          removeWeight(w); Audio.play("delete"); toast({ icon: "🗑️", msg: "Peso eliminado" }); openWeightHistory();
+        }, "Eliminar");
+      } })
+    ]);
+  }
+  function openWeightHistory() {
+    const list = weights().slice().sort((a, b) => b.date.localeCompare(a.date));
+    const body = el("div", {});
+    if (!list.length) {
+      body.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "⚖️" }), el("div", { text: "Aún no tienes pesos registrados." })]));
+    } else {
+      list.forEach((w) => body.appendChild(weightRow(w)));
+    }
+    UI.openModal("📖 Historial de peso (" + list.length + ")", body);
+  }
+
+  // ---------------- Tarjeta de peso: KPIs + gráfica de tendencia ----------------
+  function weightCard() {
+    const stats = weightStats();
+    const head = el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
+      el("div", {}, [
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "⚖️ Peso de báscula"]),
+        el("div", { class: "card-sub", text: stats ? weights().length + " registro(s) · último: " + dayLabelFor(stats.last.date) : "Sin registros aún" })
+      ]),
+      el("div", { class: "flex gap-8", style: "flex-wrap:wrap" }, [
+        el("button", { class: "btn sm", onclick: openWeightHistory, html: "📖 Historial" }),
+        el("button", { class: "btn sm primary", onclick: () => openWeightForm(), html: "⚖️ Registrar peso" })
+      ])
+    ]);
+
+    if (!stats) {
+      return el("div", { class: "card mb-16" }, [
+        head,
+        el("div", { class: "empty" }, [
+          el("span", { class: "big", text: "⚖️" }),
+          el("div", { text: "Aún no has registrado pesos de báscula." }),
+          el("p", { class: "fs-12 text-faint mt-8", text: "Pésate y guarda tu peso aquí seguido — sin llenar todo el formulario de revisión — para ver tu progreso a lo largo del tiempo." })
+        ])
+      ]);
+    }
+
+    const kpis = el("div", { class: "grid cols-3 mb-16" }, [
+      macroCard("Peso actual", stats.last.weight, "kg", "var(--accent)"),
+      macroCard("Desde el inicio", (stats.diffFromFirst > 0 ? "+" : "") + stats.diffFromFirst, "kg", stats.diffFromFirst > 0 ? "var(--bad)" : stats.diffFromFirst < 0 ? "var(--good)" : "var(--txt-dim)", "vs. " + stats.first.weight + " kg (" + dayLabelFor(stats.first.date) + ")"),
+      macroCard("Último cambio", stats.prev ? ((stats.diffFromPrev > 0 ? "+" : "") + stats.diffFromPrev) : "—", stats.prev ? "kg" : "", stats.diffFromPrev > 0 ? "var(--bad)" : stats.diffFromPrev < 0 ? "var(--good)" : "var(--txt-dim)", stats.prev ? "vs. " + dayLabelFor(stats.prev.date) : "Aún solo hay 1 registro")
+    ]);
+
+    const cv = el("canvas");
+    const chartWrap = el("div", { class: "chart-box" }, [cv]);
+    const series = weightsSorted().slice(-30);
+    setTimeout(() => {
+      Charts.line(cv, {
+        values: series.map((w) => w.weight),
+        labels: series.map((w) => DateUtil.parse(w.date).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }))
+      }, { color: "--accent", height: 170 });
+    }, 30);
+
+    return el("div", { class: "card mb-16" }, [
+      head, kpis,
+      el("div", { class: "fs-12 text-faint mb-8", text: "Tendencia de peso (últimos " + series.length + " registros)" }),
+      chartWrap,
+      el("div", { class: "flex gap-8 mt-8", style: "flex-wrap:wrap" }, [
+        el("span", { class: "chip good", text: "Mín: " + stats.min.weight + " kg (" + dayLabelFor(stats.min.date) + ")" }),
+        el("span", { class: "chip warn", text: "Máx: " + stats.max.weight + " kg (" + dayLabelFor(stats.max.date) + ")" })
+      ])
+    ]);
+  }
 
   // ---------------- Formulario de datos (biometría + objetivo) ----------------
   // presetDate opcional: para registrar la revisión de un día anterior.
@@ -369,6 +530,147 @@
     ]);
   }
 
+  // ---------------- Exportar resumen a PDF (día / semana / mes) ----------------
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  function rangeFor(period, dayKey) {
+    const to = today();
+    let from, label;
+    if (period === "day") { from = dayKey || to; return { from: from, to: from, label: "Día específico" }; }
+    if (period === "daily") { from = to; label = "Diario"; }
+    else if (period === "weekly") { from = DateUtil.addDays(to, -6); label = "Semanal"; }
+    else {
+      const d = new Date(); from = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-01"; label = "Mensual";
+    }
+    return { from: from, to: to, label: label };
+  }
+
+  function openPdfModal() {
+    const dateI = el("input", { class: "input", type: "date", value: today(), max: today() });
+    const body = el("div", {}, [
+      el("p", { class: "text-dim fs-13", style: "margin-bottom:16px", text: "Elige el periodo del resumen de salud a descargar en PDF (incluye tu perfil, IMC, GEB/GET, plan nutricional y tus registros de peso/revisiones del periodo):" }),
+      el("button", { class: "btn primary block", style: "margin-bottom:10px", html: "📅 Diario (hoy)", onclick: () => { UI.closeModal(); exportPDF("daily"); } }),
+      el("button", { class: "btn block", style: "margin-bottom:10px", html: "🗓️ Semanal (últimos 7 días)", onclick: () => { UI.closeModal(); exportPDF("weekly"); } }),
+      el("button", { class: "btn block", style: "margin-bottom:16px", html: "📆 Mensual (este mes)", onclick: () => { UI.closeModal(); exportPDF("monthly"); } }),
+      el("div", { class: "card", style: "padding:12px" }, [
+        el("div", { class: "fs-12 fw-700 mb-8", text: "🔎 Elegir un día específico (de hace tiempo)" }),
+        dateI,
+        el("button", { class: "btn primary block mt-8", html: "📄 PDF de ese día", onclick: () => {
+          if (!dateI.value) { Audio.play("error"); toast({ icon: "⚠️", msg: "Elige una fecha" }); return; }
+          UI.closeModal(); exportPDF("day", dateI.value);
+        } })
+      ]),
+      el("p", { class: "fs-12 text-faint", style: "margin-top:16px", html: "Se abrirá la ventana de impresión: elige <b>\"Guardar como PDF\"</b> como destino." })
+    ]);
+    UI.openModal("📄 Descargar PDF de salud", body);
+  }
+
+  function exportPDF(period, dayKey) {
+    const r = rangeFor(period, dayKey);
+    const isSingleDay = r.from === r.to;
+    const p = profile();
+    const hasData = !!(p.weight && p.height && p.age);
+
+    const weightList = weightsSorted().filter((w) => w.date >= r.from && w.date <= r.to);
+    const checkList = history().slice().filter((h) => h.date >= r.from && h.date <= r.to).sort((a, b) => a.date.localeCompare(b.date));
+
+    const fromLbl = DateUtil.parse(r.from).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+    const toLbl = DateUtil.parse(r.to).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+
+    let imc = 0, geb = 0, get = 0, plan = null, c = null;
+    if (hasData) {
+      imc = calcIMC(p.weight, p.height);
+      geb = calcGEB(p.weight, p.height, p.age, p.sex);
+      get = calcGET(geb, p.activity);
+      plan = calcPlan(p.weight, get, geb, p.goal, p.pace);
+      c = imcClass(imc);
+    }
+
+    let weightRows = "";
+    if (!weightList.length) {
+      weightRows = '<tr><td colspan="3" style="text-align:center;color:#888;padding:18px">Sin pesos registrados en este periodo.</td></tr>';
+    } else {
+      weightList.forEach((w) => {
+        const dLbl = DateUtil.parse(w.date).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+        weightRows += "<tr><td>" + esc(dLbl) + "</td><td style='text-align:center'><b>" + w.weight + " kg</b></td><td>" + esc(w.note || "") + "</td></tr>";
+      });
+    }
+    let wStats = null;
+    if (weightList.length) {
+      const sorted = weightList.slice().sort((a, b) => a.date.localeCompare(b.date));
+      wStats = { first: sorted[0], last: sorted[sorted.length - 1], diff: r1(sorted[sorted.length - 1].weight - sorted[0].weight) };
+    }
+
+    let checkRows = "";
+    if (!checkList.length) {
+      checkRows = '<tr><td colspan="5" style="text-align:center;color:#888;padding:18px">Sin revisiones biométricas en este periodo.</td></tr>';
+    } else {
+      checkList.forEach((h) => {
+        const dLbl = DateUtil.parse(h.date).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+        checkRows += "<tr><td>" + esc(dLbl) + "</td><td style='text-align:center'>" + h.weight + " kg</td><td style='text-align:center'>" + h.imc + "</td><td style='text-align:center'>" + h.geb + "</td><td style='text-align:center'>" + h.get + "</td></tr>";
+      });
+    }
+
+    const html = "<!doctype html><html lang='es'><head><meta charset='utf-8'><title>OCTANAJE · Salud " + r.label + "</title>" +
+      "<style>" +
+      "*{box-sizing:border-box;font-family:'Segoe UI',system-ui,Arial,sans-serif}" +
+      "body{margin:0;padding:32px;color:#1a1a2e;background:#fff}" +
+      ".hd{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #6a5cff;padding-bottom:14px;margin-bottom:20px}" +
+      ".logo{font-size:22px;font-weight:800;letter-spacing:2px;color:#6a5cff}" +
+      ".logo span{color:#00b3c4}" +
+      ".sub{color:#666;font-size:13px}" +
+      "h1{font-size:20px;margin:0 0 4px}" +
+      "h2{font-size:15px;margin:22px 0 8px;color:#4a3fd0;border-bottom:1px solid #e3e3ee;padding-bottom:6px}" +
+      ".kpis{display:flex;gap:12px;margin:14px 0;flex-wrap:wrap}" +
+      ".kpi{flex:1;min-width:110px;border:1px solid #e3e3ee;border-radius:12px;padding:12px 14px}" +
+      ".kpi .n{font-size:22px;font-weight:800;color:#6a5cff}" +
+      ".kpi .l{font-size:11px;color:#777;text-transform:uppercase;letter-spacing:1px}" +
+      ".types{background:#f4f4fb;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:8px}" +
+      "table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:6px}" +
+      "th{background:#6a5cff;color:#fff;text-align:left;padding:8px 10px;font-size:12px}" +
+      "th.c{text-align:center}" +
+      "td{padding:7px 10px;border-bottom:1px solid #ececf4;vertical-align:top}" +
+      ".ft{margin-top:24px;color:#999;font-size:11px;text-align:center;border-top:1px solid #eee;padding-top:12px}" +
+      "@media print{body{padding:0}}" +
+      "</style></head><body>" +
+      "<div class='hd'><div><div class='logo'>▲ OCTAN<span>AJE</span></div><div class='sub'>Salud y Disciplina</div></div>" +
+      "<div style='text-align:right'><h1>Resumen de salud</h1><div class='sub'>" + (isSingleDay ? fromLbl : r.label + " · " + fromLbl + " → " + toLbl) + "</div></div></div>" +
+
+      (hasData ? (
+        "<h2>Perfil actual</h2>" +
+        "<div class='types'><b>" + esc(p.name || "—") + "</b> · " + (p.sex === "M" ? "Hombre" : "Mujer") + " · " + p.age + " años · " + p.weight + " kg · " + p.height + " cm · " + esc(activityLabel(p.activity)) + " · Objetivo: " + esc(goalLabel(p.goal)) + "</div>" +
+        "<div class='kpis'>" +
+        "<div class='kpi'><div class='n'>" + r1(imc) + "</div><div class='l'>IMC (" + esc(c.label) + ")</div></div>" +
+        "<div class='kpi'><div class='n'>" + Math.round(geb) + "</div><div class='l'>GEB kcal/día</div></div>" +
+        "<div class='kpi'><div class='n'>" + Math.round(get) + "</div><div class='l'>GET kcal/día</div></div>" +
+        "<div class='kpi'><div class='n'>" + plan.kcal + "</div><div class='l'>Plan · kcal/día</div></div>" +
+        "</div>" +
+        "<div class='types'><b>Plan nutricional recomendado:</b> " + plan.kcal + " kcal · P " + plan.prot + "g · C " + plan.carb + "g · G " + plan.fat + "g por día.</div>"
+      ) : "<div class='types'>Aún no has completado tu perfil de salud (peso, estatura, edad).</div>") +
+
+      "<h2>⚖️ Peso de báscula" + (isSingleDay ? "" : " del periodo") + "</h2>" +
+      (wStats ? "<div class='types'>Primer peso: <b>" + wStats.first.weight + " kg</b> (" + DateUtil.parse(wStats.first.date).toLocaleDateString("es-MX", { day: "numeric", month: "long" }) + ") &nbsp;·&nbsp; Último: <b>" + wStats.last.weight + " kg</b> &nbsp;·&nbsp; Cambio: <b>" + (wStats.diff > 0 ? "+" : "") + wStats.diff + " kg</b></div>" : "") +
+      "<table><thead><tr><th>Fecha</th><th class='c'>Peso</th><th>Nota</th></tr></thead><tbody>" + weightRows + "</tbody></table>" +
+
+      "<h2>📋 Revisiones biométricas" + (isSingleDay ? "" : " del periodo") + "</h2>" +
+      "<table><thead><tr><th>Fecha</th><th class='c'>Peso</th><th class='c'>IMC</th><th class='c'>GEB</th><th class='c'>GET</th></tr></thead><tbody>" + checkRows + "</tbody></table>" +
+
+      "<div class='ft'>Generado por OCTANAJE · " + new Date().toLocaleString("es-MX") + " · Este resumen es una referencia general, no un diagnóstico médico.</div>" +
+      "</body></html>";
+
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+    document.body.appendChild(iframe);
+    const doc = iframe.contentWindow.document;
+    doc.open(); doc.write(html); doc.close();
+    Audio.play("tap");
+    toast({ icon: "📄", title: "Generando PDF…", msg: "Elige \"Guardar como PDF\"." });
+    setTimeout(function () {
+      try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {}
+      setTimeout(function () { iframe.remove(); }, 1500);
+    }, 500);
+  }
+
   // ---------------- Render principal ----------------
   function render(container) {
     container.innerHTML = "";
@@ -383,9 +685,14 @@
       el("div", { class: "flex gap-8", style: "flex-wrap:wrap" }, [
         el("button", { class: "btn", onclick: openHistory, html: "📖 Historial" }),
         el("button", { class: "btn", onclick: openBackdatePicker, html: "🕐 Otro día" }),
+        el("button", { class: "btn", onclick: openPdfModal, html: "📄 PDF" }),
         el("button", { class: "btn primary", onclick: () => openForm(), html: hasData ? "✏️ Actualizar mis datos" : "＋ Registrar mis datos" })
       ])
     ]));
+
+    // El registro de peso de báscula funciona aunque aún no completes
+    // tu perfil completo — es una captura rápida e independiente.
+    container.appendChild(weightCard());
 
     if (!hasData) {
       container.appendChild(el("div", { class: "card" }, [
@@ -506,5 +813,5 @@
     container.appendChild(buildCalendar());
   }
 
-  N.Health = { render };
+  N.Health = { render, exportPDF, saveWeight };
 })();

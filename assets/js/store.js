@@ -64,7 +64,8 @@
       nutrition: { log: [] },  // registro de alimentos: {id,name,cat,grams,kcal,prot,carb,date}
       health: {                // biometría: perfil actual + historial de revisiones
         profile: { name: "", sex: "F", age: null, weight: null, height: null, activity: "moderate", lastCheck: "" },
-        history: []            // {id,date,weight,height,age,imc,geb,get}
+        history: [],           // {id,date,weight,height,age,imc,geb,get}
+        weights: []            // registro rápido de báscula: {id,date,weight,note}
       },
       sleep: { log: [] }       // registro de sueño: {id,date,period,start,end,hours,notes,xpEarned}
     };
