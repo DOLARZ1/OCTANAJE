@@ -714,6 +714,17 @@
     ]);
   }
 
+  // ---------------- Aplicar metas desde otro módulo (p.ej. el plan de Salud) ----------------
+  function setGoals(data) {
+    const gg = goals();
+    if (data.kcal != null) gg.kcal = Math.max(0, Number(data.kcal) || 0);
+    if (data.prot != null) gg.prot = Math.max(0, Number(data.prot) || 0);
+    if (data.carb != null) gg.carb = Math.max(0, Number(data.carb) || 0);
+    if (data.fat != null) gg.fat = Math.max(0, Number(data.fat) || 0);
+    Store.commit();
+    return gg;
+  }
+
   // ---------------- Editar metas diarias ----------------
   function openGoals() {
     const g = goals();
@@ -1100,5 +1111,5 @@
     ])]);
   }
 
-  N.Nutrition = { render, dayTotals, exportPDF };
+  N.Nutrition = { render, dayTotals, exportPDF, setGoals };
 })();

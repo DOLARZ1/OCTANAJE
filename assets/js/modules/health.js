@@ -5,8 +5,13 @@
      - IMC (Índice de Masa Corporal) con su clasificación
      - GEB (Gasto Energético Basal) — fórmula de Mifflin-St Jeor
      - GET (Gasto Energético Total) — GEB x factor de actividad
-   Incluye historial con nombre, fecha de última revisión y guardado
-   persistente (localStorage vía Store).
+     - Plan nutricional (calorías y proteína recomendadas) según tu
+       objetivo: bajar de peso, mantenerlo, o aumentar masa muscular
+       — como lo armaría un nutriólogo deportivo — con opción de
+       aplicarlo directo a tus metas de Alimentación.
+   Incluye historial tipo calendario, con nombre, fecha, y guardado
+   persistente (localStorage vía Store). Soporta registrar revisiones
+   de días anteriores si se te pasó anotarlas a tiempo.
    ===================================================================== */
 (function () {
   "use strict";
@@ -16,6 +21,7 @@
   const DateUtil = Store.DateUtil;
 
   const today = () => DateUtil.todayKey();
+  function dayLabelFor(key) { return DateUtil.parse(key).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }); }
 
   // Factores de actividad física para el GET (estándar de nutrición/PT)
   const ACTIVITY = [
@@ -27,6 +33,26 @@
   ];
   function activityLabel(v) { return (ACTIVITY.find((a) => a.value === v) || ACTIVITY[2]).label; }
   function activityFactor(v) { return (ACTIVITY.find((a) => a.value === v) || ACTIVITY[2]).factor; }
+
+  // Objetivos y ritmo de cambio (para el plan nutricional)
+  const GOALS = [
+    { value: "lose", label: "📉 Bajar de peso" },
+    { value: "maintain", label: "⚖️ Mantener mi peso" },
+    { value: "gain", label: "📈 Aumentar masa muscular" }
+  ];
+  function goalLabel(v) { return (GOALS.find((g) => g.value === v) || GOALS[1]).label; }
+  const PACE_GENERIC = [
+    { value: "slow", label: "🐢 Lento y sostenible" },
+    { value: "moderate", label: "🚶 Moderado (recomendado)" },
+    { value: "aggressive", label: "🏃 Agresivo" }
+  ];
+  const PACE_LOSE = [{ value: "slow", kcal: 250 }, { value: "moderate", kcal: 500 }, { value: "aggressive", kcal: 750 }];
+  const PACE_GAIN = [{ value: "slow", kcal: 200 }, { value: "moderate", kcal: 350 }, { value: "aggressive", kcal: 500 }];
+  function paceKcal(goal, pace) {
+    const table = goal === "lose" ? PACE_LOSE : goal === "gain" ? PACE_GAIN : null;
+    if (!table) return 0;
+    return (table.find((p) => p.value === pace) || table[1]).kcal;
+  }
 
   // Clasificación oficial de IMC (OMS)
   const IMC_RANGES = [
@@ -43,12 +69,17 @@
     const s = Store.get();
     if (!s.health || typeof s.health !== "object") s.health = {};
     if (!s.health.profile || typeof s.health.profile !== "object") {
-      s.health.profile = { name: "", sex: "F", age: null, weight: null, height: null, activity: "moderate", lastCheck: "" };
+      s.health.profile = { name: "", sex: "F", age: null, weight: null, height: null, activity: "moderate", goal: "maintain", pace: "moderate", lastCheck: "" };
     }
     if (!Array.isArray(s.health.history)) s.health.history = [];
     return s.health;
   }
-  function profile() { return health().profile; }
+  function profile() {
+    const pr = health().profile;
+    if (pr.goal == null) pr.goal = "maintain";     // migración: usuarios previos sin objetivo guardado
+    if (pr.pace == null) pr.pace = "moderate";
+    return pr;
+  }
   function history() { return health().history; }
 
   // ---------------- Cálculos ----------------
@@ -72,34 +103,87 @@
 
   function r1(x) { return Math.round(x * 10) / 10; }
 
+  // Plan nutricional: calorías + proteína (y grasas/carbos) recomendadas
+  // según el objetivo, tal como lo armaría un nutriólogo deportivo.
+  //  - Calorías: GET ± ajuste según ritmo elegido (con piso de seguridad
+  //    al bajar de peso, para no caer por debajo de tu GEB).
+  //  - Proteína: gramos por kg de peso corporal (rango deportivo:
+  //    1.8-2.2 g/kg, más alta al bajar de peso para proteger tu músculo).
+  //  - Grasas: 25% de las calorías totales.
+  //  - Carbohidratos: lo que sobra de las calorías.
+  function calcPlan(weightKg, get, geb, goal, pace) {
+    goal = goal || "maintain"; pace = pace || "moderate";
+    let kcal = get, clamped = false;
+    if (goal === "lose") {
+      const adj = paceKcal("lose", pace);
+      kcal = get - adj;
+      const floor = Math.round(geb * 1.2);
+      if (kcal < floor) { kcal = floor; clamped = true; }
+    } else if (goal === "gain") {
+      kcal = get + paceKcal("gain", pace);
+    }
+    const protPerKg = goal === "lose" ? 2.2 : goal === "gain" ? 2.0 : 1.8;
+    const protG = Math.round((weightKg || 0) * protPerKg);
+    const protKcal = protG * 4;
+    const fatKcal = kcal * 0.25;
+    const fatG = Math.round(fatKcal / 9);
+    const carbKcal = Math.max(0, kcal - protKcal - fatKcal);
+    const carbG = Math.round(carbKcal / 4);
+    const adj = goal === "maintain" ? 0 : paceKcal(goal, pace);
+    const rateKgWeek = goal === "maintain" ? 0 : r1((adj * 7) / 7700); // 1 kg ≈ 7700 kcal
+    return { kcal: Math.round(kcal), prot: protG, protPerKg, fat: fatG, carb: carbG, rateKgWeek, clamped };
+  }
+
   // ---------------- Historial ----------------
-  function saveCheck(p) {
+  // dateKey opcional: para registrar una revisión de un día anterior.
+  // Al guardar, el "perfil actual" (usado en IMC/GEB/GET/plan) se
+  // actualiza SIEMPRE a partir de la revisión más reciente por fecha,
+  // así una revisión atrasada no pisa datos más nuevos que ya tenías.
+  function saveCheck(p, dateKey) {
+    const key = dateKey || today();
     const imc = calcIMC(p.weight, p.height);
     const geb = calcGEB(p.weight, p.height, p.age, p.sex);
     const get = calcGET(geb, p.activity);
+    const plan = calcPlan(p.weight, get, geb, p.goal, p.pace);
     const entry = {
-      id: Store.uid(), date: today(),
+      id: Store.uid(), date: key,
       name: p.name, weight: p.weight, height: p.height, age: p.age, sex: p.sex, activity: p.activity,
-      imc: r1(imc), geb: Math.round(geb), get: Math.round(get)
+      goal: p.goal, pace: p.pace,
+      imc: r1(imc), geb: Math.round(geb), get: Math.round(get),
+      planKcal: plan.kcal, planProt: plan.prot, planFat: plan.fat, planCarb: plan.carb
     };
     history().unshift(entry);
-    const prof = profile();
-    prof.name = p.name; prof.sex = p.sex; prof.age = p.age; prof.weight = p.weight; prof.height = p.height;
-    prof.activity = p.activity; prof.lastCheck = today();
+    refreshProfileFromLatest();
     Store.commit();
     Gami.award(5, "Revisión de salud registrada 💙");
     return entry;
   }
+  function refreshProfileFromLatest() {
+    const list = history();
+    if (!list.length) return;
+    const latest = list.reduce((a, b) => (b.date > a.date ? b : a));
+    const prof = profile();
+    prof.name = latest.name; prof.sex = latest.sex; prof.age = latest.age;
+    prof.weight = latest.weight; prof.height = latest.height; prof.activity = latest.activity;
+    prof.goal = latest.goal; prof.pace = latest.pace; prof.lastCheck = latest.date;
+  }
   function removeCheck(entry) {
     const arr = history(); const i = arr.indexOf(entry);
     if (i >= 0) arr.splice(i, 1);
+    refreshProfileFromLatest();
     Store.commit();
   }
+  function hasCheck(key) { return history().some((h) => h.date === key); }
+  function checksOnDay(key) { return history().filter((h) => h.date === key); }
 
-  // ---------------- Formulario de datos ----------------
-  function openForm() {
+  // ---------------- Formulario de datos (biometría + objetivo) ----------------
+  // presetDate opcional: para registrar la revisión de un día anterior.
+  function openForm(presetDate) {
     const p = profile();
-    const body = UI.form([
+    const dateKey = presetDate || today();
+    const isBackdate = dateKey !== today();
+
+    const formNode = UI.form([
       { name: "name", label: "Nombre", value: p.name || "", placeholder: "Tu nombre", required: true },
       { type: "row", fields: [
         { name: "sex", label: "Sexo biológico", type: "select", value: p.sex || "F", options: [
@@ -111,52 +195,144 @@
         { name: "weight", label: "Peso (kg)", type: "number", min: 1, step: 0.1, value: p.weight || "", required: true },
         { name: "height", label: "Estatura (cm)", type: "number", min: 1, step: 0.1, value: p.height || "", required: true }
       ]},
-      { name: "activity", label: "Nivel de actividad física", type: "select", value: p.activity || "moderate", options: ACTIVITY.map((a) => ({ value: a.value, label: a.label })) }
+      { name: "activity", label: "Nivel de actividad física", type: "select", value: p.activity || "moderate", options: ACTIVITY.map((a) => ({ value: a.value, label: a.label })) },
+      { type: "row", fields: [
+        { name: "goal", label: "🎯 Objetivo", type: "select", value: p.goal || "maintain", options: GOALS.map((g) => ({ value: g.value, label: g.label })) },
+        { name: "pace", label: "Ritmo (si bajas/subes de peso)", type: "select", value: p.pace || "moderate", options: PACE_GENERIC.map((x) => ({ value: x.value, label: x.label })) }
+      ]}
     ], (data) => {
       const payload = {
         name: data.name, sex: data.sex, age: Number(data.age) || 0,
-        weight: Number(data.weight) || 0, height: Number(data.height) || 0, activity: data.activity
+        weight: Number(data.weight) || 0, height: Number(data.height) || 0, activity: data.activity,
+        goal: data.goal, pace: data.pace
       };
       if (!payload.weight || !payload.height || !payload.age) {
         Audio.play("error"); toast({ icon: "⚠️", msg: "Completa peso, estatura y edad." }); return;
       }
-      saveCheck(payload);
+      saveCheck(payload, dateKey);
       Audio.play("levelup");
-      toast({ icon: "💙", title: "Revisión guardada", msg: "IMC: " + r1(calcIMC(payload.weight, payload.height)) });
+      toast({ icon: "💙", title: isBackdate ? "Revisión guardada (" + dayLabelFor(dateKey) + ")" : "Revisión guardada", msg: "IMC: " + r1(calcIMC(payload.weight, payload.height)) });
       UI.closeModal();
       render(document.getElementById("view-health"));
     }, "💾 Guardar revisión");
-    UI.openModal("📋 Nueva revisión de salud", body);
+
+    const banner = isBackdate ? el("div", { class: "insight warn", style: "margin-bottom:14px" }, [
+      el("span", { class: "ico", text: "🕐" }),
+      el("div", { class: "txt", html: "Esta revisión se guardará con fecha <b>" + dayLabelFor(dateKey) + "</b>, no hoy." })
+    ]) : null;
+
+    UI.openModal(isBackdate ? "📋 Revisión de otro día" : "📋 Nueva revisión de salud", el("div", {}, [banner, formNode]));
+  }
+
+  // ---------------- Registrar revisión de un día anterior ----------------
+  function openBackdatePicker() {
+    const dateI = el("input", { class: "input", type: "date", value: DateUtil.addDays(today(), -1), max: today() });
+    const body = el("div", {}, [
+      el("p", { class: "text-dim fs-13", style: "margin-bottom:10px", text: "Elige la fecha de la revisión que quieres registrar (por ejemplo si se te olvidó anotarla a tiempo):" }),
+      el("div", { class: "field" }, [el("label", { text: "Fecha" }), dateI]),
+      el("button", { class: "btn primary block mt-8", html: "📋 Continuar", onclick: () => {
+        if (!dateI.value) { Audio.play("error"); toast({ icon: "⚠️", msg: "Elige una fecha" }); return; }
+        UI.closeModal();
+        openForm(dateI.value);
+      } })
+    ]);
+    UI.openModal("🕐 Revisión de otro día", body);
+  }
+
+  // ---------------- Cambiar solo objetivo/ritmo (sin nueva revisión) ----------------
+  function openGoalOnly() {
+    const p = profile();
+    const body = UI.form([
+      { name: "goal", label: "🎯 Objetivo", type: "select", value: p.goal || "maintain", options: GOALS.map((g) => ({ value: g.value, label: g.label })) },
+      { name: "pace", label: "Ritmo (si bajas/subes de peso)", type: "select", value: p.pace || "moderate", options: PACE_GENERIC.map((x) => ({ value: x.value, label: x.label })) }
+    ], (data) => {
+      p.goal = data.goal; p.pace = data.pace;
+      Store.commit();
+      Audio.play("tap");
+      toast({ icon: "🎯", title: "Objetivo actualizado", msg: goalLabel(data.goal) });
+      UI.closeModal();
+      render(document.getElementById("view-health"));
+    }, "💾 Guardar objetivo");
+    UI.openModal("🎯 Cambiar objetivo y ritmo", body);
   }
 
   // ---------------- Historial (modal) ----------------
+  function historyRow(h) {
+    const c = imcClass(h.imc);
+    const dLbl = dayLabelFor(h.date);
+    return el("div", { class: "item" }, [
+      el("div", { class: "item-main" }, [
+        el("div", { class: "item-title", text: (h.name || "Sin nombre") + " · " + dLbl }),
+        el("div", { class: "item-meta" }, [
+          el("span", { class: "chip", text: h.weight + " kg · " + h.height + " cm" }),
+          el("span", { class: "chip " + c.cls, text: "IMC " + h.imc + " (" + c.label + ")" }),
+          el("span", { class: "chip accent", text: goalLabel(h.goal) }),
+          el("span", { class: "text-faint fs-12", text: "Plan: " + (h.planKcal || 0) + " kcal · " + (h.planProt || 0) + "g prot" })
+        ])
+      ]),
+      el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => {
+        UI.confirmBox("Eliminar revisión", "¿Eliminar el registro del " + dLbl + "?", () => {
+          removeCheck(h); Audio.play("delete"); toast({ icon: "🗑️", msg: "Registro eliminado" }); openHistory();
+        }, "Eliminar");
+      } })
+    ]);
+  }
   function openHistory() {
-    const list = history();
+    const list = history().slice().sort((a, b) => b.date.localeCompare(a.date));
     const body = el("div", {});
     if (!list.length) {
       body.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "📖" }), el("div", { text: "Aún no tienes revisiones guardadas." })]));
     } else {
-      list.forEach((h) => {
-        const c = imcClass(h.imc);
-        const dLbl = DateUtil.parse(h.date).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
-        body.appendChild(el("div", { class: "item" }, [
-          el("div", { class: "item-main" }, [
-            el("div", { class: "item-title", text: (h.name || "Sin nombre") + " · " + dLbl }),
-            el("div", { class: "item-meta" }, [
-              el("span", { class: "chip", text: h.weight + " kg · " + h.height + " cm" }),
-              el("span", { class: "chip " + c.cls, text: "IMC " + h.imc + " (" + c.label + ")" }),
-              el("span", { class: "text-faint fs-12", text: "GEB " + h.geb + " kcal · GET " + h.get + " kcal" })
-            ])
-          ]),
-          el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => {
-            UI.confirmBox("Eliminar revisión", "¿Eliminar el registro del " + dLbl + "?", () => {
-              removeCheck(h); Audio.play("delete"); toast({ icon: "🗑️", msg: "Registro eliminado" }); openHistory();
-            }, "Eliminar");
-          } })
-        ]));
-      });
+      list.forEach((h) => body.appendChild(historyRow(h)));
     }
     UI.openModal("📖 Historial de revisiones (" + list.length + ")", body);
+  }
+
+  // ---------------- Calendario de revisiones ----------------
+  function openDayDetail(key) {
+    const items = checksOnDay(key);
+    const dLbl = DateUtil.parse(key).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+    const body = el("div", {});
+    if (!items.length) {
+      body.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "📋" }), el("div", { text: "Sin revisiones este día." })]));
+    } else {
+      items.forEach((h) => body.appendChild(historyRow(h)));
+    }
+    body.appendChild(el("button", { class: "btn primary block mt-16", html: "＋ Registrar revisión de este día", onclick: () => { UI.closeModal(); openForm(key); } }));
+    UI.openModal("📅 " + dLbl, body);
+  }
+  function buildCalendar() {
+    const now = new Date();
+    const y = now.getFullYear(), mo = now.getMonth();
+    const monthLabel = now.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+    const daysInMonth = new Date(y, mo + 1, 0).getDate();
+    const startCol = (new Date(y, mo, 1).getDay() + 6) % 7;
+    const todayKey = today();
+
+    const grid = el("div", { class: "cal" });
+    ["L", "M", "M", "J", "V", "S", "D"].forEach((h) => grid.appendChild(el("div", { class: "cal-h", text: h })));
+    for (let i = 0; i < startCol; i++) grid.appendChild(el("div", { class: "cal-day empty" }));
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = DateUtil.key(new Date(y, mo, d));
+      let cls = "cal-day";
+      const label = DateUtil.parse(key).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" });
+      let tip = label;
+      if (key > todayKey) cls += " future";
+      else if (hasCheck(key)) { cls += " done"; tip += " · con revisión"; }
+      else { cls += " miss"; tip += " · sin revisión"; }
+      if (key === todayKey) cls += " today";
+      grid.appendChild(el("div", { class: cls + " clickable", title: tip + " · toca para ver/agregar", text: String(d), onclick: () => openDayDetail(key) }));
+    }
+    return el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px;text-transform:capitalize" }, [
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Calendario de revisiones · " + monthLabel]),
+        el("div", { class: "flex gap-8 fs-12" }, [
+          el("span", { class: "chip good", text: "● Con revisión" }),
+          el("span", { class: "chip bad", text: "● Sin revisión" })
+        ])
+      ]),
+      grid
+    ]);
   }
 
   // ---------------- Barra visual de clasificación de IMC ----------------
@@ -202,11 +378,12 @@
     container.appendChild(el("div", { class: "view-head" }, [
       el("div", {}, [
         el("h1", { class: "view-title" }, [N.Icons.node("heart"), "Salud"]),
-        el("p", { class: "view-desc", text: "Tus datos biométricos, IMC, gasto energético y el historial de tus revisiones." })
+        el("p", { class: "view-desc", text: "Tus datos biométricos, IMC, gasto energético, tu plan nutricional y el historial de tus revisiones." })
       ]),
       el("div", { class: "flex gap-8", style: "flex-wrap:wrap" }, [
         el("button", { class: "btn", onclick: openHistory, html: "📖 Historial" }),
-        el("button", { class: "btn primary", onclick: openForm, html: hasData ? "✏️ Actualizar mis datos" : "＋ Registrar mis datos" })
+        el("button", { class: "btn", onclick: openBackdatePicker, html: "🕐 Otro día" }),
+        el("button", { class: "btn primary", onclick: () => openForm(), html: hasData ? "✏️ Actualizar mis datos" : "＋ Registrar mis datos" })
       ])
     ]));
 
@@ -215,8 +392,8 @@
         el("div", { class: "empty" }, [
           el("span", { class: "big", text: "💙" }),
           el("div", { text: "Aún no has registrado tus datos de salud." }),
-          el("p", { class: "fs-12 text-faint mt-8", text: "Captura tu peso, estatura, edad, sexo y nivel de actividad — los mismos datos que te pediría un preparador físico — para calcular tu IMC, tu Gasto Energético Basal (GEB) y tu Gasto Energético Total (GET)." }),
-          el("button", { class: "btn primary mt-16", onclick: openForm, html: "＋ Registrar mis datos" })
+          el("p", { class: "fs-12 text-faint mt-8", text: "Captura tu peso, estatura, edad, sexo, nivel de actividad y tu objetivo — los mismos datos que te pediría un nutriólogo deportivo — para calcular tu IMC, tu Gasto Energético Basal (GEB), tu Gasto Energético Total (GET), y un plan de calorías y proteína recomendadas según si quieres bajar de peso, mantenerlo, o aumentar masa muscular." }),
+          el("button", { class: "btn primary mt-16", onclick: () => openForm(), html: "＋ Registrar mis datos" })
         ])
       ]));
       return;
@@ -226,7 +403,7 @@
     const geb = calcGEB(p.weight, p.height, p.age, p.sex);
     const get = calcGET(geb, p.activity);
     const c = imcClass(imc);
-    const lastLbl = p.lastCheck ? DateUtil.parse(p.lastCheck).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }) : "—";
+    const lastLbl = p.lastCheck ? dayLabelFor(p.lastCheck) : "—";
 
     // Resumen del perfil
     container.appendChild(el("div", { class: "card mb-16" }, [
@@ -240,7 +417,8 @@
         el("span", { class: "chip", text: (p.sex === "M" ? "Hombre" : "Mujer") + " · " + p.age + " años" }),
         el("span", { class: "chip", text: p.weight + " kg" }),
         el("span", { class: "chip", text: p.height + " cm" }),
-        el("span", { class: "chip accent", text: activityLabel(p.activity) })
+        el("span", { class: "chip accent", text: activityLabel(p.activity) }),
+        el("span", { class: "chip warn", text: goalLabel(p.goal) })
       ])
     ]));
 
@@ -277,9 +455,55 @@
         el("span", { class: "ico", text: "⚡" }),
         el("div", { class: "txt", html: "<b>GET (Gasto Energético Total):</b> es tu GEB multiplicado por tu nivel de actividad física (" + activityLabel(p.activity) + ", factor ×" + activityFactor(p.activity) + "). Representa las calorías que realmente quemas en un día normal, incluyendo ejercicio y movimiento." })
       ]),
-      el("p", { class: "fs-12 text-faint mt-8", html: "<b>¿Para qué sirve?</b> El GET es tu punto de referencia: comer por debajo de él genera déficit calórico (bajar de peso), comer igual mantiene tu peso, y comer por encima genera superávit (subir de peso/masa muscular). Consulta a un nutriólogo o preparador físico para ajustar tu plan según tu objetivo." })
+      el("p", { class: "fs-12 text-faint mt-8", html: "<b>¿Para qué sirve?</b> El GET es tu punto de referencia: comer por debajo de él genera déficit calórico (bajar de peso), comer igual mantiene tu peso, y comer por encima genera superávit (subir de peso/masa muscular). El plan de abajo ya hace este ajuste automáticamente según tu objetivo." })
     ]);
     container.appendChild(engCard);
+
+    // ---- Plan nutricional (calorías y proteína recomendadas) ----
+    const plan = calcPlan(p.weight, get, geb, p.goal, p.pace);
+    const planCard = el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
+        el("div", {}, [
+          el("div", { class: "card-title" }, [el("span", { class: "dot" }), "🍽️ Plan nutricional recomendado"]),
+          el("div", { class: "card-sub", text: "Objetivo: " + goalLabel(p.goal) })
+        ]),
+        el("button", { class: "btn sm", onclick: openGoalOnly, html: "🎯 Cambiar objetivo" })
+      ]),
+      el("div", { class: "grid cols-4 mb-16" }, [
+        macroCard("Calorías", plan.kcal, "kcal/día", "var(--warn)"),
+        macroCard("Proteína", plan.prot, "g/día", "var(--good)", plan.protPerKg + " g por kg de peso"),
+        macroCard("Grasas", plan.fat, "g/día", "var(--bad)"),
+        macroCard("Carbohidratos", plan.carb, "g/día", "var(--accent)")
+      ]),
+      plan.rateKgWeek ? el("div", { class: "insight " + (p.goal === "lose" ? "warn" : "good") }, [
+        el("span", { class: "ico", text: p.goal === "lose" ? "📉" : "📈" }),
+        el("div", { class: "txt", html: "Ritmo estimado: <b>~" + Math.abs(plan.rateKgWeek) + " kg por semana</b> de " + (p.goal === "lose" ? "pérdida" : "ganancia") + ". Es un estimado matemático (1 kg ≈ 7,700 kcal); tu progreso real puede variar según tu cuerpo." })
+      ]) : null,
+      plan.clamped ? el("div", { class: "insight bad" }, [
+        el("span", { class: "ico", text: "⚠️" }),
+        el("div", { class: "txt", html: "Se ajustó tu meta calórica a un mínimo seguro (no por debajo de ~1.2× tu GEB) para no comprometer tu salud con un déficit demasiado agresivo." })
+      ]) : null,
+      el("div", { class: "insight info" }, [
+        el("span", { class: "ico", text: "🧮" }),
+        el("div", { class: "txt", html: "<b>¿Cómo se calculó?</b> Calorías = tu GET " +
+          (p.goal === "lose" ? "menos un déficit" : p.goal === "gain" ? "más un superávit" : "(sin cambio, es mantenimiento)") +
+          " según el ritmo elegido. Proteína = " + plan.protPerKg + " g por kg de tu peso corporal (rango deportivo recomendado, más alto al bajar de peso para proteger tu músculo). Grasas = 25% de tus calorías totales. Carbohidratos = las calorías que quedan." })
+      ]),
+      el("button", { class: "btn primary block mt-8", html: "📥 Aplicar estas metas a Alimentación", onclick: () => {
+        if (N.Nutrition && N.Nutrition.setGoals) {
+          N.Nutrition.setGoals({ kcal: plan.kcal, prot: plan.prot, carb: plan.carb, fat: plan.fat });
+          Audio.play("levelup");
+          toast({ icon: "🎯", title: "Metas actualizadas en Alimentación", msg: plan.kcal + " kcal · P " + plan.prot + "g · C " + plan.carb + "g · G " + plan.fat + "g" });
+        } else {
+          Audio.play("error"); toast({ icon: "⚠️", msg: "No se pudo conectar con Alimentación" });
+        }
+      } }),
+      el("p", { class: "fs-12 text-faint mt-8", text: "Esto reemplaza tus metas actuales de Calorías, Proteínas, Carbohidratos y Grasas en la pestaña Alimentación. Este plan es una referencia general (no un plan médico/nutricional personalizado) — ante cualquier condición de salud, consulta a un nutriólogo o médico deportivo." })
+    ]);
+    container.appendChild(planCard);
+
+    // ---- Calendario de revisiones ----
+    container.appendChild(buildCalendar());
   }
 
   N.Health = { render };
