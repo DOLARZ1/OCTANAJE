@@ -18,6 +18,9 @@
   let cyclesDone = 0;          // sesiones de trabajo en el set actual
   let handle = null;
   let focusLabel = "";         // en qué te enfocas (no persistente)
+  let ringing = false;         // true mientras la alarma sigue sonando en bucle
+  let ringHandle = null;       // interval que repite el sonido+vibración
+  let ringMode = "work";       // fase que acaba de terminar (para el mensaje del banner)
 
   function cfg() { return Store.get().focus; }
   function secondsFor(m) {
@@ -60,8 +63,27 @@
     });
   }
 
+  // ---------- Banner global de alarma (visible en cualquier pestaña) ----------
+  // Se conecta una sola vez al cargar el módulo; funciona sin importar en
+  // qué vista esté el usuario cuando la alarma empieza a sonar.
+  function paintBanner() {
+    if (typeof document === "undefined") return;
+    const banner = document.getElementById("alarm-banner");
+    if (!banner) return;
+    banner.hidden = !ringing;
+    if (ringing) {
+      const title = document.getElementById("alarm-banner-title");
+      if (title) title.textContent = ringMode === "work" ? "🎯 ¡Sesión de enfoque terminada!" : "☕ ¡Descanso terminado!";
+    }
+  }
+  if (typeof document !== "undefined" && document.getElementById) {
+    const stopBtn = document.getElementById("alarm-banner-stop");
+    if (stopBtn) stopBtn.addEventListener("click", () => stopRinging());
+  }
+
   // ---------- controles ----------
   function start() {
+    if (ringing) return; // primero hay que apagar la alarma que está sonando
     ensureRemaining();
     if (running) return;
     running = true;
@@ -122,7 +144,7 @@
 
   function complete() {
     running = false; stopTicking(); releaseWakeLock();
-    buzz([300, 150, 300, 150, 300]); // vibración larga de respaldo, además del sonido
+    ringMode = mode; // recordamos qué fase terminó, para el mensaje del banner
     if (mode === "work") {
       // registrar sesión
       const c = cfg();
@@ -133,20 +155,41 @@
       Store.markActive();
       Store.commit(true);
       cyclesDone++;
-      Audio.play(alarmSoundName());
       Gami.award(20, "Sesión de foco completada 🎯");
       Gami.burst();
       if (N.Notify) N.Notify.send("¡Sesión completada! 🎯", "Buen trabajo. Toca un descanso.", { tag: "nexus-focus" });
-      nextPhase(true);
     } else {
-      Audio.play(alarmSoundName());
       if (N.Notify) N.Notify.send("Descanso terminado ☕", "Hora de volver al enfoque.", { tag: "nexus-focus" });
-      nextPhase(true);
     }
+    startRinging(); // la alarma sigue sonando en bucle hasta apagarla manualmente
     N.App && N.App.refreshTop();
   }
   // sonido de alarma configurable (guardado en Ajustes del temporizador)
   function alarmSoundName() { return cfg().alarmSound || "alarmLoud"; }
+
+  // ---------- Alarma en bucle: suena repetidamente + vibra hasta que el
+  // usuario la apague a mano (botón "Detener alarma" en el banner) — ya
+  // no se detiene sola tras un único sonido.
+  function ringOnce() {
+    Audio.play(alarmSoundName());
+    buzz([300, 150, 300, 150, 300]);
+  }
+  function startRinging() {
+    ringing = true;
+    ringOnce();
+    clearInterval(ringHandle);
+    ringHandle = setInterval(ringOnce, 2600); // se repite cada ~2.6s hasta apagarla
+    paintBanner();
+    paint();
+  }
+  function stopRinging() {
+    ringing = false;
+    clearInterval(ringHandle); ringHandle = null;
+    paintBanner();
+    Audio.play("tap");
+    nextPhase(false); // avanza a la siguiente fase (sin autoiniciar) al apagar la alarma
+    paint();
+  }
 
   // pasa a la siguiente fase; autostart=true la inicia automáticamente
   function nextPhase(autostart) {
@@ -169,6 +212,7 @@
   // ---------- pintar estado en el DOM ----------
   function paint() {
     ensureRemaining();
+    paintBanner();
     const info = modeInfo(mode);
     const t = document.getElementById("focus-time");
     if (!t) return; // la vista no está montada
@@ -176,7 +220,10 @@
     const ml = document.getElementById("focus-mode");
     if (ml) { ml.textContent = info.ico + "  " + info.label; ml.style.color = cssVar(info.color); }
     const btn = document.getElementById("focus-start");
-    if (btn) btn.innerHTML = running ? "⏸ Pausar" : (remaining < secondsFor(mode) ? "▶ Reanudar" : "▶ Iniciar");
+    if (btn) {
+      btn.innerHTML = ringing ? "🔇 Detén la alarma primero" : (running ? "⏸ Pausar" : (remaining < secondsFor(mode) ? "▶ Reanudar" : "▶ Iniciar"));
+      btn.style.opacity = ringing ? ".55" : "";
+    }
     const ring = document.getElementById("focus-ring");
     if (ring) drawRing(ring, remaining / secondsFor(mode), info.color);
     // pestañas de modo
@@ -266,6 +313,12 @@
       el("button", { class: "btn ghost", id: "focus-skip", html: "⏭ Saltar", onclick: skip })
     ]);
     timerCard.appendChild(controls);
+    if (ringing) {
+      timerCard.appendChild(el("div", { class: "insight bad mt-8", style: "justify-content:center;text-align:center" }, [
+        el("span", { class: "ico", text: "⏰" }),
+        el("div", { class: "txt", html: "La alarma está sonando. Usa el botón rojo de arriba de la pantalla para detenerla." })
+      ]));
+    }
     grid.appendChild(timerCard);
 
     // ---- Tarjeta de configuración + progreso ----
@@ -300,7 +353,8 @@
         "ℹ️ <b>Cómo funciona la alarma:</b> mientras una sesión está activa, OCTANAJE mantiene la pantalla encendida (Wake Lock) para que la cuenta no se congele y la alarma suene puntual. " +
         "Esto solo aplica si la app permanece visible en la pantalla, aunque esté \"en reposo\"/atenuada. " +
         "Si bloqueas el teléfono manualmente, cambias a otra app, o el sistema cierra la pestaña en segundo plano para ahorrar batería, el temporizador puede pausarse y la alarma sonará hasta que vuelvas a abrir la app — esto lo controla el sistema operativo, no OCTANAJE. " +
-        "Revisa también que el volumen del dispositivo no esté en silencio y que el sonido esté activado en Ajustes; probamos varias alarmas (Timbre/Sirena/Campana) y una vibración de respaldo para que sea difícil pasarlas por alto. " +
+        "La alarma <b>suena en bucle sin detenerse sola</b> hasta que la apagues con el botón rojo del banner que aparece arriba de la pantalla — así no se te pasa por alto. " +
+        "Revisa también que el volumen del dispositivo no esté en silencio y que el sonido esté activado en Ajustes; hay varias alarmas para elegir (Timbre, Sirena, Campana, Despertador digital/clásico, Bocina, Xilófono) y una vibración de respaldo para que sea difícil pasarlas por alto. " +
         "Para recordatorios críticos que deban sonar con el teléfono bloqueado o la app cerrada, usa el botón \"Añadir a Google Calendar\" (Hábitos/Tareas/Metas) o \"Configurar horario\" en Ajustes: esos sí usan la alarma nativa de tu calendario/sistema."
     }));
 
@@ -318,6 +372,10 @@
     { value: "alarmLoud", label: "🔔 Timbre fuerte (recomendado)" },
     { value: "sirenLoud", label: "🚨 Sirena" },
     { value: "bellLoud", label: "🛎️ Campana" },
+    { value: "digitalLoud", label: "⏱️ Despertador digital" },
+    { value: "classicLoud", label: "⏰ Despertador clásico" },
+    { value: "hornLoud", label: "📢 Bocina" },
+    { value: "xyloLoud", label: "🎶 Xilófono" },
     { value: "levelup", label: "🎵 Melodía suave (menos fuerte)" }
   ];
   function alarmField(c) {

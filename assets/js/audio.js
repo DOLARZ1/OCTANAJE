@@ -102,6 +102,25 @@
         sweep(500, 1400, i * 0.7, 0.35, "sawtooth", 0.75, "loud");
         sweep(1400, 500, i * 0.7 + 0.35, 0.35, "sawtooth", 0.75, "loud");
       }
+    },
+    // despertador digital: pitidos cortos y rápidos, muy agudo
+    digitalLoud() {
+      for (let i = 0; i < 8; i++) tone(1200, i * 0.18, 0.09, "square", 0.85, "loud");
+    },
+    // despertador clásico de cuerda: timbre metálico alternando dos tonos rápido
+    classicLoud() {
+      for (let i = 0; i < 10; i++) tone(i % 2 === 0 ? 1500 : 1150, i * 0.11, 0.09, "square", 0.85, "loud");
+    },
+    // bocina/claxon grave y sostenido, de las más difíciles de ignorar
+    hornLoud() {
+      for (let i = 0; i < 2; i++) {
+        tone(180, i * 0.85, 0.75, "sawtooth", 0.95, "loud");
+        tone(185, i * 0.85, 0.75, "sawtooth", 0.5, "loud"); // ligero detune para textura de bocina
+      }
+    },
+    // xilófono ascendente: más agradable al oído pero sigue sonando fuerte
+    xyloLoud() {
+      [784, 880, 988, 1175, 1319].forEach((f, i) => tone(f, i * 0.13, 0.35, "triangle", 0.8, "loud"));
     }
   };
 

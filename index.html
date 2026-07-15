@@ -34,6 +34,17 @@
     <div class="boot-bar"><span></span></div>
   </div>
 
+  <!-- Banner global de alarma de Enfoque: visible en cualquier pestaña
+       mientras la alarma sigue sonando en bucle, hasta apagarla a mano. -->
+  <div class="alarm-banner" id="alarm-banner" hidden>
+    <span class="alarm-banner-ico">⏰</span>
+    <div class="alarm-banner-txt">
+      <div class="alarm-banner-title" id="alarm-banner-title">¡Tiempo terminado!</div>
+      <div class="alarm-banner-sub">La alarma sonará hasta que la detengas.</div>
+    </div>
+    <button class="btn danger" id="alarm-banner-stop">⏹ Detener alarma</button>
+  </div>
+
   <div class="app" id="app" hidden>
     <!-- ====================== TOPBAR ====================== -->
     <header class="topbar">

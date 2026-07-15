@@ -522,6 +522,38 @@ canvas { display: block; width: 100%; }
 
 
 /* =====================================================================
+   BANNER GLOBAL DE ALARMA (Enfoque) — visible en cualquier pestaña
+   mientras la alarma sigue sonando en bucle, hasta apagarla manualmente.
+   ===================================================================== */
+.alarm-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+  display: flex; align-items: center; gap: 14px; padding: 14px 20px;
+  background: linear-gradient(90deg, #ff0044, #ff5500);
+  color: #fff; box-shadow: 0 6px 30px rgba(255, 0, 68, .6);
+  animation: alarmBannerPulse 1s ease-in-out infinite;
+  flex-wrap: wrap;
+}
+.alarm-banner-ico { font-size: 28px; animation: alarmBell .5s ease-in-out infinite; }
+.alarm-banner-txt { flex: 1; min-width: 160px; }
+.alarm-banner-title { font-weight: 800; font-size: 15px; letter-spacing: .3px; }
+.alarm-banner-sub { font-size: 12px; opacity: .9; }
+.alarm-banner .btn.danger {
+  background: #fff; color: #d0002a; border-color: transparent; font-weight: 800;
+  box-shadow: 0 0 14px rgba(255,255,255,.5);
+}
+@keyframes alarmBannerPulse {
+  0%, 100% { box-shadow: 0 6px 30px rgba(255, 0, 68, .6); }
+  50% { box-shadow: 0 6px 46px rgba(255, 85, 0, .85); }
+}
+@keyframes alarmBell {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-18deg); }
+  40% { transform: rotate(14deg); }
+  60% { transform: rotate(-10deg); }
+  80% { transform: rotate(6deg); }
+}
+
+/* =====================================================================
    FOCO / POMODORO
    ===================================================================== */
 .pomo { display: flex; flex-direction: column; align-items: center; gap: 6px; }
