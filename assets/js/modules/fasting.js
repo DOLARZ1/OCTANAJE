@@ -212,13 +212,21 @@
     liveEls.elapsed.textContent = "Llevas " + fmtHM(st.elapsedMs);
   }
 
+  // Solo detiene el intervalo, SIN borrar liveEls — se usa justo antes de
+  // volver a arrancarlo, para no perder la referencia a los nodos que
+  // liveCard() ya llenó (ese era el bug: llamar aquí a stopLiveTicking()
+  // ponía liveEls en null, y liveTick() salía de inmediato cada segundo
+  // sin actualizar nada hasta el siguiente render completo).
+  function pauseLiveTicking() {
+    if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
+  }
   function startLiveTicking() {
-    stopLiveTicking();
+    pauseLiveTicking();
     if (typeof document !== "undefined" && document.hidden) return;
     tickHandle = setInterval(liveTick, 1000);
   }
   function stopLiveTicking() {
-    if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
+    pauseLiveTicking();
     liveEls = null;
   }
   if (typeof document !== "undefined" && document.addEventListener) {

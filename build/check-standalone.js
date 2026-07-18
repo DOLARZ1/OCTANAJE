@@ -18,3 +18,23 @@ try {
   console.error("   " + e.message);
   process.exit(2);
 }
+
+// Verifica que TODOS los módulos de assets/js/modules/ estén incluidos en
+// el bundle embebido — evita que un módulo nuevo se quede fuera de
+// octanaje.html si se olvida agregarlo a la lista jsFiles de
+// make-standalone.js (pasó exactamente eso con fasting.js).
+const modulesDir = path.resolve(__dirname, "..", "assets", "js", "modules");
+const moduleFiles = fs.readdirSync(modulesDir).filter((f) => f.endsWith(".js"));
+let missing = [];
+moduleFiles.forEach((f) => {
+  const src = fs.readFileSync(path.join(modulesDir, f), "utf8");
+  // buscamos una línea característica y única del archivo (la primera línea con "N.XXX =")
+  const exportMatch = src.match(/N\.(\w+)\s*=/);
+  if (exportMatch && !js.includes("N." + exportMatch[1] + " =")) missing.push(f + " (N." + exportMatch[1] + ")");
+});
+if (missing.length) {
+  console.error("✗ Módulo(s) faltantes en el bundle embebido de octanaje.html: " + missing.join(", "));
+  console.error("   Revisa la lista 'jsFiles' en build/make-standalone.js");
+  process.exit(3);
+}
+console.log("✔ Todos los módulos de assets/js/modules/ (" + moduleFiles.length + ") están incluidos en el bundle");
