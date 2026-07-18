@@ -243,22 +243,28 @@ html.app-hidden * { animation-play-state: paused !important; }
 
 /* ---------- Foto de perfil + nickname (junto al logo) ---------- */
 .user-badge {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 2px 4px 0; border-radius: 12px; transition: background .2s;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 4px 8px 2px; border-radius: 14px; transition: background .2s;
+  margin-right: 16px;   /* separación clara respecto al logo/OCTANAJE */
 }
 .user-badge:hover { background: var(--panel-2); }
 .user-badge-pic {
-  width: 36px; height: 36px; border-radius: 50%; overflow: hidden;
+  width: 64px; height: 64px; border-radius: 50%; overflow: hidden;
   display: grid; place-items: center; background: var(--panel-2);
-  border: 2px solid var(--accent); box-shadow: var(--glow);
+  border: 3px solid var(--accent); box-shadow: var(--glow);
 }
 .user-badge-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.user-badge-pic .ph { font-size: 16px; line-height: 1; }
+.user-badge-pic .ph { font-size: 28px; line-height: 1; }
 .user-badge-name {
-  font-size: 9px; font-weight: 700; letter-spacing: .4px; color: var(--txt-dim);
-  max-width: 58px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 14px; font-weight: 800; letter-spacing: .3px; color: var(--txt);
+  max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-@media (max-width: 560px) { .user-badge-name { max-width: 44px; } }
+@media (max-width: 560px) {
+  .user-badge { margin-right: 10px; }
+  .user-badge-pic { width: 48px; height: 48px; }
+  .user-badge-pic .ph { font-size: 22px; }
+  .user-badge-name { font-size: 12px; max-width: 70px; }
+}
 
 /* Editor de foto + nickname dentro del modal */
 .avatar-editor { display: flex; flex-direction: column; align-items: center; gap: 14px; }
