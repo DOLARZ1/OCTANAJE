@@ -4339,16 +4339,9 @@ canvas { display: block; width: 100%; }
   let mktCache = null; // { "q-usdmxn": "$18.30", ... }
 
   const NEWS_LINKS = [
-    { icon: "🥇", t: "Oro · XAU/USD", d: "Investing", u: "https://es.investing.com/currencies/xau-usd" },
-    { icon: "💶", t: "EUR/USD", d: "Investing", u: "https://es.investing.com/currencies/eur-usd" },
-    { icon: "🛢️", t: "Petróleo WTI", d: "Investing", u: "https://es.investing.com/commodities/crude-oil" },
-    { icon: "📈", t: "BMV · IPC", d: "Bolsa Mexicana de Valores", u: "https://www.bmv.com.mx/" },
-    { icon: "💵", t: "Dólar oficial", d: "Banxico", u: "https://www.banxico.org.mx/tipcamb/main.do?page=tip&idioma=sp" },
-    { icon: "⛽", t: "Gasolina México", d: "Profeco", u: "https://combustibleinteligente.profeco.gob.mx/" },
-    { icon: "🔥", t: "Gas LP", d: "CRE · gob.mx", u: "https://www.gob.mx/cre/articulos/precios-vigentes-de-gas-lp-al-publico" },
+    { icon: "📰", t: "El Economista", d: "Portada", u: "https://www.eleconomista.com.mx/" },
     { icon: "📰", t: "El Financiero", d: "Mercados", u: "https://www.elfinanciero.com.mx/mercados/" },
-    { icon: "📰", t: "Expansión", d: "Economía", u: "https://expansion.mx/economia" },
-    { icon: "📰", t: "Bloomberg Línea", d: "México", u: "https://www.bloomberglinea.com/mexico/" }
+    { icon: "📰", t: "Expansión", d: "Economía", u: "https://expansion.mx/economia" }
   ];
 
   function quoteCard(id, label, sub) {
@@ -4403,7 +4396,7 @@ canvas { display: block; width: 100%; }
         quoteCard("q-eurmxn", "EUR/MXN", "euro / peso")
       ]),
       el("div", { class: "fs-12 text-faint mt-8", id: "mkt-updated", text: "Cargando cotizaciones en vivo…" }),
-      el("div", { class: "card-title mt-16", style: "margin-bottom:10px" }, [el("span", { class: "dot" }), "Noticias y precios en vivo · toca para abrir la fuente"]),
+      el("div", { class: "card-title mt-16", style: "margin-bottom:10px" }, [el("span", { class: "dot" }), "Economía · toca para abrir la fuente"]),
       el("div", { class: "grid cols-3" }, NEWS_LINKS.map(linkCard))
     ]);
     setTimeout(loadQuotes, 60);
