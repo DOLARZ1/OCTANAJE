@@ -67,7 +67,15 @@
         history: [],           // {id,date,weight,height,age,imc,geb,get}
         weights: []            // registro rápido de báscula: {id,date,weight,note}
       },
-      sleep: { log: [] }       // registro de sueño: {id,date,period,start,end,hours,notes,xpEarned}
+      sleep: { log: [] },      // registro de sueño: {id,date,period,start,end,hours,notes,xpEarned}
+      fasting: {               // ayuno intermitente: plan elegido, horario y cumplimiento
+        enabled: false,        // interruptor general: si está apagado, no se pide marcar cumplimiento
+        plan: "16:8",          // "16:8" | "18:6" | "20:4" | "omad" | "5:2" | "custom"
+        customFastH: 16,       // horas de ayuno (solo si plan === "custom")
+        eatStart: "13:00",     // hora en que se abre la ventana de alimentación
+        reminders: true,       // si ya se crearon recordatorios en el calendario del sistema
+        log: {}                // { "YYYY-MM-DD": { done:true/false, plan:"16:8", note:"" } }
+      }
     };
   }
 

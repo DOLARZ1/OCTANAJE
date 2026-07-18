@@ -81,13 +81,13 @@ const ids = ["boot-screen", "app", "level-badge", "rank-name", "xp-text", "xp-fi
   "modal", "modal-title", "modal-body", "modal-close", "reset-data", "global-streak", "settings-btn", "medal-badge",
   "alarm-banner", "alarm-banner-title", "alarm-banner-stop"];
 ids.forEach((id) => reg(id, makeEl("div")));
-["dashboard", "habits", "finance", "tasks", "workouts", "goals", "focus", "nutrition", "health", "sleep"].forEach((v) => reg("view-" + v, makeEl("section")));
+["dashboard", "habits", "finance", "tasks", "workouts", "goals", "focus", "nutrition", "health", "sleep", "fasting"].forEach((v) => reg("view-" + v, makeEl("section")));
 
 const bootBar = makeEl("span");
 byId["boot-screen"].appendChild(bootBar);
 
 // tabs y theme buttons
-const tabEls = ["dashboard", "habits", "finance", "tasks", "workouts", "goals", "focus", "nutrition", "health", "sleep"].map((v) => { const t = makeEl("button"); t.dataset.view = v; t.classList.add("tab"); if (v === "dashboard") t.classList.add("is-active"); return t; });
+const tabEls = ["dashboard", "habits", "finance", "tasks", "workouts", "goals", "focus", "nutrition", "health", "sleep", "fasting"].map((v) => { const t = makeEl("button"); t.dataset.view = v; t.classList.add("tab"); if (v === "dashboard") t.classList.add("is-active"); return t; });
 const thBtns = ["light", "gray", "dark"].map((th) => { const b = makeEl("button"); b.dataset.themeSet = th; b.classList.add("th-btn"); return b; });
 
 const documentEl = makeEl("html");
@@ -114,7 +114,7 @@ const document = {
   querySelectorAll: (sel) => {
     if (sel === ".tab") return tabEls;
     if (sel === ".th-btn") return thBtns;
-    if (sel === ".view") return ["dashboard", "habits", "finance", "tasks", "workouts", "goals", "focus", "nutrition", "health", "sleep"].map((v) => byId["view-" + v]);
+    if (sel === ".view") return ["dashboard", "habits", "finance", "tasks", "workouts", "goals", "focus", "nutrition", "health", "sleep", "fasting"].map((v) => byId["view-" + v]);
     return [];
   },
   addEventListener: () => {}
@@ -167,7 +167,7 @@ const files = [
   "assets/js/gamification.js", "assets/js/modules/dashboard.js", "assets/js/modules/habits.js",
   "assets/js/modules/finance.js", "assets/js/modules/tasks.js", "assets/js/modules/workouts.js",
   "assets/js/modules/goals.js", "assets/js/modules/focus.js", "assets/js/modules/nutrition.js",
-  "assets/js/modules/health.js", "assets/js/modules/sleep.js",
+  "assets/js/modules/health.js", "assets/js/modules/sleep.js", "assets/js/modules/fasting.js",
   "assets/js/notifications.js",
   "assets/js/calexport.js", "assets/js/settings.js", "assets/js/app.js"
 ];
@@ -216,7 +216,7 @@ if (N.Store.get().profile.xp !== before + 50) throw new Error("XP no se otorgó"
 console.log("✔ Gamificación: XP=" + N.Store.get().profile.xp + ", nivel=" + N.Store.get().profile.level);
 
 // renderizar cada vista
-["dashboard", "habits", "finance", "tasks", "workouts", "goals", "focus", "nutrition", "health", "sleep"].forEach((v) => {
+["dashboard", "habits", "finance", "tasks", "workouts", "goals", "focus", "nutrition", "health", "sleep", "fasting"].forEach((v) => {
   N.App.switchView(v, true);
   while (timers.length && guard < 20000) { const fn = timers.shift(); fn(16); guard++; }
   const c = document.getElementById("view-" + v);

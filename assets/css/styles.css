@@ -608,6 +608,8 @@ canvas { display: block; width: 100%; }
   border-color: color-mix(in srgb, var(--bad) 40%, transparent);
 }
 .cal-day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* día neutral: aún no se marcó cumplimiento (no es lo mismo que "no cumplido") */
+.cal-day.unmarked { color: var(--txt-faint); background: var(--panel-2); border-color: var(--border); }
 @media (max-width: 560px) { .cal-day { font-size: 11px; border-radius: 7px; } .cal { gap: 3px; } .cal-h { font-size: 10px; letter-spacing: 0; } }
 
 

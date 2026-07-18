@@ -17,7 +17,8 @@
     focus: N.Focus,
     nutrition: N.Nutrition,
     health: N.Health,
-    sleep: N.Sleep
+    sleep: N.Sleep,
+    fasting: N.Fasting
   };
   let current = "dashboard";
 
