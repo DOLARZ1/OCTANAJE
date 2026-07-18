@@ -25,7 +25,7 @@
     return el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:10px" }, [
       el("div", {}, [
         el("div", { class: "set-title", text: "🎨 Tema" }),
-        el("div", { class: "set-desc", text: "Elige entre claro, gris, oscuro, morado, dark (rojo neón) o Dark Black (negro, contornos rojos, letras doradas — pensado para descansar la vista)." })
+        el("div", { class: "set-desc", text: "Elige entre claro, gris, oscuro, morado, dark (rojo neón) o Dark Black (negro total con blanco/gris — pensado para descansar la vista)." })
       ]),
       seg
     ]);

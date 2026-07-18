@@ -176,31 +176,33 @@ html.app-hidden * { animation-play-state: paused !important; }
   --blur: 18px;
 }
 
-/* Dark Black — fondo negro puro, contornos/bordes en rojo y letras en
-   dorado. Pensado para cansar lo menos posible la vista en sesiones
-   largas: el dorado usado en el texto es cálido y algo apagado (no un
-   amarillo brillante que fatigue), y el brillo/glow rojo es suave en
-   vez de intenso como en el tema Dark (neón). */
+/* Dark Black — negro total, monocromático en blanco/gris (sin rojo ni
+   dorado). Pensado para cansar lo menos posible la vista en sesiones
+   largas: nada de tonos cálidos saturados, solo blanco suave sobre
+   negro puro, con brillos apagados. Los colores de estado (good/warn/
+   bad) se mantienen con algo de color solo donde aportan información
+   (ingresos/gastos, alertas), pero atenuados para no romper el tono
+   monocromático general. */
 [data-theme="blackgold"] {
   --bg: #000000;
-  --bg-2: #060505;
-  --panel: rgba(20, 12, 12, .55);
-  --panel-solid: #0c0909;
-  --panel-2: rgba(32, 18, 18, .6);
-  --txt: #e3c26b;
-  --txt-dim: #a68a54;
-  --txt-faint: #6e5a38;
-  --border: rgba(220, 40, 40, .22);
-  --border-strong: rgba(220, 40, 40, .42);
-  --accent: #d8a93a;
-  --accent-2: #c0392b;
-  --accent-3: #e3c26b;
-  --good: #4caf6b;
-  --warn: #d8a93a;
-  --bad: #e04040;
-  --glow: 0 0 16px rgba(200, 30, 30, .30);
-  --shadow: 0 18px 50px rgba(0, 0, 0, .8);
-  --grid-line: rgba(220, 40, 40, .09);
+  --bg-2: #050505;
+  --panel: rgba(255, 255, 255, .045);
+  --panel-solid: #0a0a0a;
+  --panel-2: rgba(255, 255, 255, .075);
+  --txt: #f5f5f7;
+  --txt-dim: #b4b4ba;
+  --txt-faint: #6e6e75;
+  --border: rgba(255, 255, 255, .13);
+  --border-strong: rgba(255, 255, 255, .28);
+  --accent: #eaeaee;
+  --accent-2: #b0b0b8;
+  --accent-3: #d6d6dc;
+  --good: #7fd99a;
+  --warn: #d9b96a;
+  --bad: #e08a8a;
+  --glow: 0 0 14px rgba(255, 255, 255, .16);
+  --shadow: 0 18px 50px rgba(0, 0, 0, .85);
+  --grid-line: rgba(255, 255, 255, .06);
   --blur: 14px;
 }
 
@@ -394,6 +396,17 @@ html.app-hidden * { animation-play-state: paused !important; }
   border-color: transparent; box-shadow: var(--glow); font-weight: 700;
 }
 .tab.is-active .tab-ico { opacity: 1; color: #f2ff1a; } /* se mantiene amarillo neón */
+
+/* En el tema Claro las pestañas sin seleccionar casi no se distinguían
+   del fondo (panel casi transparente + texto muy tenue). Se les da más
+   contraste de fondo, borde y texto — el color del ícono no se toca. */
+[data-theme="light"] .tab {
+  background: var(--panel-solid);
+  border-color: var(--border-strong);
+  color: #46584a;
+  box-shadow: 0 2px 10px rgba(70, 120, 80, .10);
+}
+[data-theme="light"] .tab:hover { background: var(--panel-2); color: var(--txt); }
 
 /* ---------- Views ---------- */
 .view { display: none; animation: fadeUp .45s ease; }
@@ -8734,7 +8747,7 @@ canvas { display: block; width: 100%; }
     return el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:10px" }, [
       el("div", {}, [
         el("div", { class: "set-title", text: "🎨 Tema" }),
-        el("div", { class: "set-desc", text: "Elige entre claro, gris, oscuro, morado, dark (rojo neón) o Dark Black (negro, contornos rojos, letras doradas — pensado para descansar la vista)." })
+        el("div", { class: "set-desc", text: "Elige entre claro, gris, oscuro, morado, dark (rojo neón) o Dark Black (negro total con blanco/gris — pensado para descansar la vista)." })
       ]),
       seg
     ]);
