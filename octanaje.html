@@ -7,7 +7,7 @@
   <title>OCTANAJE · Productividad Futurista</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Bruno+Ace&display=swap" />
   <style>
 /* =====================================================================
    OCTANAJE · Hoja de estilos futurista
@@ -267,14 +267,16 @@ html.app-hidden * { animation-play-state: paused !important; }
 .user-badge-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .user-badge-pic .ph { font-size: 28px; line-height: 1; }
 .user-badge-name {
-  font-size: 14px; font-weight: 800; letter-spacing: .3px; color: var(--txt);
-  max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: "Bruno Ace", "Orbitron", "Segoe UI", system-ui, sans-serif;
+  font-size: 13px; font-weight: 400; letter-spacing: .6px; color: var(--txt);
+  max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-transform: uppercase;
 }
 @media (max-width: 560px) {
   .user-badge { margin-right: 10px; }
   .user-badge-pic { width: 48px; height: 48px; }
   .user-badge-pic .ph { font-size: 22px; }
-  .user-badge-name { font-size: 12px; max-width: 70px; }
+  .user-badge-name { font-size: 11px; max-width: 74px; }
 }
 
 /* Editor de foto + nickname dentro del modal */
@@ -9051,7 +9053,10 @@ canvas { display: block; width: 100%; }
       }
     });
 
-    const nickI = el("input", { class: "input", type: "text", maxlength: MAX_NICK, placeholder: "Ej. Alex, El Tigre, Fit90…", value: p.nickname || "" });
+    const nickI = el("input", {
+      class: "input", type: "text", maxlength: MAX_NICK, placeholder: "Ej. Alex, El Tigre, Fit90…", value: p.nickname || "",
+      style: "font-family:'Bruno Ace','Orbitron',sans-serif;letter-spacing:.6px;text-transform:uppercase"
+    });
 
     const body = el("div", { class: "avatar-editor" }, [
       pic,

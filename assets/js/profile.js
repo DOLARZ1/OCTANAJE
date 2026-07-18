@@ -84,7 +84,10 @@
       }
     });
 
-    const nickI = el("input", { class: "input", type: "text", maxlength: MAX_NICK, placeholder: "Ej. Alex, El Tigre, Fit90…", value: p.nickname || "" });
+    const nickI = el("input", {
+      class: "input", type: "text", maxlength: MAX_NICK, placeholder: "Ej. Alex, El Tigre, Fit90…", value: p.nickname || "",
+      style: "font-family:'Bruno Ace','Orbitron',sans-serif;letter-spacing:.6px;text-transform:uppercase"
+    });
 
     const body = el("div", { class: "avatar-editor" }, [
       pic,
