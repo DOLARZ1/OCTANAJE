@@ -163,11 +163,10 @@
   </div>
 
   <!-- ====================== SCRIPTS ====================== -->
-  <!-- ====================== FIREBASE ====================== -->
+ <!-- ====================== FIREBASE ====================== -->
   <script type="module">
-    // 1. Importamos las herramientas
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-   import { 
+    import { 
       getAuth, 
       createUserWithEmailAndPassword, 
       signInWithEmailAndPassword, 
@@ -182,98 +181,88 @@
       updateDoc 
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // 2. TU CONFIGURACIÓN (Asegúrate de pegar tus datos reales aquí otra vez)
+    // OJO: Pega aquí nuevamente tus datos de configuración de Firebase
     const firebaseConfig = {
-  apiKey: "AIzaSyA6jx8zfJxvXsengXPb9CxFKZtrt6qgaf4",
-  authDomain: "octanaje-x.firebaseapp.com",
-  projectId: "octanaje-x",
-  storageBucket: "octanaje-x.firebasestorage.app",
-  messagingSenderId: "897528245846",
-  appId: "1:897528245846:web:4f1ea494aff9aa294855f7"
+      apiKey: "TU_API_KEY",
+      authDomain: "TU_PROYECTO.firebaseapp.com",
+      projectId: "TU_PROYECTO",
+      storageBucket: "TU_PROYECTO.appspot.com",
+      messagingSenderId: "TUS_NUMEROS",
+      appId: "TU_APP_ID"
     };
 
-    // 3. Inicializamos
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // 4. LÓGICA DE LA PUERTA (Login / Registro)
     const authScreen = document.getElementById('auth-screen');
     const appMain = document.getElementById('app');
     const authForm = document.getElementById('auth-form');
     const errorMsg = document.getElementById('auth-error');
 
-    // Escuchar si el usuario ya había iniciado sesión antes
+    // 1. Revisa si hay sesión activa
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        // Ya tiene cuenta: ocultar login y mostrar la app OCTANAJE
         authScreen.hidden = true;
         appMain.hidden = false;
       } else {
-        // No está logueado: mostrar login
         authScreen.hidden = false;
         appMain.hidden = true;
       }
     });
 
-    // Cuando el usuario hace clic en el botón del formulario
-    authForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('auth-email').value;
-      const password = document.getElementById('auth-password').value;
-      const code = document.getElementById('auth-code').value.trim();
+    // 2. Lógica de Entrar / Registrarse
+    if (authForm) {
+      authForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('auth-email').value;
+        const password = document.getElementById('auth-password').value;
+        const code = document.getElementById('auth-code').value.trim();
 
-      errorMsg.hidden = true; // Ocultar errores previos
+        errorMsg.hidden = true;
 
-      try {
-        if (code !== "") {
-          // --- MODO REGISTRO (Escribió un código) ---
-          const codeRef = doc(db, "codigos", code);
-          const codeSnap = await getDoc(codeRef);
+        try {
+          if (code !== "") {
+            const codeRef = doc(db, "codigos", code);
+            const codeSnap = await getDoc(codeRef);
 
-          if (!codeSnap.exists()) {
-            throw new Error("El código de ignición no existe.");
+            if (!codeSnap.exists()) {
+              throw new Error("El código de ignición no existe.");
+            }
+            if (codeSnap.data().usado === true) {
+              throw new Error("Este código ya fue utilizado por otra persona.");
+            }
+
+            await createUserWithEmailAndPassword(auth, email, password);
+            await updateDoc(codeRef, { usado: true });
+          } else {
+            await signInWithEmailAndPassword(auth, email, password);
           }
-          if (codeSnap.data().usado === true) {
-            throw new Error("Este código ya fue utilizado por otra persona.");
-          }
-
-          // Si el código es válido, creamos su cuenta
-          await createUserWithEmailAndPassword(auth, email, password);
-          
-          // ¡Quemamos el código! Lo marcamos como usado para siempre
-          await updateDoc(codeRef, { usado: true });
-
-        } else {
-          // --- MODO LOGIN (Dejó el código en blanco, ya tiene cuenta) ---
-          await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+          console.error(error);
+          errorMsg.textContent = "Detalle del error: " + error.message;
+          errorMsg.hidden = false;
         }
-      } catch (error) {
-        // Si algo falla, mostramos el error EXACTO de Firebase en pantalla
-        console.error(error);
-        errorMsg.textContent = "Detalle del error: " + error.message;
-        errorMsg.hidden = false;
-      }
-    });
-    // --- LÓGICA DE CERRAR SESIÓN ---
+      });
+    }
+
+    // 3. Lógica para Cerrar Sesión
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
         try {
           await signOut(auth);
-          // Al cerrar sesión, la app ocultará el panel y mostrará la pantalla de login automáticamente
-          // gracias al "onAuthStateChanged" que ya configuramos.
         } catch (error) {
           console.error("Error al cerrar sesión", error);
         }
       });
     }
 
-    // --- LÓGICA DE RECUPERAR CONTRASEÑA ---
+    // 4. Lógica para Recuperar Contraseña
     const resetPassBtn = document.getElementById('reset-pass-btn');
     if (resetPassBtn) {
       resetPassBtn.addEventListener('click', async (e) => {
-        e.preventDefault(); // Evita que la página brinque
+        e.preventDefault();
         const email = document.getElementById('auth-email').value.trim();
         
         errorMsg.hidden = true;
@@ -286,11 +275,10 @@
 
         try {
           await sendPasswordResetEmail(auth, email);
-          errorMsg.style.color = "#4CAF50"; // Cambiamos a color verde de éxito
+          errorMsg.style.color = "#4CAF50";
           errorMsg.textContent = "¡Te hemos enviado un correo para restablecer tu contraseña!";
           errorMsg.hidden = false;
           
-          // Regresamos el color a rojo por si hay errores en el futuro
           setTimeout(() => { errorMsg.style.color = "#ff1a1a"; }, 5000);
         } catch (error) {
           console.error(error);
@@ -300,6 +288,7 @@
         }
       });
     }
+  </script>
   </script>
   <script src="assets/js/store.js"></script>
   <script src="assets/js/audio.js"></script>
