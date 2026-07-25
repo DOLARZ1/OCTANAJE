@@ -183,7 +183,8 @@
       getFirestore, 
       doc, 
       getDoc, 
-      updateDoc 
+      updateDoc,
+      setDoc //
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     // OJO: Pega aquí nuevamente tus datos de configuración de Firebase
@@ -204,17 +205,48 @@
     const appMain = document.getElementById('app');
     const authForm = document.getElementById('auth-form');
     const errorMsg = document.getElementById('auth-error');
+    // -- FUNCIÓN DE GUARDADO SILENCIOSO EN LA NUBE --
+    window.saveToFirebase = async (estadoLocal) => {
+      // Solo guardar si hay un usuario con sesión iniciada
+      if (auth.currentUser) {
+        try {
+          const userRef = doc(db, "usuarios", auth.currentUser.uid);
+          // Guarda toda la estructura de OCTANAJE en su propia "caja fuerte"
+          await setDoc(userRef, estadoLocal);
+        } catch (error) {
+          console.error("Error sincronizando con la nube:", error);
+        }
+      }
+    };
 
-    // 1. Revisa si hay sesión activa
-    onAuthStateChanged(auth, (user) => {
+    // -- DETECTOR DE SESIÓN (MODIFICADO) --
+    onAuthStateChanged(auth, async (user) => {
       if (user) {
         authScreen.hidden = true;
         appMain.hidden = false;
+
+        try {
+          // Descargar los datos de este usuario desde Firestore
+          const userRef = doc(db, "usuarios", user.uid);
+          const docSnap = await getDoc(userRef);
+
+          if (docSnap.exists() && window.NEXUS && window.NEXUS.Store) {
+            // Ya tiene datos en la nube: inyectarlos a la aplicación
+            window.NEXUS.Store.setCloudState(docSnap.data());
+          } else if (window.NEXUS && window.NEXUS.Store) {
+            // Usuario nuevo: crearle su caja fuerte con los datos iniciales
+            window.saveToFirebase(window.NEXUS.Store.get());
+          }
+        } catch (error) {
+          console.error("Error al descargar el perfil:", error);
+        }
       } else {
         authScreen.hidden = false;
         appMain.hidden = true;
       }
     });
+
+    
 
     // 2. Lógica de Entrar / Registrarse
     if (authForm) {
