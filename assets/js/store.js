@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Store — estado global + persistencia en localStorage
+   OCTANAJE · Store — estado global + persistencia en localStorage y Nube
    ===================================================================== */
 (function () {
   "use strict";
@@ -37,46 +37,46 @@
   // ---------- estado por defecto ----------
   function defaultState() {
     return {
-      profile: { xp: 0, level: 1, createdAt: DateUtil.todayKey(), avatar: "", nickname: "" }, // avatar: dataURL de la foto (redimensionada), nickname: texto corto
+      profile: { xp: 0, level: 1, createdAt: DateUtil.todayKey(), avatar: "", nickname: "" },
       settings: { theme: "dark", sound: true, notifications: false, currency: "MXN", locale: "es-MX" },
-      notifyMeta: { lastReminder: "" },   // "YYYY-MM-DD" del último recordatorio enviado
-      reminders: [],           // recordatorios personalizados: {id,title,message,time,days,sound,enabled,lastFired}
-      activity: {},            // { "YYYY-MM-DD": true }  días con alguna acción
-      xpLog: {},               // { "YYYY-MM-DD": xpGanado }
-      achievements: [],        // ids de logros desbloqueados
-      habits: [],              // {id,name,icon,color,history:{date:true},created}
+      notifyMeta: { lastReminder: "" },
+      reminders: [],
+      activity: {},
+      xpLog: {},
+      achievements: [],
+      habits: [],
       finance: {
-        transactions: [],      // {id,type:'income'|'expense',amount,category,note,date}
-        budget: 0,             // presupuesto mensual objetivo de gasto
-        savingGoal: 0,         // meta de ahorro mensual
-        savings: [],           // alcancía: {id,amount(+/-),date,note}
-        savingsTarget: 0       // meta de la alcancía (progreso, reinicio manual)
+        transactions: [],
+        budget: 0,
+        savingGoal: 0,
+        savings: [],
+        savingsTarget: 0
       },
-      tasks: [],               // {id,title,priority,due,done,subtasks:[{t,done}],created}
-      workouts: [],            // {id,name,type,duration,calories,volume,date}
-      goals: [],               // {id,title,target,current,unit,deadline,milestones:[{t,done}],created}
-      focus: {                 // modo Foco / Pomodoro
+      tasks: [],
+      workouts: [],
+      goals: [],
+      focus: {
         work: 25, break: 5, longBreak: 15, longEvery: 4,
-        sessionsCompleted: 0,  // total histórico de sesiones de trabajo
-        focusLog: {},          // { "YYYY-MM-DD": minutos enfocados }
-        sessionsLog: {}        // { "YYYY-MM-DD": nº de sesiones de trabajo }
+        sessionsCompleted: 0,
+        focusLog: {},
+        sessionsLog: {}
       },
-      nutrition: { log: [] },  // registro de alimentos: {id,name,cat,grams,kcal,prot,carb,date}
-      health: {                // biometría: perfil actual + historial de revisiones
+      nutrition: { log: [] },
+      health: {
         profile: { name: "", sex: "F", age: null, weight: null, height: null, activity: "moderate", lastCheck: "" },
-        history: [],           // {id,date,weight,height,age,imc,geb,get}
-        weights: []            // registro rápido de báscula: {id,date,weight,note}
+        history: [],
+        weights: []
       },
-      sleep: { log: [] },      // registro de sueño: {id,date,period,start,end,hours,notes,xpEarned}
-      fasting: {               // ayuno intermitente: plan elegido, horario y cumplimiento
-        enabled: false,        // interruptor general: si está apagado, no se pide marcar cumplimiento
-        plan: "16:8",          // "16:8" | "18:6" | "20:4" | "omad" | "5:2" | "custom"
-        customFastH: 16,       // horas de ayuno (solo si plan === "custom")
-        eatStart: "13:00",     // hora en que se abre la ventana de alimentación
-        reminders: true,       // si ya se crearon recordatorios en el calendario del sistema
-        lastEatNotif: "",      // "YYYY-MM-DD_HH:MM" del último aviso de "se abrió tu ventana" ya enviado
-        lastFastNotif: "",     // "YYYY-MM-DD_HH:MM" (o "..._5:2") del último aviso de inicio de ayuno/restricción
-        log: {}                // { "YYYY-MM-DD": { done:true/false, plan:"16:8", note:"" } }
+      sleep: { log: [] },
+      fasting: {
+        enabled: false,
+        plan: "16:8",
+        customFastH: 16,
+        eatStart: "13:00",
+        reminders: true,
+        lastEatNotif: "",
+        lastFastNotif: "",
+        log: {}
       }
     };
   }
@@ -113,7 +113,15 @@
   function save() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      try { localStorage.setItem(KEY, JSON.stringify(state)); }
+      try { 
+        // 1. Guardado local ultra rápido (Offline-First)
+        localStorage.setItem(KEY, JSON.stringify(state)); 
+        
+        // 2. Sincronización silenciosa con Firebase
+        if (typeof window.saveToFirebase === "function") {
+          window.saveToFirebase(state);
+        }
+      }
       catch (e) { console.error("Error al guardar", e); }
     }, 120);
   }
@@ -126,10 +134,8 @@
     get() { return state; },
     subscribe(fn) { subscribers.push(fn); return () => { const i = subscribers.indexOf(fn); if (i >= 0) subscribers.splice(i, 1); }; },
 
-    // guardar + notificar (usar tras mutar el estado)
     commit(silent) { save(); if (!silent) notify(); },
 
-    // registra actividad del día (para racha global)
     markActive() {
       state.activity[DateUtil.todayKey()] = true;
     },
@@ -139,16 +145,21 @@
       save(); notify();
     },
 
-    // ---------- exportar / importar ----------
+    // --- NUEVA FUNCIÓN: Recibir datos de la nube ---
+    setCloudState(cloudState) {
+      if (!cloudState) return;
+      state = deepMerge(defaultState(), cloudState);
+      localStorage.setItem(KEY, JSON.stringify(state)); // Sobrescribir local
+      notify(); // Actualizar toda la interfaz de la app
+    },
+
     serialize() {
       return JSON.stringify(Object.assign({ _app: "OCTANAJE", _version: 1, _exportedAt: new Date().toISOString() }, state), null, 2);
     },
     import(obj) {
       if (!obj || typeof obj !== "object") throw new Error("Formato no válido");
-      // aceptar el objeto de estado directamente o uno con metadatos
       const src = obj.profile || obj.habits || obj.finance ? obj : obj;
       state = deepMerge(defaultState(), src);
-      // limpiar metadatos de exportación si vinieron
       delete state._app; delete state._version; delete state._exportedAt;
       save(); notify();
       return true;
