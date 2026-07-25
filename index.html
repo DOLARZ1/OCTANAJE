@@ -53,7 +53,6 @@
       </div>
       <h2 style="text-align: center; margin-bottom: 5px;">ACCESO RESTRINGIDO</h2>
       <p style="text-align: center; color: var(--text-faint); margin-bottom: 25px;">Ingresa tus credenciales y código de ignición</p>
-      
       <form id="auth-form" style="display: flex; flex-direction: column; gap: 15px;">
         <input type="email" id="auth-email" placeholder="Correo electrónico" required class="input-futuristic" />
         <input type="password" id="auth-password" placeholder="Contraseña" required class="input-futuristic" />
@@ -62,10 +61,13 @@
         <button type="submit" class="btn primary" style="margin-top: 10px; width: 100%;">
           ENTRAR / REGISTRARSE
         </button>
+
+        <!-- Aquí está el nuevo botón de recuperar contraseña -->
+        <p style="text-align: center; margin-top: 10px;">
+          <a href="#" id="reset-pass-btn" style="color: var(--text-faint); text-decoration: underline; font-size: 0.9em;">¿Olvidaste tu contraseña?</a>
+        </p>
       </form>
-      <p id="auth-error" style="color: #ff1a1a; text-align: center; margin-top: 15px; font-size: 0.9em;" hidden></p>
-    </div>
-  </div>
+     
   <div class="app" id="app" hidden>
     <!-- ====================== TOPBAR ====================== -->
     <header class="topbar">
@@ -106,6 +108,7 @@
         <div class="medal-badge medal-bronze" id="medal-badge" title="Medalla por racha"></div>
 
         <button class="icon-btn" id="settings-btn" title="Ajustes: tema, sonido, moneda, datos">⚙️</button>
+        <button class="icon-btn" id="logout-btn" title="Cerrar sesión">🚪</button>
       </div>
     </header>
 
@@ -164,11 +167,13 @@
   <script type="module">
     // 1. Importamos las herramientas
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { 
+   import { 
       getAuth, 
       createUserWithEmailAndPassword, 
       signInWithEmailAndPassword, 
-      onAuthStateChanged 
+      onAuthStateChanged,
+      signOut,
+      sendPasswordResetEmail
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { 
       getFirestore, 
@@ -250,6 +255,51 @@
         errorMsg.hidden = false;
       }
     });
+    // --- LÓGICA DE CERRAR SESIÓN ---
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        try {
+          await signOut(auth);
+          // Al cerrar sesión, la app ocultará el panel y mostrará la pantalla de login automáticamente
+          // gracias al "onAuthStateChanged" que ya configuramos.
+        } catch (error) {
+          console.error("Error al cerrar sesión", error);
+        }
+      });
+    }
+
+    // --- LÓGICA DE RECUPERAR CONTRASEÑA ---
+    const resetPassBtn = document.getElementById('reset-pass-btn');
+    if (resetPassBtn) {
+      resetPassBtn.addEventListener('click', async (e) => {
+        e.preventDefault(); // Evita que la página brinque
+        const email = document.getElementById('auth-email').value.trim();
+        
+        errorMsg.hidden = true;
+
+        if (!email) {
+          errorMsg.textContent = "Por favor, escribe tu correo arriba antes de pedir recuperar la contraseña.";
+          errorMsg.hidden = false;
+          return;
+        }
+
+        try {
+          await sendPasswordResetEmail(auth, email);
+          errorMsg.style.color = "#4CAF50"; // Cambiamos a color verde de éxito
+          errorMsg.textContent = "¡Te hemos enviado un correo para restablecer tu contraseña!";
+          errorMsg.hidden = false;
+          
+          // Regresamos el color a rojo por si hay errores en el futuro
+          setTimeout(() => { errorMsg.style.color = "#ff1a1a"; }, 5000);
+        } catch (error) {
+          console.error(error);
+          errorMsg.style.color = "#ff1a1a";
+          errorMsg.textContent = "Error: Verifica que el correo esté bien escrito.";
+          errorMsg.hidden = false;
+        }
+      });
+    }
   </script>
   <script src="assets/js/store.js"></script>
   <script src="assets/js/audio.js"></script>
