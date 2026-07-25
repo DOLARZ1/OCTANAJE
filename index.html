@@ -244,9 +244,9 @@
           await signInWithEmailAndPassword(auth, email, password);
         }
       } catch (error) {
-        // Si algo falla, mostramos el error en pantalla
+        // Si algo falla, mostramos el error EXACTO de Firebase en pantalla
         console.error(error);
-        errorMsg.textContent = "Error: Verifica tus datos o tu código.";
+        errorMsg.textContent = "Detalle del error: " + error.message;
         errorMsg.hidden = false;
       }
     });
