@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.dolarz1.twa",
+        "sha256_cert_fingerprints": ["6B:FC:77:68:BE:01:CE:95:DD:FD:5C:69:03:D5:3A:23:0C:8E:9F:05:0A:8C:93:6B:97:D5:63:3F:CF:38:3A:E4"]
+      }
+    }]
