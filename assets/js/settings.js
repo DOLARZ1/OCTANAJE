@@ -282,7 +282,10 @@
       toast({ icon: "⚠️", title: "Error", msg: "No se pudo limpiar la caché." });
     }
   }
-// Limpieza de caché
+// ========================================================
+      //  BOTÓN DE LIMPIEZA, IRÍA JUSTO AQUÍ:
+      // ========================================================
+      
       el("div", { class: "set-row", style: "margin-top:14px;border-top:1px solid var(--border);padding-top:16px" }, [
         el("div", {}, [
           el("div", { class: "set-title", text: "🧹 Limpiar Caché Temporal" }),
@@ -290,6 +293,7 @@
         ]),
         el("button", { class: "btn", html: "Optimizar", onclick: limpiarCacheSegura })
       ]),
+      
       // Zona de peligro
       el("div", { class: "set-row", style: "margin-top:14px;border-top:1px solid var(--border);padding-top:16px" }, [
         el("div", {}, [
