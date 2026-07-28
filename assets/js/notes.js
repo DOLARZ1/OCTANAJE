@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Notes — Gestión de notas rápidas con colores y recordatorios
+   OCTANAJE · Notes — Notas con colores, fuentes personalizadas y recordatorios
    ===================================================================== */
 (function () {
   "use strict";
@@ -7,13 +7,21 @@
   const { Store, UI, Audio } = N;
   const { el, toast } = UI;
 
-  // Paleta de colores para las tarjetas de notas
+  // Paleta de colores para las tarjetas
   const NOTE_COLORS = [
-    { id: "purple", label: "🟣 Morado", border: "#a855f7", bg: "rgba(168, 85, 247, 0.1)" },
-    { id: "blue", label: "🔵 Azul", border: "#3b82f6", bg: "rgba(59, 130, 246, 0.1)" },
-    { id: "green", label: "🟢 Verde", border: "#22c55e", bg: "rgba(34, 197, 94, 0.1)" },
-    { id: "gold", label: "🟡 Dorado", border: "#eab308", bg: "rgba(234, 179, 8, 0.1)" },
-    { id: "neon", label: "🔴 Rojo Neón", border: "#ef4444", bg: "rgba(239, 68, 68, 0.1)" }
+    { id: "purple", label: "🟣 Morado Neón", border: "#a855f7", bg: "rgba(168, 85, 247, 0.12)" },
+    { id: "blue", label: "🔵 Azul Neón", border: "#3b82f6", bg: "rgba(59, 130, 246, 0.12)" },
+    { id: "green", label: "🟢 Verde Neón", border: "#22c55e", bg: "rgba(34, 197, 94, 0.12)" },
+    { id: "gold", label: "🟡 Dorado", border: "#eab308", bg: "rgba(234, 179, 8, 0.12)" },
+    { id: "neon", label: "🔴 Rojo Neón", border: "#ef4444", bg: "rgba(239, 68, 68, 0.12)" }
+  ];
+
+  // Fuentes disponibles para el texto de la nota
+  const NOTE_FONTS = [
+    { id: "orbitron", label: "🚀 Futurista (Orbitron)", family: "'Orbitron', sans-serif" },
+    { id: "bruno", label: "⚡ Avatar / Tech (Bruno Ace)", family: "'Bruno Ace', cursive" },
+    { id: "cursive", label: "✍️ Caligrafía / Cursiva", family: "'Dancing Script', 'Brush Script MT', cursive" },
+    { id: "default", label: "📄 Estándar (Por defecto)", family: "var(--font-sans, system-ui, sans-serif)" }
   ];
 
   function getNotes() {
@@ -29,10 +37,17 @@
       { name: "content", label: "Contenido", type: "textarea", value: existing ? existing.content : "", placeholder: "Escribe tus detalles aquí...", required: true },
       { 
         name: "color", 
-        label: "Color de la nota", 
+        label: "Color de la tarjeta", 
         type: "select", 
         value: existing ? existing.color : "purple",
         options: NOTE_COLORS.map(c => ({ value: c.id, label: c.label }))
+      },
+      { 
+        name: "font", 
+        label: "Estilo de letra (Tipografía)", 
+        type: "select", 
+        value: existing ? (existing.font || "default") : "default",
+        options: NOTE_FONTS.map(f => ({ value: f.id, label: f.label }))
       }
     ], (data) => {
       const list = getNotes();
@@ -40,6 +55,7 @@
         existing.title = data.title;
         existing.content = data.content;
         existing.color = data.color;
+        existing.font = data.font;
         existing.updatedAt = Date.now();
         toast({ icon: "✏️", msg: "Nota actualizada" });
       } else {
@@ -48,6 +64,7 @@
           title: data.title,
           content: data.content,
           color: data.color || "purple",
+          font: data.font || "default",
           createdAt: Date.now()
         });
         Audio.play("add");
@@ -86,24 +103,29 @@
   // ---------- Renderizar Tarjeta de Nota ----------
   function renderCard(note) {
     const colorTheme = NOTE_COLORS.find(c => c.id === note.color) || NOTE_COLORS[0];
+    const fontTheme = NOTE_FONTS.find(f => f.id === note.font) || NOTE_FONTS[3];
 
     const cardStyle = `
       border-left: 4px solid ${colorTheme.border};
-      background: var(--card-bg, ${colorTheme.bg});
-      padding: 16px;
+      background: ${colorTheme.bg};
+      padding: 18px;
       border-radius: 12px;
-      margin-bottom: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      margin-bottom: 14px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.2);
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
+      font-family: ${fontTheme.family};
     `;
 
     return el("div", { style: cardStyle, class: "note-card" }, [
-      el("div", { style: "display:flex; justify-content:space-between; align-items:flex-start;" }, [
-        el("h3", { style: "margin:0; font-size:1.1rem; color:var(--fg); font-weight:700;", text: note.title }),
-        el("div", { style: "display:flex; gap:6px;" }, [
-          el("button", { class: "icon-btn", title: "Recordatorio", html: "🗓️", onclick: () => openReminder(note) }),
+      el("div", { style: "display:flex; justify-content:space-between; align-items:flex-start; gap:8px;" }, [
+        el("h3", { 
+          style: `margin:0; font-size:1.15rem; color:var(--fg, #ffffff); font-weight:700; font-family:${fontTheme.family};`, 
+          text: note.title 
+        }),
+        el("div", { style: "display:flex; gap:6px; flex-shrink:0;" }, [
+          el("button", { class: "icon-btn", title: "Recordatorio en calendario", html: "🗓️", onclick: () => openReminder(note) }),
           el("button", { class: "icon-btn", title: "Editar", html: "✏️", onclick: () => openNoteForm(note) }),
           el("button", { class: "icon-btn", title: "Eliminar", html: "🗑️", onclick: () => {
             UI.confirmBox("Eliminar Nota", `¿Borrar "${note.title}"?`, () => {
@@ -119,13 +141,13 @@
         ])
       ]),
       el("p", { 
-        style: "margin:0; font-size:0.95rem; line-height:1.5; color:var(--fg-subtle, #e2e8f0); white-space:pre-wrap;", 
+        style: `margin:0; font-size:1.05rem; line-height:1.6; color:var(--fg-subtle, #e2e8f0); white-space:pre-wrap; font-family:${fontTheme.family};`, 
         text: note.content 
       })
     ]);
   }
 
-  // ---------- Render Principal del Módulo ----------
+  // ---------- Render Principal ----------
   function render() {
     const container = document.getElementById("view-notes");
     if (!container) return;
@@ -133,21 +155,19 @@
 
     const list = getNotes();
 
-    // Encabezado con Botón +
     const header = el("div", { style: "display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;" }, [
       el("div", {}, [
         el("h2", { style: "margin:0; font-size:1.4rem; font-family:'Orbitron', sans-serif;", text: "📝 Mis Notas" }),
-        el("p", { style: "margin:4px 0 0 0; font-size:0.85rem; opacity:0.7;", text: "Apuntes rápidos, listas y recordatorios" })
+        el("p", { style: "margin:4px 0 0 0; font-size:0.85rem; opacity:0.75;", text: "Apuntes rápidos con estilo y recordatorios" })
       ]),
       el("button", { class: "btn primary", style: "border-radius:50%; width:44px; height:44px; font-size:1.4rem; padding:0; display:flex; align-items:center; justify-content:center;", html: "＋", onclick: () => openNoteForm() })
     ]);
 
-    // Lista o Estado Vacío
     const content = list.length
       ? el("div", { class: "notes-grid" }, list.map(renderCard))
       : el("div", { class: "empty", style: "text-align:center; padding:40px 20px;" }, [
           el("span", { class: "big", style: "font-size:3rem;", text: "📝" }),
-          el("div", { style: "margin-top:10px; opacity:0.7;", text: "No tienes notas creadas. Presiona '+' para agregar una." })
+          el("div", { style: "margin-top:10px; opacity:0.75;", text: "No tienes notas creadas. Presiona '+' para agregar tu primera nota." })
         ]);
 
     container.appendChild(header);
