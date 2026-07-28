@@ -66,6 +66,34 @@ html.app-hidden * { animation-play-state: paused !important; }
   --grid-line: rgba(90, 120, 220, .09);
   --blur: 16px;
 }
+/* =====================================================================
+   OCTANAJE · Tipografías dinámicas (Soporte desde Ajustes)
+   ===================================================================== */
+
+/* 1. Outfit (Moderna, limpia y futurista) - Opción por defecto recomendada */
+html[data-font="outfit"] {
+  --font-sans: 'Outfit', system-ui, sans-serif;
+}
+
+/* 2. Space Grotesk (Tech & Cyberpunk) */
+html[data-font="space"] {
+  --font-sans: 'Space Grotesk', system-ui, sans-serif;
+}
+
+/* 3. Plus Jakarta Sans (Elegante & Profesional) */
+html[data-font="jakarta"] {
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+/* 4. Dancing Script (Caligrafía / Cursiva) */
+html[data-font="cursive"] {
+  --font-sans: 'Dancing Script', cursive;
+}
+
+/* 5. Sistema / Estándar (Por defecto si no hay selección) */
+html[data-font="system"] {
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
 
 /* Claro — tonos suaves con verde pastel, brillo reducido al mínimo para
    que las tarjetas, textos y bordes se distingan con claridad (nada de
