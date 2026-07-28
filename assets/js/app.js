@@ -18,7 +18,8 @@
     nutrition: N.Nutrition,
     health: N.Health,
     sleep: N.Sleep,
-    fasting: N.Fasting
+    fasting: N.Fasting,
+     notes: N.Notes,
   };
   let current = "dashboard";
 
