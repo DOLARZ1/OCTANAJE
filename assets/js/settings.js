@@ -122,7 +122,7 @@
     toggle.addEventListener("click", () => {
       if (Notify && Notify.enabled()) { Notify.disable(); }
       else if (Notify) { Notify.enable().then(() => open()); return; }
-      open(); // re-render del modal
+      open();
     });
 
     const rows = [
@@ -153,7 +153,7 @@
     return el("div", {}, rows);
   }
 
-  // ---------- recordatorio de calendario del sistema (Google Calendar / .ics) ----------
+  // ---------- recordatorio de calendario del sistema ----------
   function openSystemReminder() {
     const body = UI.form([
       { name: "title", label: "Título", value: "Recordatorio OCTANAJE", placeholder: "Ej. Revisar hábitos", required: true },
@@ -203,7 +203,7 @@
       list.length
         ? el("div", {}, list.map(reminderRow))
         : el("div", { class: "empty" }, [el("span", { class: "big", text: "⏰" }), el("div", { text: "Aún no tienes recordatorios personalizados." })]),
-      el("p", { class: "fs-12 text-faint mt-16", text: "Los recordatorios suenan mientras OCTANAJE esté abierto (en primer o segundo plano). Para alarmas que funcionen con la app cerrada, usa \"Añadir a Google Calendar\" en Hábitos/Tareas/Metas." })
+      el("p", { class: "fs-12 text-faint mt-16", text: "Los recordatorios suenan mientras OCTANAJE esté abierto. Para alarmas con la app cerrada, usa \"Añadir a Google Calendar\"." })
     ]);
     UI.openModal("⏰ Recordatorios", body);
   }
@@ -235,86 +235,10 @@
   // ---------- modal principal ----------
   function open() {
     const body = el("div", {}, [
-      // Apariencia
       themeRow(),
-      // Sonido
       soundRow(),
-      // Moneda
       currencyRow(),
-      // Notificaciones
       notifRow(),
-
-       // === Notificaciones email  ===
-      el("div", { class: "set-row" }, [
-        el("div", {}, [
-          el("div", { class: "set-title", text: "📧 Recordatorios por Correo" }),
-          el("div", { class: "set-desc", text: "Recibe alertas y sincroniza notificaciones." })
-        ]),
-        (function() {
-          const s = Store.get().settings;
-          const chk = s.correoNotif || false;
-          const btn = el("button", { class: "switch" + (chk ? " on" : ""), role: "switch", "aria-checked": chk ? "true" : "false" }, [el("span", { class: "knob" })]);
-          btn.addEventListener("click", () => {
-            s.correoNotif = !s.correoNotif;
-            Store.commit(true);
-            Audio.play("tap");
-            open(); // Refresca el modal para encender/apagar visualmente el botón
-          });
-          return btn;
-        })()
-      ]),
-       // Campo para escribir tu correo electrónico
-      el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:8px" }, [
-        el("div", {}, [
-          el("div", { class: "set-title", text: "📧 Correo de destino" }),
-          el("div", { class: "set-desc", text: "Escribe el correo donde deseas recibir tus respaldos o alertas." })
-        ]),
-        (function() {
-          const s = Store.get().settings;
-          const input = el("input", { type: "email", class: "input", value: s.userEmail || "", placeholder: "tucorreo@ejemplo.com" });
-          input.addEventListener("input", () => {
-            s.userEmail = input.value;
-            Store.commit(true);
-          });
-          return input;
-        })()
-      ]),
-
-      // === RECORDATORIO DE WHATSAPP ===
-      el("div", { class: "set-row" }, [
-        el("div", {}, [
-          el("div", { class: "set-title", text: "💬 Recordatorios por WhatsApp" }),
-          el("div", { class: "set-desc", text: "Avisos directos a tu chat." })
-        ]),
-        (function() {
-          const s = Store.get().settings;
-          const chk = s.wspNotif || false;
-          const btn = el("button", { class: "switch" + (chk ? " on" : ""), role: "switch", "aria-checked": chk ? "true" : "false" }, [el("span", { class: "knob" })]);
-          btn.addEventListener("click", () => {
-            s.wspNotif = !s.wspNotif;
-            Store.commit(true);
-            Audio.play("tap");
-            open(); // Refresca el modal para encender/apagar visualmente el botón
-          });
-          return btn;
-        })()
-      ]),
-       // Campo para escribir tu número de WhatsApp
-      el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:8px" }, [
-        el("div", {}, [
-          el("div", { class: "set-title", text: "💬 Número de WhatsApp" }),
-          el("div", { class: "set-desc", text: "Incluye el código de país (ej. +52 para México)." })
-        ]),
-        (function() {
-          const s = Store.get().settings;
-          const input = el("input", { type: "text", class: "input", value: s.userPhone || "", placeholder: "+521234567890" });
-          input.addEventListener("input", () => {
-            s.userPhone = input.value;
-            Store.commit(true);
-          });
-          return input;
-        })()
-      ]),
 
       // Exportar / importar
       el("div", { class: "set-row" }, [
