@@ -108,6 +108,26 @@
     reader.readAsText(file);
   }
 
+  // ---------- limpieza segura de caché ----------
+  function limpiarCacheSegura() {
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith("temp_") || key.includes("cache_") || key.includes("debug"))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      Audio.play("complete");
+      toast({ icon: "🧹", title: "Caché optimizada", msg: "Espacio temporal liberado sin tocar tus datos." });
+      if (N.App) { N.App.refreshTop(); N.App.renderCurrent(); }
+    } catch (e) {
+      Audio.play("error");
+      toast({ icon: "⚠️", title: "Error", msg: "No se pudo limpiar la caché." });
+    }
+  }
+
   // ---------- notificaciones ----------
   function notifRow() {
     const Notify = N.Notify;
@@ -256,6 +276,15 @@
           label.appendChild(inp);
           return label;
         })()
+      ]),
+
+      // Limpieza de caché temporal
+      el("div", { class: "set-row", style: "margin-top:14px;border-top:1px solid var(--border);padding-top:16px" }, [
+        el("div", {}, [
+          el("div", { class: "set-title", text: "🧹 Limpiar Caché Temporal" }),
+          el("div", { class: "set-desc", text: "Libera espacio y acelera la app sin borrar tus datos." })
+        ]),
+        el("button", { class: "btn", html: "Optimizar", onclick: limpiarCacheSegura })
       ]),
 
       // Zona de peligro
