@@ -244,7 +244,7 @@
       // Notificaciones
       notifRow(),
 
-       // === Notificaciones email y whatsapp ===
+       // === Notificaciones email  ===
       el("div", { class: "set-row" }, [
         el("div", {}, [
           el("div", { class: "set-title", text: "📧 Recordatorios por Correo" }),
@@ -261,6 +261,22 @@
             open(); // Refresca el modal para encender/apagar visualmente el botón
           });
           return btn;
+        })()
+      ]),
+       // Campo para escribir tu correo electrónico
+      el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:8px" }, [
+        el("div", {}, [
+          el("div", { class: "set-title", text: "📧 Correo de destino" }),
+          el("div", { class: "set-desc", text: "Escribe el correo donde deseas recibir tus respaldos o alertas." })
+        ]),
+        (function() {
+          const s = Store.get().settings;
+          const input = el("input", { type: "email", class: "input", value: s.userEmail || "", placeholder: "tucorreo@ejemplo.com" });
+          input.addEventListener("input", () => {
+            s.userEmail = input.value;
+            Store.commit(true);
+          });
+          return input;
         })()
       ]),
 
@@ -281,6 +297,22 @@
             open(); // Refresca el modal para encender/apagar visualmente el botón
           });
           return btn;
+        })()
+      ]),
+       // Campo para escribir tu número de WhatsApp
+      el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:8px" }, [
+        el("div", {}, [
+          el("div", { class: "set-title", text: "💬 Número de WhatsApp" }),
+          el("div", { class: "set-desc", text: "Incluye el código de país (ej. +52 para México)." })
+        ]),
+        (function() {
+          const s = Store.get().settings;
+          const input = el("input", { type: "text", class: "input", value: s.userPhone || "", placeholder: "+521234567890" });
+          input.addEventListener("input", () => {
+            s.userPhone = input.value;
+            Store.commit(true);
+          });
+          return input;
         })()
       ]),
 
