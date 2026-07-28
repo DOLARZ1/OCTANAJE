@@ -251,33 +251,34 @@
           el("div", { class: "set-desc", text: "Recibe alertas y sincroniza notificaciones." })
         ]),
         (function() {
-          const chk = Store.get().settings.correoNotif || false;
+          const s = Store.get().settings;
+          const chk = s.correoNotif || false;
           const btn = el("button", { class: "switch" + (chk ? " on" : ""), role: "switch", "aria-checked": chk ? "true" : "false" }, [el("span", { class: "knob" })]);
           btn.addEventListener("click", () => {
-            const current = Store.get().settings.correoNotif || false;
-            Store.get().settings.correoNotif = !current;
+            s.correoNotif = !s.correoNotif;
             Store.commit(true);
             Audio.play("tap");
-            open(); // Recarga el modal para actualizar el switch
+            open(); // Refresca el modal para encender/apagar visualmente el botón
           });
           return btn;
         })()
       ]),
 
+      // === RECORDATORIO DE WHATSAPP ===
       el("div", { class: "set-row" }, [
         el("div", {}, [
           el("div", { class: "set-title", text: "💬 Recordatorios por WhatsApp" }),
           el("div", { class: "set-desc", text: "Avisos directos a tu chat." })
         ]),
         (function() {
-          const chk = Store.get().settings.wspNotif || false;
+          const s = Store.get().settings;
+          const chk = s.wspNotif || false;
           const btn = el("button", { class: "switch" + (chk ? " on" : ""), role: "switch", "aria-checked": chk ? "true" : "false" }, [el("span", { class: "knob" })]);
           btn.addEventListener("click", () => {
-            const current = Store.get().settings.wspNotif || false;
-            Store.get().settings.wspNotif = !current;
+            s.wspNotif = !s.wspNotif;
             Store.commit(true);
             Audio.play("tap");
-            open(); // Recarga el modal para actualizar el switch
+            open(); // Refresca el modal para encender/apagar visualmente el botón
           });
           return btn;
         })()
