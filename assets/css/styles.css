@@ -945,3 +945,17 @@ canvas { display: block; width: 100%; }
   50% { box-shadow: 0 0 28px rgba(255, 214, 0, .75), 0 0 48px rgba(255, 47, 176, .45); }
 }
 .ach-card:hover { transform: translateY(-3px); }
+/* Elimina el recuadro o sombra azul/gris al tocar elementos en celulares */
+* {
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none;
+}
+
+/* Quita el borde/cuadro de enfoque por defecto cuando se presiona un botón */
+button:focus,
+button:active,
+a:focus,
+a:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
