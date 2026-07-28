@@ -244,6 +244,45 @@
       // Notificaciones
       notifRow(),
 
+       // === Notificaciones email y whatsapp ===
+      el("div", { class: "set-row" }, [
+        el("div", {}, [
+          el("div", { class: "set-title", text: "📧 Recordatorios por Correo" }),
+          el("div", { class: "set-desc", text: "Recibe alertas y sincroniza notificaciones." })
+        ]),
+        (function() {
+          const chk = Store.get().settings.correoNotif || false;
+          const btn = el("button", { class: "switch" + (chk ? " on" : ""), role: "switch", "aria-checked": chk ? "true" : "false" }, [el("span", { class: "knob" })]);
+          btn.addEventListener("click", () => {
+            const current = Store.get().settings.correoNotif || false;
+            Store.get().settings.correoNotif = !current;
+            Store.commit(true);
+            Audio.play("tap");
+            open(); // Recarga el modal para actualizar el switch
+          });
+          return btn;
+        })()
+      ]),
+
+      el("div", { class: "set-row" }, [
+        el("div", {}, [
+          el("div", { class: "set-title", text: "💬 Recordatorios por WhatsApp" }),
+          el("div", { class: "set-desc", text: "Avisos directos a tu chat." })
+        ]),
+        (function() {
+          const chk = Store.get().settings.wspNotif || false;
+          const btn = el("button", { class: "switch" + (chk ? " on" : ""), role: "switch", "aria-checked": chk ? "true" : "false" }, [el("span", { class: "knob" })]);
+          btn.addEventListener("click", () => {
+            const current = Store.get().settings.wspNotif || false;
+            Store.get().settings.wspNotif = !current;
+            Store.commit(true);
+            Audio.play("tap");
+            open(); // Recarga el modal para actualizar el switch
+          });
+          return btn;
+        })()
+      ]),
+
       // Exportar / importar
       el("div", { class: "set-row" }, [
         el("div", {}, [
