@@ -83,20 +83,29 @@
       btn
     ]);
   }
-  // ---------- sonido ----------
+ // ---------- Sonido ----------
   function soundRow() {
-    const on = Audio.isEnabled();
-    const toggle = el("button", { class: "switch" + (on ? " on" : ""), role: "switch", "aria-checked": on ? "true" : "false" }, [el("span", { class: "knob" })]);
-    toggle.addEventListener("click", () => { Audio.toggle(); open(); });
+    const s = Store.get().settings || {};
+    const isOn = s.sound !== false;
+
+    const sw = el("div", {
+      class: `switch ${isOn ? "on" : ""}`,
+      onclick: () => {
+        s.sound = !isOn;
+        Store.commit(true);
+        if (s.sound && Audio) Audio.play("tap");
+        open(); // Recargar el modal de ajustes
+      }
+    }, [el("div", { class: "knob" })]);
+
     return el("div", { class: "set-row" }, [
       el("div", {}, [
-        el("div", { class: "set-title", text: "🔊 Sonidos" }),
-        el("div", { class: "set-desc", text: on ? "Activados" : "Silenciados" })
+        el("div", { class: "set-title", text: "🔊 Efectos de Sonido" }),
+        el("div", { class: "set-desc", text: "Activar o desactivar los sonidos sintéticos de la interfaz." })
       ]),
-      toggle
+      sw
     ]);
   }
-
   function currencyRow() {
     const s = Store.get().settings;
     const sel = el("select", { class: "select", style: "max-width:230px" });
