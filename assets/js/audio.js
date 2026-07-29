@@ -3,8 +3,6 @@
    ===================================================================== */
 (function () {
   "use strict";
-  const N = window.NEXUS || {};
-  const Store = N.Store;
 
   let ctx = null;
   let master = null;
@@ -59,10 +57,15 @@
     osc.start(t0); osc.stop(t0 + dur + 0.02);
   }
 
-  // Reproductor de efectos de sonido
+  // Reproductor seguro de efectos de sonido
   function play(type) {
-    const s = Store ? Store.get() : null;
-    if (s && s.settings && s.settings.sound === false) return;
+    try {
+      const N = window.NEXUS;
+      if (N && N.Store) {
+        const s = N.Store.get();
+        if (s && s.settings && s.settings.sound === false) return;
+      }
+    } catch (e) {}
 
     switch (type) {
       case "tap": tone(600, 0, 0.04, "sine", 0.15); break;
@@ -82,17 +85,19 @@
   }
 
   // =====================================================================
-  // 📳 MOTOR HÁPTICO (VIBRACIÓN EN MÓVILES)
+  // 📳 MOTOR HÁPTICO SEGURO (VIBRACIÓN)
   // =====================================================================
   function vibrate(pattern) {
-    const s = Store ? Store.get() : null;
-    const isHapticOn = !s || !s.settings || s.settings.haptics !== false;
-    
-    if (isHapticOn && typeof navigator !== "undefined" && "vibrate" in navigator) {
-      try {
+    try {
+      const N = window.NEXUS;
+      if (N && N.Store) {
+        const s = N.Store.get();
+        if (s && s.settings && s.settings.haptics === false) return;
+      }
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
         navigator.vibrate(pattern);
-      } catch (e) {}
-    }
+      }
+    } catch (e) {}
   }
 
   const Haptic = {
@@ -103,7 +108,7 @@
     error: () => vibrate([60, 40, 60, 40, 60])
   };
 
-  // Asignar al namespace global de la app
+  // Asignación ultra segura en el objeto global
   window.NEXUS = window.NEXUS || {};
   window.NEXUS.Audio = { unlock, play, tone, sweep };
   window.NEXUS.Haptic = Haptic;
