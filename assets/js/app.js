@@ -124,6 +124,7 @@
   function init() {
     const s = Store.get();
     applyTheme(s.settings.theme || "dark");
+    applyFont(s.settings.font || "outfit");
     bind();
     bindPowerSaving();
     Gami.checkAchievements();
@@ -170,7 +171,7 @@
     } catch (e) {}
   }
 
-  N.App = { refreshTop, switchView, renderCurrent, applyTheme };
+N.App = { refreshTop, switchView, renderCurrent, applyTheme, applyFont };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
