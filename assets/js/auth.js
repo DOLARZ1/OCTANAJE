@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Auth & Biometrics — Sistema de Autenticación por Huella
+   OCTANAJE · Auth & Biometrics — Seguridad por Huella y PIN de Respaldo
    ===================================================================== */
 (function () {
   "use strict";
@@ -15,7 +15,6 @@
     );
   }
 
-  // Convertir Base64URL a ArrayBuffer para WebAuthn
   function bufferFromBase64Url(base64url) {
     const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
     const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -27,10 +26,19 @@
     return outputArray.buffer;
   }
 
-  // ---------- Registrar Huella en el Dispositivo ----------
+  // ---------- Registrar Huella + PIN de Respaldo ----------
   async function registerBiometrics() {
     if (!(await isBiometricSupported())) {
-      toast({ icon: "⚠️", msg: "Tu dispositivo o navegador no soporta lectura de huella." });
+      toast({ icon: "⚠️", msg: "Tu dispositivo no soporta lectura biométrica." });
+      return false;
+    }
+
+    const s = Store.get();
+    
+    // Pedir crear un PIN de respaldo obligatorio
+    const pin = prompt("Crea un PIN de respaldo de 4 o 6 dígitos (por si la huella falla):");
+    if (!pin || pin.trim().length < 4) {
+      toast({ icon: "⚠️", msg: "Debes asignar un PIN de respaldo válido." });
       return false;
     }
 
@@ -53,24 +61,24 @@
 
       const credential = await navigator.credentials.create({ publicKey: creationOptions });
       if (credential) {
-        const s = Store.get();
         if (!s.settings) s.settings = {};
         s.settings.bioEnabled = true;
-        s.settings.bioRawId = credential.id; // 👈 Guardamos el ID de la llave
+        s.settings.bioRawId = credential.id;
+        s.settings.bioPin = pin.trim(); // 👈 Guardamos el PIN de respaldo
         Store.commit(true);
         
         Audio.play("unlock");
-        toast({ icon: "☝️", title: "Huella activada", msg: "Acceso biométrico configurado con éxito" });
+        toast({ icon: "☝️", title: "Seguridad Activada", msg: "Huella y PIN de respaldo configurados" });
         return true;
       }
     } catch (err) {
       console.error("Error registrando huella:", err);
-      toast({ icon: "❌", msg: "Acción cancelada o fallo en sensor biométrico" });
+      toast({ icon: "❌", msg: "Acción cancelada o fallo biométrico" });
     }
     return false;
   }
 
-  // ---------- Iniciar Sesión / Desbloquear con Huella ----------
+  // ---------- Autenticar con Huella ----------
   async function authenticateBiometrics() {
     const s = Store.get();
     const rawId = s.settings ? s.settings.bioRawId : null;
@@ -85,7 +93,6 @@
         userVerification: "required"
       };
 
-      // Si tenemos el ID guardado, se lo pasamos al navegador para que encuentre la llave exacta
       if (rawId) {
         requestOptions.allowCredentials = [{
           id: bufferFromBase64Url(rawId),
@@ -99,10 +106,24 @@
         return true;
       }
     } catch (err) {
-      console.error("Error autenticando huella:", err);
-      toast({ icon: "🚫", msg: "Huella no reconocida o no registrada" });
+      console.error("Error en huella:", err);
+      toast({ icon: "🚫", msg: "Huella no reconocida" });
     }
     return false;
+  }
+
+  // ---------- Autenticar con PIN de Respaldo ----------
+  function promptBackupPin() {
+    const s = Store.get();
+    const savedPin = s.settings ? s.settings.bioPin : null;
+
+    const inputPin = prompt("Introduce tu PIN de respaldo:");
+    if (inputPin && inputPin.trim() === savedPin) {
+      unlockApp();
+      toast({ icon: "🔓", msg: "Acceso concedido por PIN" });
+    } else {
+      toast({ icon: "❌", msg: "PIN incorrecto. Acceso denegado." });
+    }
   }
 
   // ---------- Desbloquear la App ----------
@@ -115,7 +136,7 @@
     Audio.play("unlock");
   }
 
-  // ---------- Pantalla de Bloqueo ----------
+  // ---------- Pantalla de Bloqueo Segura ----------
   function checkLockOnBoot() {
     const s = Store.get();
     if (!s.settings || !s.settings.bioEnabled) return;
@@ -131,7 +152,7 @@
         el("h2", { style: "font-family:'Orbitron', sans-serif; color:var(--fg, #fff); margin:0;", text: "OCTANAJE BLOQUEADO" }),
         el("p", { style: "opacity: 0.7; font-size:0.9rem; margin-top:6px;", text: "Confirma tu identidad para acceder" })
       ]),
-      el("div", { style: "display:flex; flex-direction:column; gap:10px; align-items:center;" }, [
+      el("div", { style: "display:flex; flex-direction:column; gap:12px; align-items:center;" }, [
         el("button", { 
           class: "btn primary", 
           style: "padding: 14px 28px; font-size: 1.1rem; border-radius: 30px; display:flex; align-items:center; gap:10px;",
@@ -140,16 +161,12 @@
           el("span", { text: "☝️" }),
           el("span", { text: "Escanear Huella / Face ID" })
         ]),
-        // Botón de emergencia para desactivar si da problemas
+        // Botón seguro de respaldo: Pide el PIN en vez de desbloquear directo
         el("button", {
           class: "btn ghost sm",
-          style: "opacity:0.6; margin-top:10px;",
-          text: "Desactivar bloqueo",
-          onclick: () => {
-            if (s.settings) s.settings.bioEnabled = false;
-            Store.commit(true);
-            unlockApp();
-          }
+          style: "opacity:0.8; margin-top:6px;",
+          text: "🔑 Usar PIN de respaldo",
+          onclick: () => promptBackupPin()
         })
       ])
     ]);
