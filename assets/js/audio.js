@@ -84,32 +84,9 @@
     }
   }
 
-  // =====================================================================
-  // 📳 MOTOR HÁPTICO SEGURO (VIBRACIÓN)
-  // =====================================================================
-  function vibrate(pattern) {
-    try {
-      const N = window.NEXUS;
-      if (N && N.Store) {
-        const s = N.Store.get();
-        if (s && s.settings && s.settings.haptics === false) return;
-      }
-      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-        navigator.vibrate(pattern);
-      }
-    } catch (e) {}
-  }
-
-  const Haptic = {
-    tap: () => vibrate(40),
-    success: () => vibrate([50, 40, 80]),
-    unlock: () => vibrate([30, 40, 30, 40, 60]),
-    delete: () => vibrate([60, 40, 60]),
-    error: () => vibrate([80, 40, 80, 40, 80])
-  };
+ 
 
   // Asignación ultra segura en el objeto global
   window.NEXUS = window.NEXUS || {};
   window.NEXUS.Audio = { unlock, play, tone, sweep };
-  window.NEXUS.Haptic = Haptic;
 })();
