@@ -53,7 +53,36 @@
       seg
     ]);
   }
+// ---------- Botón / Opción de Seguridad por Huella ----------
+  function bioSecurityRow() {
+    const s = Store.get().settings || {};
+    const isEnabled = !!s.bioEnabled;
 
+    const btn = el("button", { 
+      class: `btn ${isEnabled ? "danger" : "primary"}`, 
+      text: isEnabled ? "🔒 Desactivar Bloqueo por Huella" : "☝️ Activar Bloqueo por Huella",
+      onclick: async () => {
+        if (isEnabled) {
+          s.bioEnabled = false;
+          Store.commit(true);
+          Audio.play("tap");
+          toast({ icon: "🔓", msg: "Bloqueo por huella desactivado" });
+          open(); // Recargar panel de ajustes
+        } else {
+          const success = await N.Auth.registerBiometrics();
+          if (success) open();
+        }
+      } 
+    });
+
+    return el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:10px" }, [
+      el("div", {}, [
+        el("div", { class: "set-title", text: "🛡️ Seguridad Biométrica" }),
+        el("div", { class: "set-desc", text: "Protege el acceso a tus datos personales usando la huella dactilar o Face ID de tu dispositivo." })
+      ]),
+      btn
+    ]);
+  }
   // ---------- sonido ----------
   function soundRow() {
     const on = Audio.isEnabled();
@@ -280,6 +309,7 @@
     const body = el("div", {}, [
       themeRow(),
       fontRow(),
+      bioSecurityRow(),
       soundRow(),
       currencyRow(),
       notifRow(),
