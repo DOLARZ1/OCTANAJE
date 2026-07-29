@@ -10,7 +10,7 @@
 [hidden] { display: none !important; }
 html, body { height: 100%; }
 body {
-  font-family: "Segoe UI", "SF Pro Display", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans, "Segoe UI", system-ui, sans-serif);
   background: var(--bg);
   color: var(--txt);
   overflow-x: hidden;
