@@ -125,6 +125,8 @@
     const s = Store.get();
     applyTheme(s.settings.theme || "dark");
     applyFont(s.settings.font || "outfit");
+   // 👈 VERIFICAR SI LA APP ESTÁ BLOQUEADA CON HUELLA
+  if (N.Auth) N.Auth.checkLockOnBoot();
     bind();
     bindPowerSaving();
     Gami.checkAchievements();
