@@ -178,82 +178,80 @@
 
   <!-- ====================== SCRIPTS ====================== -->
  <!-- ====================== FIREBASE ====================== -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { 
-      getAuth, 
-      createUserWithEmailAndPassword, 
-      signInWithEmailAndPassword, 
-      onAuthStateChanged,
-      signOut,
-      sendPasswordResetEmail
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { 
-      getFirestore, 
-      doc, 
-      getDoc, 
-      updateDoc,
-      setDoc //
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { 
+    getAuth, 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    onAuthStateChanged,
+    signOut,
+    sendPasswordResetEmail
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { 
+    getFirestore, 
+    doc, 
+    getDoc, 
+    updateDoc,
+    setDoc 
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // OJO: Pega aquí nuevamente tus datos de configuración de Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyA6jx8zfJxvXsengXPb9CxFKZtrt6qgaf4",
-  authDomain: "octanaje-x.firebaseapp.com",
-  projectId: "octanaje-x",
-  storageBucket: "octanaje-x.firebasestorage.app",
-  messagingSenderId: "897528245846",
-  appId: "1:897528245846:web:4f1ea494aff9aa294855f7"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyA6jx8zfJxvXsengXPb9CxFKZtrt6qgaf4",
+    authDomain: "octanaje-x.firebaseapp.com",
+    projectId: "octanaje-x",
+    storageBucket: "octanaje-x.firebasestorage.app",
+    messagingSenderId: "897528245846",
+    appId: "1:897528245846:web:4f1ea494aff9aa294855f7"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-    const authScreen = document.getElementById('auth-screen');
-    const appMain = document.getElementById('app');
-    const authForm = document.getElementById('auth-form');
-    const errorMsg = document.getElementById('auth-error');
-    // -- FUNCIÓN DE GUARDADO SILENCIOSO EN LA NUBE --
-    window.saveToFirebase = async (estadoLocal) => {
-      // Solo guardar si hay un usuario con sesión iniciada
-      if (auth.currentUser) {
-        try {
-          const userRef = doc(db, "usuarios", auth.currentUser.uid);
-          // Guarda toda la estructura de OCTANAJE en su propia "caja fuerte"
-          await setDoc(userRef, estadoLocal);
-        } catch (error) {
-          console.error("Error sincronizando con la nube:", error);
-        }
+  const authScreen = document.getElementById('auth-screen');
+  const appMain = document.getElementById('app');
+  const authForm = document.getElementById('auth-form');
+  const errorMsg = document.getElementById('auth-error');
+
+  // ---------- FUNCIÓN DE GUARDADO SILENCIOSO EN LA NUBE ----------
+  window.saveToFirebase = async (estadoLocal) => {
+    if (auth.currentUser) {
+      try {
+        // Corregido a "users" para coincidir exactamente con tus Reglas de Firestore
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        await setDoc(userRef, estadoLocal);
+      } catch (error) {
+        console.error("Error sincronizando con la nube:", error);
       }
-    };
+    }
+  };
 
-    // -- DETECTOR DE SESIÓN (MODIFICADO) --
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        authScreen.hidden = true;
-        appMain.hidden = false;
+  // ---------- DETECTOR DE SESIÓN DE FIREBASE ----------
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      if (authScreen) authScreen.hidden = true;
+      if (appMain) appMain.hidden = false;
 
-        try {
-          // Descargar los datos de este usuario desde Firestore
-          const userRef = doc(db, "usuarios", user.uid);
-          const docSnap = await getDoc(userRef);
+      try {
+        // Corregido a "users"
+        const userRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(userRef);
 
-          if (docSnap.exists() && window.NEXUS && window.NEXUS.Store) {
-            // Ya tiene datos en la nube: inyectarlos a la aplicación
-            window.NEXUS.Store.setCloudState(docSnap.data());
-          } else if (window.NEXUS && window.NEXUS.Store) {
-            // Usuario nuevo: crearle su caja fuerte con los datos iniciales
-            window.saveToFirebase(window.NEXUS.Store.get());
-          }
-        } catch (error) {
-          console.error("Error al descargar el perfil:", error);
+        if (docSnap.exists() && window.NEXUS && window.NEXUS.Store) {
+          window.NEXUS.Store.setCloudState(docSnap.data());
+        } else if (window.NEXUS && window.NEXUS.Store) {
+          window.saveToFirebase(window.NEXUS.Store.get());
         }
-      } else {
-        authScreen.hidden = false;
-        appMain.hidden = true;
+      } catch (error) {
+        console.error("Error al descargar el perfil:", error);
       }
-    });
+    } else {
+      if (authScreen) authScreen.hidden = false;
+      if (appMain) appMain.hidden = true;
+    }
+  });
+</script>
 
     
 
