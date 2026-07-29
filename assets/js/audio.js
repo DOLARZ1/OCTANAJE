@@ -1,14 +1,14 @@
 /* =====================================================================
-   OCTANAJE · Audio & Haptics — Sonidos sintetizados y Vibración
+   OCTANAJE · Audio & Haptic — Sonidos sintetizados y Vibración Háptica
    ===================================================================== */
 (function () {
   "use strict";
-  const Store = window.NEXUS.Store;
+  const N = window.NEXUS || {};
+  const Store = N.Store;
 
   let ctx = null;
   let master = null;
-  let loud = null; // bus separado y más alto para alarmas críticas
-  let enabled = Store.get().settings.sound !== false;
+  let loud = null;
 
   function ensure() {
     if (!ctx) {
@@ -19,15 +19,19 @@
       master.gain.value = 0.22;
       master.connect(ctx.destination);
       loud = ctx.createGain();
-      loud.gain.value = 0.6; // ~3x más fuerte que los sonidos normales
+      loud.gain.value = 0.6;
       loud.connect(ctx.destination);
     }
     if (ctx.state === "suspended") ctx.resume();
     return true;
   }
 
-  // Genera un tono con envolvente. bus: "master" (normal) | "loud" (alarmas)
+  function unlock() {
+    ensure();
+  }
+
   function tone(freq, start, dur, type, vol, bus) {
+    if (!ensure()) return;
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
     osc.type = type || "sine";
@@ -41,6 +45,7 @@
   }
 
   function sweep(f1, f2, start, dur, type, vol, bus) {
+    if (!ensure()) return;
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
     osc.type = type || "sawtooth";
@@ -54,13 +59,36 @@
     osc.start(t0); osc.stop(t0 + dur + 0.02);
   }
 
+  // Reproductor de efectos de sonido
+  function play(type) {
+    const s = Store ? Store.get() : null;
+    if (s && s.settings && s.settings.sound === false) return;
+
+    switch (type) {
+      case "tap": tone(600, 0, 0.04, "sine", 0.15); break;
+      case "tab": sweep(400, 800, 0, 0.06, "sine", 0.2); break;
+      case "add": sweep(300, 900, 0, 0.12, "triangle", 0.4); break;
+      case "delete": sweep(600, 150, 0, 0.15, "sawtooth", 0.3); break;
+      case "unlock": 
+        tone(523.25, 0, 0.08, "sine", 0.3);
+        tone(659.25, 0.08, 0.08, "sine", 0.3);
+        tone(783.99, 0.16, 0.15, "sine", 0.4);
+        break;
+      case "alarm":
+        sweep(800, 1200, 0, 0.2, "square", 0.5, "loud");
+        sweep(1200, 800, 0.2, 0.2, "square", 0.5, "loud");
+        break;
+    }
+  }
+
   // =====================================================================
-  // 📳 MOTOR HÁPTICO (VIBRACIÓN)
+  // 📳 MOTOR HÁPTICO (VIBRACIÓN EN MÓVILES)
   // =====================================================================
   function vibrate(pattern) {
-    const s = Store.get().settings;
-    // Verifica si la vibración está permitida en ajustes y si el dispositivo la soporta
-    if (s.haptics !== false && typeof navigator !== "undefined" && "vibrate" in navigator) {
+    const s = Store ? Store.get() : null;
+    const isHapticOn = !s || !s.settings || s.settings.haptics !== false;
+    
+    if (isHapticOn && typeof navigator !== "undefined" && "vibrate" in navigator) {
       try {
         navigator.vibrate(pattern);
       } catch (e) {}
@@ -68,15 +96,15 @@
   }
 
   const Haptic = {
-    tap: () => vibrate(12),                      // Clic sutil en pestañas / botones
-    success: () => vibrate([35, 40, 60]),        // Completar tarea o hábito
-    unlock: () => vibrate([20, 30, 20, 30, 50]), // Desbloqueo por huella
-    delete: () => vibrate([45, 30, 45]),         // Eliminar ítem o nota
-    error: () => vibrate([60, 40, 60, 40, 60])   // Error de huella o PIN
+    tap: () => vibrate(15),
+    success: () => vibrate([35, 40, 60]),
+    unlock: () => vibrate([20, 30, 20, 30, 50]),
+    delete: () => vibrate([45, 30, 45]),
+    error: () => vibrate([60, 40, 60, 40, 60])
   };
 
-  // Exportar en el namespace global NEXUS
+  // Asignar al namespace global de la app
   window.NEXUS = window.NEXUS || {};
-  window.NEXUS.Audio = window.NEXUS.Audio || {};
+  window.NEXUS.Audio = { unlock, play, tone, sweep };
   window.NEXUS.Haptic = Haptic;
 })();
