@@ -30,6 +30,29 @@
       seg
     ]);
   }
+   // ---------- tipografía ----------
+  function fontRow() {
+    const cur = Store.get().settings.font || "outfit";
+    const seg = el("div", { class: "seg", style: "flex-wrap:wrap" });
+    [
+      ["outfit", "✨ Outfit"],
+      ["space", "🚀 Space"],
+      ["jakarta", "💼 Jakarta"],
+      ["cursive", "✍️ Cursiva"],
+      ["system", "📱 Sistema"]
+    ].forEach(([val, label]) => {
+      const b = el("button", { text: label, onclick: () => { if (N.App) N.App.applyFont(val); Audio.play("tap"); open(); } });
+      if (val === cur) b.classList.add("on");
+      seg.appendChild(b);
+    });
+    return el("div", { class: "set-row", style: "flex-direction:column;align-items:stretch;gap:10px" }, [
+      el("div", {}, [
+        el("div", { class: "set-title", text: "🔤 Tipografía de la App" }),
+        el("div", { class: "set-desc", text: "Elige el estilo de letra para toda la interfaz (Outfit, Space Grotesk, Jakarta, Cursiva o Sistema)." })
+      ]),
+      seg
+    ]);
+  }
 
   // ---------- sonido ----------
   function soundRow() {
@@ -256,6 +279,7 @@
   function open() {
     const body = el("div", {}, [
       themeRow(),
+      fontRow(),
       soundRow(),
       currencyRow(),
       notifRow(),
