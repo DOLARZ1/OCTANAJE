@@ -101,11 +101,11 @@
   }
 
   const Haptic = {
-    tap: () => vibrate(15),
-    success: () => vibrate([35, 40, 60]),
-    unlock: () => vibrate([20, 30, 20, 30, 50]),
-    delete: () => vibrate([45, 30, 45]),
-    error: () => vibrate([60, 40, 60, 40, 60])
+    tap: () => vibrate(40),
+    success: () => vibrate([50, 40, 80]),
+    unlock: () => vibrate([30, 40, 30, 40, 60]),
+    delete: () => vibrate([60, 40, 60]),
+    error: () => vibrate([80, 40, 80, 40, 80])
   };
 
   // Asignación ultra segura en el objeto global
