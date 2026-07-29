@@ -30,6 +30,14 @@
     Store.commit(true);
   }
 
+   // ---------- Tipografías ----------
+  function applyFont(font) {
+    const selectedFont = font || "outfit";
+    document.documentElement.setAttribute("data-font", selectedFont);
+    Store.get().settings.font = selectedFont;
+    Store.commit(true);
+  }
+
   // ---------- Barra superior ----------
   function refreshTop() {
     const s = Store.get();
