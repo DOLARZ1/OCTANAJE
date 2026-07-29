@@ -131,6 +131,34 @@
     ]);
   }
 
+   // ---------- Vibración ----------
+  function hapticRow() {
+    const s = Store.get().settings || {};
+    const isOn = s.haptics !== false; 
+
+    const sw = el("div", { 
+      class: `switch ${isOn ? "on" : ""}`,
+      onclick: () => {
+        s.haptics = !isOn;
+        Store.commit(true);
+        
+        // 👈 ESTA ES LA LÍNEA MÁGICA QUE DISPARA LA VIBRACIÓN AL TOCAR EL BOTÓN
+        if (s.haptics && window.NEXUS && window.NEXUS.Haptic) {
+           window.NEXUS.Haptic.success(); 
+        }
+        
+        open(); // Recargar panel
+      }
+    }, [el("div", { class: "knob" })]);
+
+    return el("div", { class: "set-row" }, [
+      el("div", {}, [
+        el("div", { class: "set-title", text: "📳 Feedback Táctil" }),
+        el("div", { class: "set-desc", text: "Vibrar al completar hábitos o tocar botones." })
+      ]),
+      sw
+    ]);
+  }
   // ---------- exportar ----------
   function exportData() {
     try {
@@ -320,6 +348,7 @@
       fontRow(),
       bioSecurityRow(),
       soundRow(),
+      hapticRow(),
       currencyRow(),
       notifRow(),
 
