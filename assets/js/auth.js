@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Auth & Biometrics — Sistema de Autenticación por Huella y PIN
+   OCTANAJE · Auth & Biometrics — Sistema de Autenticación por Huella
    ===================================================================== */
 (function () {
   "use strict";
@@ -13,6 +13,18 @@
       window.PublicKeyCredential &&
       (await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())
     );
+  }
+
+  // Convertir Base64URL a ArrayBuffer para WebAuthn
+  function bufferFromBase64Url(base64url) {
+    const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
+    const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray.buffer;
   }
 
   // ---------- Registrar Huella en el Dispositivo ----------
@@ -30,7 +42,7 @@
         challenge: challenge,
         rp: { name: "OCTANAJE App", id: window.location.hostname },
         user: {
-          id: Uint8Array.from("octanaje_user_" + Date.now(), c => c.charCodeAt(0)),
+          id: Uint8Array.from("octanaje_user_id", c => c.charCodeAt(0)),
           name: "Usuario Octanaje",
           displayName: "Piloto Octanaje"
         },
@@ -44,7 +56,7 @@
         const s = Store.get();
         if (!s.settings) s.settings = {};
         s.settings.bioEnabled = true;
-        s.settings.bioCredId = credential.id;
+        s.settings.bioRawId = credential.id; // 👈 Guardamos el ID de la llave
         Store.commit(true);
         
         Audio.play("unlock");
@@ -60,6 +72,9 @@
 
   // ---------- Iniciar Sesión / Desbloquear con Huella ----------
   async function authenticateBiometrics() {
+    const s = Store.get();
+    const rawId = s.settings ? s.settings.bioRawId : null;
+
     try {
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
@@ -70,6 +85,14 @@
         userVerification: "required"
       };
 
+      // Si tenemos el ID guardado, se lo pasamos al navegador para que encuentre la llave exacta
+      if (rawId) {
+        requestOptions.allowCredentials = [{
+          id: bufferFromBase64Url(rawId),
+          type: 'public-key'
+        }];
+      }
+
       const assertion = await navigator.credentials.get({ publicKey: requestOptions });
       if (assertion) {
         unlockApp();
@@ -77,7 +100,7 @@
       }
     } catch (err) {
       console.error("Error autenticando huella:", err);
-      toast({ icon: "🚫", msg: "Huella no reconocida" });
+      toast({ icon: "🚫", msg: "Huella no reconocida o no registrada" });
     }
     return false;
   }
@@ -92,12 +115,11 @@
     Audio.play("unlock");
   }
 
-  // ---------- Pantalla de Bloqueo Futurista (Lock Screen) ----------
+  // ---------- Pantalla de Bloqueo ----------
   function checkLockOnBoot() {
     const s = Store.get();
-    if (!s.settings || !s.settings.bioEnabled) return; // Si no está activado, continuar normal
+    if (!s.settings || !s.settings.bioEnabled) return;
 
-    // Construir overlay de pantalla de bloqueo
     const lockOverlay = el("div", { id: "lock-screen", style: `
       position: fixed; inset: 0; z-index: 9999;
       background: #060814; display: flex; flex-direction: column;
@@ -109,19 +131,30 @@
         el("h2", { style: "font-family:'Orbitron', sans-serif; color:var(--fg, #fff); margin:0;", text: "OCTANAJE BLOQUEADO" }),
         el("p", { style: "opacity: 0.7; font-size:0.9rem; margin-top:6px;", text: "Confirma tu identidad para acceder" })
       ]),
-      el("button", { 
-        class: "btn primary", 
-        style: "padding: 14px 28px; font-size: 1.1rem; border-radius: 30px; display:flex; align-items:center; gap:10px;",
-        onclick: () => authenticateBiometrics() 
-      }, [
-        el("span", { text: "☝️" }),
-        el("span", { text: "Escanear Huella / Face ID" })
+      el("div", { style: "display:flex; flex-direction:column; gap:10px; align-items:center;" }, [
+        el("button", { 
+          class: "btn primary", 
+          style: "padding: 14px 28px; font-size: 1.1rem; border-radius: 30px; display:flex; align-items:center; gap:10px;",
+          onclick: () => authenticateBiometrics() 
+        }, [
+          el("span", { text: "☝️" }),
+          el("span", { text: "Escanear Huella / Face ID" })
+        ]),
+        // Botón de emergencia para desactivar si da problemas
+        el("button", {
+          class: "btn ghost sm",
+          style: "opacity:0.6; margin-top:10px;",
+          text: "Desactivar bloqueo",
+          onclick: () => {
+            if (s.settings) s.settings.bioEnabled = false;
+            Store.commit(true);
+            unlockApp();
+          }
+        })
       ])
     ]);
 
     document.body.appendChild(lockOverlay);
-    
-    // Solicitar la huella automáticamente al cargar
     setTimeout(() => authenticateBiometrics(), 500);
   }
 
