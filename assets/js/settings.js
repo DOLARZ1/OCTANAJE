@@ -348,7 +348,6 @@
       fontRow(),
       bioSecurityRow(),
       soundRow(),
-      hapticRow(),
       currencyRow(),
       notifRow(),
 
