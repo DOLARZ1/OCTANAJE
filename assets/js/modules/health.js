@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro (Botón Desplegable + Colores Dinámicos)
+   OCTANAJE · Módulo Salud Pro (Con Kilos de Grasa y Estilo Dinámico)
    ===================================================================== */
 (function () {
   "use strict";
@@ -185,7 +185,7 @@
       
       const bfPct = parseFloat(p.lastFat) || 0;
       const bfInfo = getBfLevel(bfPct, p.sex);
-      const fatKg = p.weight * (bfPct / 100);
+      const fatKg = ((p.weight * bfPct) / 100).toFixed(1); // Cálculo exacto de los kilos de grasa
 
       let planKcal = get;
       let goalLabel = "Mantenimiento";
@@ -262,6 +262,7 @@
               <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Grasa Corporal</span>
               <span style="font-size: 32px; font-weight: 900; color: ${bfInfo.color}; line-height: 1; text-shadow: 0 0 12px ${bfInfo.color}88;">${bfPct}%</span>
               <span style="font-size: 11px; color: ${bfInfo.color}; display: block; margin-top: 6px; font-weight: bold;">${bfInfo.label}</span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 3px;">${fatKg} kg de grasa</span>
             </div>
             ${iccBlock}
             <div style="background: rgba(255, 176, 32, 0.08); border: 1px solid rgba(255, 176, 32, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
