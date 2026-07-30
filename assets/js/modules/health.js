@@ -823,7 +823,7 @@
   window.NEXUS = window.NEXUS || {};
 
   // =====================================================================
-  // 🧮 FÓRMULAS MATEMÁTICAS
+  // 🧮 1. FÓRMULAS MATEMÁTICAS (Mifflin-St Jeor & US Navy)
   // =====================================================================
   function calculateMetabolism({ gender, weightKg, heightCm, ageYears, activityLevel }) {
     let tmb = (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears);
@@ -850,18 +850,18 @@
     bodyFatPercentage = Math.max(3, Math.min(60, bodyFatPercentage));
     const fatKg = (weightKg * (bodyFatPercentage / 100));
     return { 
-        fatPercentage: parseFloat(bodyFatPercentage.toFixed(1)), 
-        fatKg: parseFloat(fatKg.toFixed(1)), 
-        leanKg: parseFloat((weightKg - fatKg).toFixed(1)) 
+      fatPercentage: parseFloat(bodyFatPercentage.toFixed(1)), 
+      fatKg: parseFloat(fatKg.toFixed(1)), 
+      leanKg: parseFloat((weightKg - fatKg).toFixed(1)) 
     };
   }
 
   // =====================================================================
-  // 🧠 CONTROLADORES DE INTERFAZ (Globales para el onclick)
+  // 🧠 2. FUNCIONES DE INTERFAZ
   // =====================================================================
   window.toggleInstructions = function() {
     const guide = document.getElementById('measure-guide');
-    if(guide) guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
+    if (guide) guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
   };
 
   window.processHealthCalculations = function() {
@@ -881,19 +881,24 @@
       return;
     }
 
+    // 1. Calorías y Grasa
     const cals = calculateMetabolism(data);
     const bodyFat = calculateBodyFat(data);
 
+    // 2. Macros
     const proteinGrams = Math.round(data.weightKg * 2); 
     const fatGrams = Math.round(data.weightKg * 1);
     const carbsGrams = Math.max(0, Math.round((cals.get - (proteinGrams * 4) - (fatGrams * 9)) / 4));
 
+    // 3. Índice Cintura-Cadera
     const icc = (data.waistCm / data.hipCm).toFixed(2);
     let risk = "Riesgo Alto";
     if ((data.gender === 'male' && icc <= 0.90) || (data.gender === 'female' && icc <= 0.85)) risk = "Riesgo Bajo";
 
+    // 4. Agua
     const waterLiters = (data.weightKg * 35 / 1000).toFixed(1);
 
+    // Renderizar resultados en pantalla
     document.getElementById('res-tmb').innerText = `${cals.tmb} kcal`;
     document.getElementById('res-get').innerText = `${cals.get} kcal`;
     if (bodyFat) {
@@ -904,20 +909,21 @@
     document.getElementById('res-icc').innerText = `${icc} (${risk})`;
     document.getElementById('res-water').innerText = `💧 ${waterLiters} Litros al día`;
 
-    if (window.NEXUS && window.NEXUS.Haptic) window.NEXUS.Haptic.success();
+    if (window.NEXUS && window.NEXUS.Audio) window.NEXUS.Audio.play("tap");
     
     document.getElementById('health-results').style.display = 'grid';
   };
 
   // =====================================================================
-  // 🎨 DIBUJAR EN PANTALLA (Render)
+  // 🎨 3. RENDERIZADO (Conectado a app.js)
   // =====================================================================
   function render(container) {
+    if (!container) return;
     container.innerHTML = `
       <div class="health-card" style="padding: 15px; background: #111424; border-radius: 10px; margin-bottom: 20px;">
         <h3 style="color: #00f3ff; margin-top: 0;">🔬 Evaluación Antropométrica Pro</h3>
         
-        <button onclick="toggleInstructions()" class="btn-secondary" style="margin-bottom: 15px; font-size: 14px; background: transparent; border: 1px solid #00f3ff; color: #00f3ff; padding: 5px 10px; border-radius: 5px;">
+        <button onclick="toggleInstructions()" class="btn-secondary" style="margin-bottom: 15px; font-size: 14px; background: transparent; border: 1px solid #00f3ff; color: #00f3ff; padding: 5px 10px; border-radius: 5px; cursor: pointer;">
           📖 ¿Cómo tomarme las medidas?
         </button>
 
@@ -996,6 +1002,6 @@
     `;
   }
 
-  // Exportar al orquestador
+  // Se registra en el objeto global NEXUS para que app.js lo detecte
   window.NEXUS.Health = { render };
 })();
