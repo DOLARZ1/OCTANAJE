@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro & Diagnóstico Antropométrico Completo
+   OCTANAJE · Módulo Salud & Diagnóstico Antropométrico Completo
    ===================================================================== */
 (function () {
   "use strict";
@@ -180,7 +180,6 @@
       const fatG = Math.round((planKcal * 0.25) / 9);
       const carbsG = Math.max(0, Math.round((planKcal - (protG * 4) - (fatG * 9)) / 4));
       
-      // Render condicional del ICC (Solo si hay cadera registrada, ej. mujeres)
       let iccBlock = "";
       if (p.sex === 'F' && p.hip > 0) {
         const icc = (p.waist / p.hip).toFixed(2);
@@ -198,7 +197,6 @@
       
       const waterLiters = (p.weight * 35 / 1000).toFixed(1);
       
-      // Lógica de la Regla de IMC
       const imc = p.weight / ((p.height / 100) * (p.height / 100));
       const cat = getImcClass(imc);
       const minImc = 15, maxImc = 42;
@@ -270,12 +268,6 @@
             </div>
           </div>
 
-          ${p.sex === 'F' ? `
-          <div style="background: rgba(0, 255, 136, 0.05); border-left: 3px solid #00ff88; padding: 12px; margin-bottom: 15px; border-radius: 4px; font-size: 12px; color: #ccc; line-height: 1.5;">
-            <strong>ℹ️ ¿Qué significa el ICC? (Índice Cintura-Cadera):</strong><br>
-            Evalúa dónde almacenas la grasa corporal (riesgo cardiovascular tipo manzana 🍎 vs pera 🍐).
-          </div>` : ''}
-
           <button type="button" onclick="syncWithNutrition(${planKcal}, ${protG}, ${fatG}, ${carbsG})" 
                   style="width: 100%; padding: 14px; background: linear-gradient(135deg, #00f3ff, #0088ff); color: #000; border: none; border-radius: 8px; font-weight: 900; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.2);">
             📥 Aplicar metas de tu plan a Alimentación
@@ -302,7 +294,7 @@
 
         <div id="measure-guide" style="display: none; background: rgba(0,255,255,0.05); border-left: 3px solid #00f3ff; padding: 12px; margin-bottom: 15px; font-size: 12px; color: #ccc; border-radius: 4px; line-height: 1.5;">
           <strong>📍 Cuello:</strong> Por debajo de la nuez de Adán. Cinta horizontal.<br>
-          <strong>📍 Cintura (H):</strong> Altura del ombligo. <strong>(M):</strong> Parte más estrecha del torso.<br>
+          <strong>📍 Cintura (Hombres):</strong> A la altura del ombligo.<br>
           <strong>📍 Cadera (Solo mujeres):</strong> Talones juntos, parte más ancha de los glúteos.<br>
         </div>
         
@@ -488,7 +480,7 @@
     
     container.appendChild(el("div", { class: "view-head" }, [
       el("div", {}, [
-        el("h1", { class: "view-title" }, [N.Icons ? N.Icons.node("heart") : "❤️", "Salud y Avance"]),
+        el("h1", { class: "view-title" }, [N.Icons ? N.Icons.node("heart") : "❤️", "Salud"]),
         el("p", { class: "view-desc", text: "Diagnóstico corporal avanzado, gasto calórico y plan nutricional." })
       ]),
       el("div", { class: "flex gap-8", style: "flex-wrap:wrap" }, [
