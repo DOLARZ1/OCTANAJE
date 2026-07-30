@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud & Diagnóstico Antropométrico Completo
+   OCTANAJE · Módulo Salud Pro & Diagnóstico con Paleta Dinámica
    ===================================================================== */
 (function () {
   "use strict";
@@ -11,6 +11,23 @@
   const today = () => DateUtil.todayKey();
   function dayLabelFor(key) { 
     return DateUtil.parse(key).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }); 
+  }
+
+  // ---------------- LÓGICA DE COLORES Y RANGOS DE GRASA ----------------
+  function getBfLevel(pct, gender) {
+    if (gender === 'M') {
+      if (pct >= 25) return { label: "Obesidad", color: "#ff0055" };
+      if (pct >= 18) return { label: "Promedio", color: "#ffb020" };
+      if (pct >= 14) return { label: "Saludable", color: "#00ff88" };
+      if (pct >= 6)  return { label: "Fitness", color: "#00f3ff" };
+      return { label: "Esencial", color: "#bc84ee" };
+    } else {
+      if (pct >= 32) return { label: "Obesidad", color: "#ff0055" };
+      if (pct >= 25) return { label: "Promedio", color: "#ffb020" };
+      if (pct >= 21) return { label: "Saludable", color: "#00ff88" };
+      if (pct >= 14) return { label: "Fitness", color: "#00f3ff" };
+      return { label: "Esencial", color: "#bc84ee" };
+    }
   }
 
   // ---------------- ESTADO DEL CALENDARIO ----------------
@@ -41,19 +58,24 @@
 
   // ---------------- ESCALAS CLÍNICAS (IMC) ----------------
   const IMC_RANGES = [
-    { max: 18.5, label: "Bajo peso", color: "#00f3ff", desc: "Por debajo del peso ideal." },
-    { max: 25.0, label: "Normal", color: "#00ff88", desc: "Rango saludable." },
-    { max: 30.0, label: "Sobrepeso", color: "#ffb020", desc: "Precaución, riesgo moderado." },
-    { max: 35.0, label: "Obesidad I", color: "#ff5470", desc: "Riesgo alto." },
-    { max: 40.0, label: "Obesidad II", color: "#ff0055", desc: "Riesgo muy alto." },
-    { max: Infinity, label: "Obesidad III", color: "#cc0000", desc: "Riesgo extremo." }
+    { max: 18.5, label: "Bajo peso", color: "#00f3ff" },
+    { max: 25.0, label: "Normal", color: "#00ff88" },
+    { max: 30.0, label: "Sobrepeso", color: "#ffb020" },
+    { max: 35.0, label: "Obesidad I", color: "#ff5470" },
+    { max: 40.0, label: "Obesidad II", color: "#ff0055" },
+    { max: Infinity, label: "Obesidad III", color: "#cc0000" }
   ];
   function getImcClass(imc) { return IMC_RANGES.find((r) => imc < r.max) || IMC_RANGES[IMC_RANGES.length - 1]; }
 
-  // ---------------- MOSTRAR / OCULTAR INSTRUCCIONES Y CAMBIO DE GÉNERO ----------------
+  // ---------------- INTERFACES DE AYUDA ----------------
   window.toggleInstructions = function() {
     const guide = document.getElementById('measure-guide');
     if (guide) guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window.toggleBfTable = function() {
+    const table = document.getElementById('bf-ranges-table');
+    if (table) table.style.display = table.style.display === 'none' ? 'block' : 'none';
   };
 
   window.handleGenderChange = function() {
@@ -82,9 +104,6 @@
 
     if (!p.weight || !p.height || !p.age || !p.neck || !p.waist) {
       if (Audio) Audio.play("error"); toast({ icon: "⚠️", msg: "Completa peso, estatura, edad, cuello y cintura." }); return;
-    }
-    if (p.sex === 'F' && !p.hip) {
-      if (Audio) Audio.play("error"); toast({ icon: "⚠️", msg: "Mujeres requieren la medida de cadera." }); return;
     }
 
     let tmb = (10 * p.weight) + (6.25 * p.height) - (5 * p.age);
@@ -122,7 +141,7 @@
 
     if (Audio) Audio.play("levelup");
     if (Gami) Gami.award(5, "Diagnóstico Pro Guardado 🔬");
-    toast({ icon: "💾", title: "Diagnóstico Guardado", msg: "Revisa tu plan y métricas gráficas." });
+    toast({ icon: "💾", title: "Diagnóstico Guardado", msg: "Los colores de tu avance se han actualizado." });
 
     render(document.getElementById('view-health'), true);
   };
@@ -161,6 +180,7 @@
       const get = tmb * (actFactors[p.activity] || 1.2);
       
       const bfPct = parseFloat(p.lastFat) || 0;
+      const bfInfo = getBfLevel(bfPct, p.sex);
       const fatKg = p.weight * (bfPct / 100);
 
       let planKcal = get;
@@ -196,7 +216,6 @@
       }
       
       const waterLiters = (p.weight * 35 / 1000).toFixed(1);
-      
       const imc = p.weight / ((p.height / 100) * (p.height / 100));
       const cat = getImcClass(imc);
       const minImc = 15, maxImc = 42;
@@ -206,13 +225,38 @@
       displayStyle = "block";
       resultsHTML = `
         <div style="border-top: 1px dashed rgba(0,243,255,0.3); margin-top: 20px; padding-top: 20px;">
-          <h4 style="color: #00f3ff; margin: 0 0 15px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">📊 Resultados y Plan Pro</h4>
+          
+          <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 18px;">
+            <h4 style="color: #00f3ff; margin: 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">📊 Resultados y Plan Pro</h4>
+            <button type="button" onclick="toggleBfTable()" style="font-size: 11px; background: rgba(0,243,255,0.1); border: 1px solid #00f3ff; color: #00f3ff; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+              📈 Ver Niveles
+            </button>
+          </div>
+
+          <div id="bf-ranges-table" style="display: none; background: #1a1f35; border: 1px solid #2a314d; border-radius: 10px; padding: 12px; margin-bottom: 18px; font-size: 12px; color: #ccc; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+            <table style="width: 100%; border-collapse: collapse; text-align: center;">
+              <thead>
+                <tr style="border-bottom: 1px solid #333; color: #00f3ff;">
+                  <th style="padding: 5px;">Categoría</th>
+                  <th style="padding: 5px;">Hombres</th>
+                  <th style="padding: 5px;">Mujeres</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Grasa Esencial</td><td>2-5%</td><td>10-13%</td></tr>
+                <tr style="color: #00f3ff;"><td>Atletas</td><td>6-13%</td><td>14-20%</td></tr>
+                <tr style="color: #00ff88;"><td>Fitness / Óptimo</td><td>14-17%</td><td>21-24%</td></tr>
+                <tr style="color: #ffb020;"><td>Promedio</td><td>18-24%</td><td>25-31%</td></tr>
+                <tr style="color: #ff0055;"><td>Obesidad</td><td>25%+</td><td>32%+</td></tr>
+              </tbody>
+            </table>
+          </div>
 
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 15px;">
-            <div style="background: rgba(255, 0, 85, 0.08); border: 1px solid rgba(255, 0, 85, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid ${bfInfo.color}; border-radius: 12px; padding: 14px; text-align: center;">
               <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Grasa Corporal</span>
-              <span style="font-size: 32px; font-weight: 800; color: #ff0055; line-height: 1;">${bfPct}%</span>
-              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">${fatKg.toFixed(1)} kg de grasa</span>
+              <span style="font-size: 32px; font-weight: 900; color: ${bfInfo.color}; line-height: 1; text-shadow: 0 0 10px ${bfInfo.color}66;">${bfPct}%</span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Nivel: ${bfInfo.label}</span>
             </div>
             ${iccBlock}
             <div style="background: rgba(255, 176, 32, 0.08); border: 1px solid rgba(255, 176, 32, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
@@ -227,24 +271,24 @@
             </div>
           </div>
 
-          <div style="background: #15192b; border-radius: 14px; padding: 18px; margin-bottom: 15px; border: 1px solid rgba(0, 243, 255, 0.3); box-shadow: inset 0 0 15px rgba(0,243,255,0.05);">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a314d; padding-bottom: 12px; margin-bottom: 14px;">
-              <span style="font-size: 13px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px;">Gasto Total (GET Mantenimiento):</span>
-              <strong style="color: #ffb020; font-size: 20px; font-weight: 900; text-shadow: 0 0 10px rgba(255,176,32,0.4);">${Math.round(get)} kcal</strong>
+          <div style="background: #15192b; border-radius: 14px; padding: 20px; margin-bottom: 15px; border: 2px solid rgba(0, 243, 255, 0.25); box-shadow: inset 0 0 20px rgba(0,243,255,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a314d; padding-bottom: 14px; margin-bottom: 16px;">
+              <span style="font-size: 14px; color: #aaa; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Gasto Total (Mantenimiento):</span>
+              <strong style="color: #ffb020; font-size: 22px; font-weight: 900; text-shadow: 0 0 10px rgba(255,176,32,0.4);">${Math.round(get)} kcal</strong>
             </div>
             
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
-              <div style="background: rgba(0, 243, 255, 0.05); border: 1px solid rgba(0, 243, 255, 0.2); border-radius: 10px; padding: 12px 6px;">
-                <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">🥩 Proteína</span>
-                <span style="font-size: 26px; font-weight: 900; color: #00f3ff; text-shadow: 0 0 10px rgba(0,243,255,0.5);">${protG}<span style="font-size: 14px;">g</span></span>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
+              <div style="background: rgba(0, 243, 255, 0.06); border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 10px; padding: 14px 8px;">
+                <span style="font-size: 12px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 5px;">🥩 Proteína</span>
+                <span style="font-size: 28px; font-weight: 900; color: #00f3ff; text-shadow: 0 0 12px rgba(0,243,255,0.5);">${protG}<span style="font-size: 16px;">g</span></span>
               </div>
-              <div style="background: rgba(255, 176, 32, 0.05); border: 1px solid rgba(255, 176, 32, 0.2); border-radius: 10px; padding: 12px 6px;">
-                <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">🥑 Grasas</span>
-                <span style="font-size: 26px; font-weight: 900; color: #ffb020; text-shadow: 0 0 10px rgba(255,176,32,0.5);">${fatG}<span style="font-size: 14px;">g</span></span>
+              <div style="background: rgba(255, 176, 32, 0.06); border: 1px solid rgba(255, 176, 32, 0.3); border-radius: 10px; padding: 14px 8px;">
+                <span style="font-size: 12px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 5px;">🥑 Grasas</span>
+                <span style="font-size: 28px; font-weight: 900; color: #ffb020; text-shadow: 0 0 12px rgba(255,176,32,0.5);">${fatG}<span style="font-size: 16px;">g</span></span>
               </div>
-              <div style="background: rgba(0, 255, 136, 0.05); border: 1px solid rgba(0, 255, 136, 0.2); border-radius: 10px; padding: 12px 6px;">
-                <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">🍚 Carbos</span>
-                <span style="font-size: 26px; font-weight: 900; color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.5);">${carbsG}<span style="font-size: 14px;">g</span></span>
+              <div style="background: rgba(0, 255, 136, 0.06); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 10px; padding: 14px 8px;">
+                <span style="font-size: 12px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 5px;">🍚 Carbos</span>
+                <span style="font-size: 28px; font-weight: 900; color: #00ff88; text-shadow: 0 0 12px rgba(0,255,136,0.5);">${carbsG}<span style="font-size: 16px;">g</span></span>
               </div>
             </div>
           </div>
@@ -254,22 +298,16 @@
               <span style="font-size: 13px; color: #ccc; font-weight: bold;">Tu Índice de Masa Corporal (IMC)</span>
               <span style="font-size: 20px; font-weight: 900; color: ${cat.color};">${imc.toFixed(1)} <span style="font-size: 11px; font-weight: normal; color: #888;">(${cat.label})</span></span>
             </div>
-            
             <div style="position: relative; height: 12px; border-radius: 6px; background: ${gradient}; margin-bottom: 8px;">
               <div style="position: absolute; top: -14px; left: ${pctImc}%; transform: translateX(-50%); color: #fff; font-size: 14px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">▼</div>
             </div>
-            
             <div style="display: flex; justify-content: space-between; font-size: 10px; color: #777;">
-              <span>15.0</span>
-              <span>18.5 (Normal)</span>
-              <span>25.0 (Sobrepeso)</span>
-              <span>30.0 (Obesidad)</span>
-              <span>42.0+</span>
+              <span>15.0</span><span>18.5 (Normal)</span><span>25.0 (Sobrepeso)</span><span>30.0 (Obesidad)</span><span>42.0+</span>
             </div>
           </div>
 
           <button type="button" onclick="syncWithNutrition(${planKcal}, ${protG}, ${fatG}, ${carbsG})" 
-                  style="width: 100%; padding: 14px; background: linear-gradient(135deg, #00f3ff, #0088ff); color: #000; border: none; border-radius: 8px; font-weight: 900; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.2);">
+                  style="width: 100%; padding: 15px; background: linear-gradient(135deg, #00f3ff, #0088ff); color: #000; border: none; border-radius: 8px; font-weight: 900; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.25);">
             📥 Aplicar metas de tu plan a Alimentación
           </button>
         </div>
@@ -282,98 +320,44 @@
     div.id = "pro-calc-card"; 
     div.innerHTML = `
       <div class="card mb-16" style="padding: 16px; border-radius: 12px; border: 1px solid #00f3ff; background: #111424; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
-        
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <h3 style="color: #00f3ff; margin: 0; font-size: 16px; display: flex; align-items: center; gap: 6px;">
-            🔬 Evaluación Antropométrica Pro
-          </h3>
-          <button type="button" onclick="toggleInstructions()" class="btn-secondary" style="font-size: 12px; background: transparent; border: 1px solid #00f3ff; color: #00f3ff; padding: 4px 8px; border-radius: 5px; cursor: pointer;">
-            📖 ¿Cómo medirse?
-          </button>
+          <h3 style="color: #00f3ff; margin: 0; font-size: 16px; display: flex; align-items: center; gap: 6px;">🔬 Evaluación Antropométrica Pro</h3>
+          <button type="button" onclick="toggleInstructions()" class="btn-secondary" style="font-size: 12px; background: transparent; border: 1px solid #00f3ff; color: #00f3ff; padding: 4px 8px; border-radius: 5px;">📖 ¿Cómo medirme?</button>
         </div>
 
         <div id="measure-guide" style="display: none; background: rgba(0,255,255,0.05); border-left: 3px solid #00f3ff; padding: 12px; margin-bottom: 15px; font-size: 12px; color: #ccc; border-radius: 4px; line-height: 1.5;">
           <strong>📍 Cuello:</strong> Por debajo de la nuez de Adán. Cinta horizontal.<br>
-          <strong>📍 Cintura (Hombres):</strong> A la altura del ombligo.<br>
-          <strong>📍 Cadera (Solo mujeres):</strong> Talones juntos, parte más ancha de los glúteos.<br>
+          <strong>📍 Cintura (H):</strong> A la altura del ombligo. <strong>(M):</strong> Parte más estrecha.<br>
+          <strong>📍 Cadera (Solo mujeres):</strong> Talones juntos, parte más ancha de glúteos.
         </div>
         
         <div class="grid cols-2 gap-8 mb-16">
-          <label class="fs-12 text-faint" style="grid-column: span 2;">Tu Nombre: 
-            <input class="input mt-4" type="text" id="calc-name" placeholder="Ej. Juan Pérez" value="${p.name || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
-          </label>
-          <label class="fs-12 text-faint">Sexo: 
-            <select class="input mt-4" id="calc-gender" onchange="handleGenderChange()" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
-              <option value="male" ${selM}>Hombre</option>
-              <option value="female" ${selF}>Mujer</option>
-            </select>
-          </label>
-          <label class="fs-12 text-faint">Edad (años): 
-            <input class="input mt-4" type="number" id="calc-age" placeholder="25" value="${p.age || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
-          </label>
-          <label class="fs-12 text-faint">Peso (kg): 
-            <input class="input mt-4" type="number" id="calc-weight" step="0.1" placeholder="75.5" value="${p.weight || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
-          </label>
-          <label class="fs-12 text-faint">Altura (cm): 
-            <input class="input mt-4" type="number" id="calc-height" placeholder="175" value="${p.height || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
-          </label>
-          <label class="fs-12 text-faint">Cuello (cm): 
-            <input class="input mt-4" type="number" id="calc-neck" step="0.5" placeholder="38" value="${p.neck || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
-          </label>
-          <label class="fs-12 text-faint">Cintura (cm): 
-            <input class="input mt-4" type="number" id="calc-waist" step="0.5" placeholder="85" value="${p.waist || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
-          </label>
-          
-          <div id="calc-hip-container" style="grid-column: span 2; display: ${hipDisplay};">
-            <label class="fs-12 text-faint" style="width:100%; display:block;">Cadera (cm): 
-              <input class="input mt-4" type="number" id="calc-hip" step="0.5" placeholder="95" value="${p.hip || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
-            </label>
-          </div>
-          
-          <label class="fs-12 text-faint" style="grid-column: span 2; border-top: 1px solid #333; padding-top: 15px; margin-top: 5px;">Nivel de Actividad Física: 
-            <select class="input mt-4" id="calc-activity" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
-              <option value="sedentary" ${act('sedentary')}>Sedentario (Sin ejercicio)</option>
-              <option value="light" ${act('light')}>Ligero (1-3 días/semana)</option>
-              <option value="moderate" ${act('moderate')}>Moderado (3-5 días/semana)</option>
-              <option value="active" ${act('active')}>Activo (6-7 días/semana)</option>
-              <option value="very_active" ${act('very_active')}>Atleta / Trabajo muy físico</option>
-            </select>
-          </label>
-          <label class="fs-12 text-faint">🎯 Objetivo: 
-            <select class="input mt-4" id="calc-goal" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
-              <option value="lose" ${gl('lose')}>📉 Bajar Grasa</option>
-              <option value="maintain" ${gl('maintain')}>⚖️ Mantener</option>
-              <option value="gain" ${gl('gain')}>📈 Subir Músculo</option>
-            </select>
-          </label>
-          <label class="fs-12 text-faint">Ritmo: 
-            <select class="input mt-4" id="calc-pace" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
-              <option value="slow" ${pc('slow')}>Lento (Sano)</option>
-              <option value="moderate" ${pc('moderate')}>Moderado (Ideal)</option>
-              <option value="aggressive" ${pc('aggressive')}>Agresivo (Rápido)</option>
-            </select>
-          </label>
+          <label class="fs-12 text-faint" style="grid-column: span 2;">Tu Nombre: <input class="input mt-4" type="text" id="calc-name" value="${p.name || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
+          <label class="fs-12 text-faint">Sexo: <select class="input mt-4" id="calc-gender" onchange="handleGenderChange()" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;"><option value="male" ${selM}>Hombre</option><option value="female" ${selF}>Mujer</option></select></label>
+          <label class="fs-12 text-faint">Edad: <input class="input mt-4" type="number" id="calc-age" value="${p.age || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
+          <label class="fs-12 text-faint">Peso (kg): <input class="input mt-4" type="number" id="calc-weight" step="0.1" value="${p.weight || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
+          <label class="fs-12 text-faint">Altura (cm): <input class="input mt-4" type="number" id="calc-height" value="${p.height || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
+          <label class="fs-12 text-faint">Cuello (cm): <input class="input mt-4" type="number" id="calc-neck" value="${p.neck || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
+          <label class="fs-12 text-faint">Cintura (cm): <input class="input mt-4" type="number" id="calc-waist" value="${p.waist || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
+          <div id="calc-hip-container" style="grid-column: span 2; display: ${hipDisplay};"><label class="fs-12 text-faint" style="width:100%; display:block;">Cadera (cm): <input class="input mt-4" type="number" id="calc-hip" step="0.5" value="${p.hip || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label></div>
+          <label class="fs-12 text-faint" style="grid-column: span 2; border-top: 1px solid #333; padding-top: 15px;">Actividad: <select class="input mt-4" id="calc-activity" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;"><option value="sedentary" ${act('sedentary')}>Sedentario</option><option value="light" ${act('light')}>Ligero</option><option value="moderate" ${act('moderate')}>Moderado</option><option value="active" ${act('active')}>Activo</option><option value="very_active" ${act('very_active')}>Atleta</option></select></label>
+          <label class="fs-12 text-faint">🎯 Objetivo: <select class="input mt-4" id="calc-goal" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;"><option value="lose" ${gl('lose')}>📉 Bajar Grasa</option><option value="maintain" ${gl('maintain')}>⚖️ Mantener</option><option value="gain" ${gl('gain')}>📈 Subir Músculo</option></select></label>
+          <label class="fs-12 text-faint">Ritmo: <select class="input mt-4" id="calc-pace" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;"><option value="slow" ${pc('slow')}>Lento</option><option value="moderate" ${pc('moderate')}>Ideal</option><option value="aggressive" ${pc('aggressive')}>Rápido</option></select></label>
         </div>
 
-        <button type="button" onclick="processHealthCalculations()" class="btn primary block mb-16" 
-                style="width: 100%; padding: 12px; background: #00f3ff; color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;">
-          💾 Calcular y Guardar Diagnóstico
-        </button>
+        <button type="button" onclick="processHealthCalculations()" class="btn primary block mb-16" style="width: 100%; padding: 12px; background: #00f3ff; color: #000; font-weight: bold; border: none; border-radius: 6px;">💾 Calcular y Guardar Diagnóstico</button>
 
-        <div id="health-results" style="display:${displayStyle};">
-          ${resultsHTML}
-        </div>
+        <div id="health-results" style="display:${displayStyle};">${resultsHTML}</div>
 
         <div style="margin-top: 20px; padding: 10px 12px; background: rgba(255, 255, 255, 0.03); border-radius: 6px; border-left: 2px solid #888; font-size: 11px; color: #888; line-height: 1.4;">
-          ⚠️ <strong>Aviso Informativo:</strong> Los cálculos aquí mostrados son estimaciones basadas en fórmulas deportivas estándar (Mifflin-St Jeor / Marina de EE.UU.) para uso personal y educativo. No sustituyen un diagnóstico clínico o consejo médico.
+          ⚠️ <strong>Aviso Informativo:</strong> Los cálculos aquí mostrados son estimaciones basadas en fórmulas deportivas estándar. No sustituyen un diagnóstico médico.
         </div>
-
       </div>
     `;
     return div.firstElementChild;
   }
 
-  // ---------------- HISTORIAL Y CALENDARIO ----------------
+  // ---------------- UI ORIGINAL: HISTORIAL Y CALENDARIO ----------------
   function historyRow(h) {
     const dLbl = dayLabelFor(h.date);
     return el("div", { class: "item" }, [
@@ -381,7 +365,7 @@
         el("div", { class: "item-title", text: dLbl }),
         el("div", { class: "item-meta" }, [
           el("span", { class: "chip", text: h.weight + " kg" }),
-          h.fatPct ? el("span", { class: "chip bad", text: "Grasa: " + h.fatPct + "%" }) : null,
+          h.fatPct ? el("span", { class: "chip", style: `background:${getBfLevel(parseFloat(h.fatPct), h.sex).color};color:#000;font-weight:bold`, text: "Grasa: " + h.fatPct + "%" }) : null,
           el("span", { class: "text-faint fs-12", text: "GET: " + (h.get || 0) + " kcal" })
         ])
       ]),
@@ -428,13 +412,11 @@
     for (let d = 1; d <= daysInMonth; d++) {
       const key = DateUtil.key(new Date(y, mo, d));
       let cls = "cal-day";
-      const label = DateUtil.parse(key).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" });
-      let tip = label;
       if (key > todayKey) cls += " future";
-      else if (history().some(h => h.date === key)) { cls += " done"; tip += " · con revisión"; }
-      else { cls += " miss"; tip += " · sin revisión"; }
+      else if (history().some(h => h.date === key)) { cls += " done"; }
+      else { cls += " miss"; }
       if (key === todayKey) cls += " today";
-      grid.appendChild(el("div", { class: cls + " clickable", title: tip, text: String(d), onclick: () => openDayDetail(key) }));
+      grid.appendChild(el("div", { class: cls + " clickable", text: String(d), onclick: () => openDayDetail(key) }));
     }
     
     const navHeader = el("div", { style: "display:flex; justify-content:space-between; align-items:center; width:100%; font-size:14px; color:#fff;" }, [
@@ -444,9 +426,7 @@
     ]);
 
     return el("div", { class: "card mb-16" }, [
-      el("div", { class: "card-head", style: "border-bottom: 1px solid var(--border); padding-bottom:10px; margin-bottom:15px;" }, [
-        navHeader
-      ]),
+      el("div", { class: "card-head", style: "border-bottom: 1px solid var(--border); padding-bottom:10px; margin-bottom:15px;" }, [navHeader]),
       grid
     ]);
   }
@@ -462,38 +442,26 @@
         labels: series.map((w) => DateUtil.parse(w.date).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }))
       }, { color: "--accent", height: 170 });
     }, 30);
-
     return el("div", { class: "card mb-16" }, [
-      el("div", { class: "card-head" }, [ el("div", { class: "card-title" }, [el("span", { class: "dot" }), "⚖️ Tendencia de Peso (Global)"]) ]),
-      el("div", { class: "fs-12 text-faint mb-8", text: "Últimos " + series.length + " registros diarios en la app" }),
+      el("div", { class: "card-head" }, [ el("div", { class: "card-title" }, [el("span", { class: "dot" }), "⚖️ Tendencia de Peso"]) ]),
       chartWrap
     ]);
   }
 
-  // ---------------- RENDER PRINCIPAL ----------------
   function render(container, forceRender = false) {
     if (!container) return;
-    
     if (!forceRender && container.querySelector('#pro-calc-card')) return;
-
     container.innerHTML = "";
-    
     container.appendChild(el("div", { class: "view-head" }, [
       el("div", {}, [
         el("h1", { class: "view-title" }, [N.Icons ? N.Icons.node("heart") : "❤️", "Salud"]),
-        el("p", { class: "view-desc", text: "Diagnóstico corporal avanzado, gasto calórico y plan nutricional." })
+        el("p", { class: "view-desc", text: "Diagnóstico corporal, gasto calórico y plan de nutrición." })
       ]),
-      el("div", { class: "flex gap-8", style: "flex-wrap:wrap" }, [
-        el("button", { class: "btn", onclick: openHistory, html: "📖 Ver Historial" })
-      ])
+      el("div", { class: "flex gap-8", style: "flex-wrap:wrap" }, [el("button", { class: "btn", onclick: openHistory, html: "📖 Ver Historial" })])
     ]));
-
     container.appendChild(proCalculatorCard());
     container.appendChild(buildCalendar());
-
-    if (weightsSorted().length > 0) {
-      container.appendChild(weightCard());
-    }
+    if (weightsSorted().length > 0) container.appendChild(weightCard());
   }
 
   N.Health = { render };
