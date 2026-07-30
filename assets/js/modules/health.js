@@ -32,6 +32,7 @@
     const pr = health().profile || {}; 
     if (!pr.goal) pr.goal = "maintain";
     if (!pr.pace) pr.pace = "moderate";
+    if (!pr.sex) pr.sex = "male";
     return pr; 
   }
   function history() { return health().history || []; }
@@ -49,10 +50,18 @@
   ];
   function getImcClass(imc) { return IMC_RANGES.find((r) => imc < r.max) || IMC_RANGES[IMC_RANGES.length - 1]; }
 
-  // ---------------- MOSTRAR / OCULTAR INSTRUCCIONES ----------------
+  // ---------------- MOSTRAR / OCULTAR INSTRUCCIONES Y CAMBIO DE GÉNERO ----------------
   window.toggleInstructions = function() {
     const guide = document.getElementById('measure-guide');
     if (guide) guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window.handleGenderChange = function() {
+    const genderSelect = document.getElementById('calc-gender');
+    const hipContainer = document.getElementById('calc-hip-container');
+    if (genderSelect && hipContainer) {
+      hipContainer.style.display = genderSelect.value === 'female' ? 'block' : 'none';
+    }
   };
 
   // ---------------- PROCESAR DIAGNÓSTICO Y GUARDAR ----------------
@@ -66,7 +75,7 @@
     p.height = parseFloat(document.getElementById('calc-height').value) || 0;
     p.neck = parseFloat(document.getElementById('calc-neck').value) || 0;
     p.waist = parseFloat(document.getElementById('calc-waist').value) || 0;
-    p.hip = parseFloat(document.getElementById('calc-hip').value) || 0;
+    p.hip = p.sex === 'F' ? (parseFloat(document.getElementById('calc-hip').value) || 0) : 0;
     p.activity = document.getElementById('calc-activity').value;
     p.goal = document.getElementById('calc-goal').value;
     p.pace = document.getElementById('calc-pace').value;
@@ -94,7 +103,7 @@
     bf = Math.max(3, Math.min(60, bf));
     p.lastFat = bf.toFixed(1);
 
-    const icc = p.hip > 0 ? (p.waist / p.hip).toFixed(2) : "0.00";
+    const icc = p.hip > 0 ? (p.waist / p.hip).toFixed(2) : null;
     const imc = p.weight / ((p.height / 100) * (p.height / 100));
 
     const entry = {
@@ -153,7 +162,6 @@
       
       const bfPct = parseFloat(p.lastFat) || 0;
       const fatKg = p.weight * (bfPct / 100);
-      const leanKg = p.weight - fatKg;
 
       let planKcal = get;
       let goalLabel = "Mantenimiento";
@@ -172,9 +180,21 @@
       const fatG = Math.round((planKcal * 0.25) / 9);
       const carbsG = Math.max(0, Math.round((planKcal - (protG * 4) - (fatG * 9)) / 4));
       
-      const icc = p.hip > 0 ? (p.waist / p.hip).toFixed(2) : "0.00";
-      let riskLabel = "Bajo"; let riskColor = "#00ff88";
-      if ((p.sex === 'M' && icc > 0.90) || (p.sex === 'F' && icc > 0.85)) { riskLabel = "Elevado"; riskColor = "#ff0055"; }
+      // Render condicional del ICC (Solo si hay cadera registrada, ej. mujeres)
+      let iccBlock = "";
+      if (p.sex === 'F' && p.hip > 0) {
+        const icc = (p.waist / p.hip).toFixed(2);
+        let riskLabel = "Bajo"; let riskColor = "#00ff88";
+        if (icc > 0.85) { riskLabel = "Elevado"; riskColor = "#ff0055"; }
+        
+        iccBlock = `
+          <div style="background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
+            <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Índice (ICC)</span>
+            <span style="font-size: 32px; font-weight: 800; color: ${riskColor}; line-height: 1;">${icc}</span>
+            <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Riesgo: ${riskLabel}</span>
+          </div>
+        `;
+      }
       
       const waterLiters = (p.weight * 35 / 1000).toFixed(1);
       
@@ -196,11 +216,7 @@
               <span style="font-size: 32px; font-weight: 800; color: #ff0055; line-height: 1;">${bfPct}%</span>
               <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">${fatKg.toFixed(1)} kg de grasa</span>
             </div>
-            <div style="background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
-              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Índice (ICC)</span>
-              <span style="font-size: 32px; font-weight: 800; color: ${riskColor}; line-height: 1;">${icc}</span>
-              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Riesgo: ${riskLabel}</span>
-            </div>
+            ${iccBlock}
             <div style="background: rgba(255, 176, 32, 0.08); border: 1px solid rgba(255, 176, 32, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
               <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">${goalLabel}</span>
               <span style="font-size: 32px; font-weight: 800; color: #ffb020; line-height: 1;">${Math.round(planKcal)}</span>
@@ -254,10 +270,11 @@
             </div>
           </div>
 
+          ${p.sex === 'F' ? `
           <div style="background: rgba(0, 255, 136, 0.05); border-left: 3px solid #00ff88; padding: 12px; margin-bottom: 15px; border-radius: 4px; font-size: 12px; color: #ccc; line-height: 1.5;">
             <strong>ℹ️ ¿Qué significa el ICC? (Índice Cintura-Cadera):</strong><br>
-            Es un indicador de salud cardiovascular. Evalúa dónde almacenas la grasa. Si tu grasa se acumula en el abdomen 🍎 (cuerpo de manzana / riesgo elevado), es más peligrosa para el corazón que si se almacena en las caderas y muslos 🍐 (cuerpo de pera / riesgo bajo).
-          </div>
+            Evalúa dónde almacenas la grasa corporal (riesgo cardiovascular tipo manzana 🍎 vs pera 🍐).
+          </div>` : ''}
 
           <button type="button" onclick="syncWithNutrition(${planKcal}, ${protG}, ${fatG}, ${carbsG})" 
                   style="width: 100%; padding: 14px; background: linear-gradient(135deg, #00f3ff, #0088ff); color: #000; border: none; border-radius: 8px; font-weight: 900; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.2);">
@@ -266,6 +283,8 @@
         </div>
       `;
     }
+
+    const hipDisplay = p.sex === 'female' ? 'block' : 'none';
 
     const div = document.createElement('div');
     div.id = "pro-calc-card"; 
@@ -284,7 +303,7 @@
         <div id="measure-guide" style="display: none; background: rgba(0,255,255,0.05); border-left: 3px solid #00f3ff; padding: 12px; margin-bottom: 15px; font-size: 12px; color: #ccc; border-radius: 4px; line-height: 1.5;">
           <strong>📍 Cuello:</strong> Por debajo de la nuez de Adán. Cinta horizontal.<br>
           <strong>📍 Cintura (H):</strong> Altura del ombligo. <strong>(M):</strong> Parte más estrecha del torso.<br>
-          <strong>📍 Cadera:</strong> Talones juntos, parte más ancha de los glúteos.<br>
+          <strong>📍 Cadera (Solo mujeres):</strong> Talones juntos, parte más ancha de los glúteos.<br>
         </div>
         
         <div class="grid cols-2 gap-8 mb-16">
@@ -292,7 +311,10 @@
             <input class="input mt-4" type="text" id="calc-name" placeholder="Ej. Juan Pérez" value="${p.name || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
           </label>
           <label class="fs-12 text-faint">Sexo: 
-            <select class="input mt-4" id="calc-gender" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;"><option value="male" ${selM}>Hombre</option><option value="female" ${selF}>Mujer</option></select>
+            <select class="input mt-4" id="calc-gender" onchange="handleGenderChange()" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
+              <option value="male" ${selM}>Hombre</option>
+              <option value="female" ${selF}>Mujer</option>
+            </select>
           </label>
           <label class="fs-12 text-faint">Edad (años): 
             <input class="input mt-4" type="number" id="calc-age" placeholder="25" value="${p.age || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
@@ -309,9 +331,12 @@
           <label class="fs-12 text-faint">Cintura (cm): 
             <input class="input mt-4" type="number" id="calc-waist" step="0.5" placeholder="85" value="${p.waist || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
           </label>
-          <label class="fs-12 text-faint" style="grid-column: span 2;">Cadera (cm) <span style="font-size:10px; color:#ff0055;">(Obligatorio en Mujeres)</span>: 
-            <input class="input mt-4" type="number" id="calc-hip" step="0.5" placeholder="95" value="${p.hip || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
-          </label>
+          
+          <div id="calc-hip-container" style="grid-column: span 2; display: ${hipDisplay};">
+            <label class="fs-12 text-faint" style="width:100%; display:block;">Cadera (cm): 
+              <input class="input mt-4" type="number" id="calc-hip" step="0.5" placeholder="95" value="${p.hip || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
+            </label>
+          </div>
           
           <label class="fs-12 text-faint" style="grid-column: span 2; border-top: 1px solid #333; padding-top: 15px; margin-top: 5px;">Nivel de Actividad Física: 
             <select class="input mt-4" id="calc-activity" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
@@ -348,7 +373,7 @@
         </div>
 
         <div style="margin-top: 20px; padding: 10px 12px; background: rgba(255, 255, 255, 0.03); border-radius: 6px; border-left: 2px solid #888; font-size: 11px; color: #888; line-height: 1.4;">
-          ⚠️ <strong>Aviso Informativo:</strong> Los cálculos aquí mostrados son estimaciones basadas en fórmulas deportivas estándar (Mifflin-St Jeor / Marina de EE.UU.) para uso personal y educativo. No sustituyen un diagnóstico clínico, plan nutricional o consejo médico. Consulta siempre a un especialista de la salud.
+          ⚠️ <strong>Aviso Informativo:</strong> Los cálculos aquí mostrados son estimaciones basadas en fórmulas deportivas estándar (Mifflin-St Jeor / Marina de EE.UU.) para uso personal y educativo. No sustituyen un diagnóstico clínico o consejo médico.
         </div>
 
       </div>
@@ -356,7 +381,7 @@
     return div.firstElementChild;
   }
 
-  // ---------------- UI ORIGINAL: HISTORIAL Y CALENDARIO ----------------
+  // ---------------- HISTORIAL Y CALENDARIO ----------------
   function historyRow(h) {
     const dLbl = dayLabelFor(h.date);
     return el("div", { class: "item" }, [
