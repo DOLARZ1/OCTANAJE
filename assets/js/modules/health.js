@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro & Diagnóstico Antropométrico
+   OCTANAJE · Módulo Salud Pro & Diagnóstico Antropométrico Completo
    ===================================================================== */
 (function () {
   "use strict";
@@ -14,20 +14,17 @@
   }
 
   // ---------------- BASE DE DATOS Y PERFIL ----------------
-  const ACTIVITY = [
-    { value: "sedentary", label: "Sedentario (Sin ejercicio)" },
-    { value: "light", label: "Ligero (1-3 días/sem)" },
-    { value: "moderate", label: "Moderado (3-5 días/sem)" },
-    { value: "active", label: "Activo (6-7 días/sem)" },
-    { value: "very_active", label: "Atleta / Trabajo Físico" }
-  ];
-  
   function health() {
     const s = Store.get();
     if (!s.health) s.health = { profile: {}, history: [], weights: [] };
     return s.health;
   }
-  function profile() { return health().profile || {}; }
+  function profile() { 
+    const pr = health().profile || {}; 
+    if (!pr.goal) pr.goal = "maintain";
+    if (!pr.pace) pr.pace = "moderate";
+    return pr; 
+  }
   function history() { return health().history || []; }
   function weights() { return health().weights || []; }
   function weightsSorted() { return weights().slice().sort((a, b) => a.date.localeCompare(b.date)); }
@@ -43,6 +40,7 @@
     const p = profile();
     
     // 1. Extraer entradas del formulario
+    p.name = document.getElementById('calc-name').value || "Usuario";
     p.sex = document.getElementById('calc-gender').value === 'male' ? 'M' : 'F';
     p.age = parseFloat(document.getElementById('calc-age').value) || 0;
     p.weight = parseFloat(document.getElementById('calc-weight').value) || 0;
@@ -51,6 +49,8 @@
     p.waist = parseFloat(document.getElementById('calc-waist').value) || 0;
     p.hip = parseFloat(document.getElementById('calc-hip').value) || 0;
     p.activity = document.getElementById('calc-activity').value;
+    p.goal = document.getElementById('calc-goal').value;
+    p.pace = document.getElementById('calc-pace').value;
 
     // Validación
     if (!p.weight || !p.height || !p.age || !p.neck || !p.waist) {
@@ -65,13 +65,13 @@
     }
 
     // 2. Cálculos Nutricionales y Antropométricos
-    // Mifflin-St Jeor
+    // TMB (Mifflin-St Jeor)
     let tmb = (10 * p.weight) + (6.25 * p.height) - (5 * p.age);
     tmb = p.sex === 'F' ? tmb - 161 : tmb + 5;
     const actFactors = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
     const get = tmb * (actFactors[p.activity] || 1.2);
 
-    // US Navy Body Fat %
+    // Grasa US Navy
     let bf = 0;
     if (p.sex === 'M') {
       const diff = p.waist - p.neck;
@@ -81,16 +81,15 @@
       if (sum > 0) bf = (495 / (1.29579 - (0.35004 * Math.log10(sum)) + (0.22100 * Math.log10(p.height)))) - 450;
     }
     bf = Math.max(3, Math.min(60, bf));
+    p.lastFat = bf.toFixed(1);
 
     const icc = p.hip > 0 ? (p.waist / p.hip).toFixed(2) : "0.00";
     const imc = p.weight / ((p.height / 100) * (p.height / 100));
 
-    p.lastFat = bf.toFixed(1);
-
     // 3. Registrar en Historial
     const entry = {
-      id: Store.uid(), date: today(), name: p.name || "Usuario",
-      sex: p.sex, age: p.age, weight: p.weight, height: p.height, activity: p.activity,
+      id: Store.uid(), date: today(), name: p.name,
+      sex: p.sex, age: p.age, weight: p.weight, height: p.height, activity: p.activity, goal: p.goal, pace: p.pace,
       neck: p.neck, waist: p.waist, hip: p.hip, fatPct: p.lastFat, icc: icc,
       imc: Math.round(imc * 10) / 10, geb: Math.round(tmb), get: Math.round(get)
     };
@@ -104,7 +103,7 @@
 
     if (Audio) Audio.play("levelup");
     if (Gami) Gami.award(5, "Diagnóstico Pro Guardado 🔬");
-    toast({ icon: "💾", title: "Diagnóstico Guardado", msg: "Revisa los resultados gráficos abajo." });
+    toast({ icon: "💾", title: "Diagnóstico Guardado", msg: "Revisa tu plan nutricional ajustado." });
 
     // Redibujar
     render(document.getElementById('view-health'), true);
@@ -133,12 +132,14 @@
     const selM = p.sex === 'M' ? 'selected' : '';
     const selF = p.sex === 'F' ? 'selected' : '';
     const act = (val) => p.activity === val ? 'selected' : '';
+    const gl = (val) => p.goal === val ? 'selected' : '';
+    const pc = (val) => p.pace === val ? 'selected' : '';
 
     let resultsHTML = "";
     let displayStyle = "none";
 
     if (p.weight && p.height && p.neck && p.waist && p.age) {
-      // Cálculos
+      // 1. Energía y Grasa
       let tmb = (10 * p.weight) + (6.25 * p.height) - (5 * p.age);
       tmb = p.sex === 'F' ? tmb - 161 : tmb + 5;
       const actFactors = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
@@ -147,11 +148,27 @@
       const bfPct = parseFloat(p.lastFat) || 0;
       const fatKg = p.weight * (bfPct / 100);
       const leanKg = p.weight - fatKg;
+
+      // 2. Ajuste según el Objetivo (Déficit / Superávit)
+      let planKcal = get;
+      let goalLabel = "Mantenimiento";
+      if (p.goal === "lose") {
+        const deficit = p.pace === "slow" ? 250 : p.pace === "moderate" ? 500 : 750;
+        planKcal = Math.max(tmb * 1.2, get - deficit); // No bajar de un límite seguro
+        goalLabel = "Déficit Calórico";
+      } else if (p.goal === "gain") {
+        const surplus = p.pace === "slow" ? 200 : p.pace === "moderate" ? 350 : 500;
+        planKcal = get + surplus;
+        goalLabel = "Superávit Calórico";
+      }
       
-      const protG = Math.round(p.weight * 2.0);
-      const fatG = Math.round(p.weight * 0.9);
-      const carbsG = Math.max(0, Math.round((get - (protG * 4) - (fatG * 9)) / 4));
+      // 3. Macros
+      const protPerKg = p.goal === "lose" ? 2.2 : p.goal === "gain" ? 2.0 : 1.8;
+      const protG = Math.round(p.weight * protPerKg);
+      const fatG = Math.round((planKcal * 0.25) / 9);
+      const carbsG = Math.max(0, Math.round((planKcal - (protG * 4) - (fatG * 9)) / 4));
       
+      // 4. Salud
       const icc = p.hip > 0 ? (p.waist / p.hip).toFixed(2) : "0.00";
       let riskLabel = "Bajo"; 
       let riskColor = "#00ff88";
@@ -159,17 +176,16 @@
         riskLabel = "Elevado";
         riskColor = "#ff0055";
       }
-
       const waterLiters = (p.weight * 35 / 1000).toFixed(1);
 
       displayStyle = "block";
       resultsHTML = `
         <div style="border-top: 1px dashed rgba(0,243,255,0.3); margin-top: 20px; padding-top: 20px;">
           <h4 style="color: #00f3ff; margin: 0 0 15px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">
-            📊 Diagnóstico Corporal Pro
+            📊 Diagnóstico y Plan Pro
           </h4>
 
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 15px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 15px;">
             
             <div style="background: rgba(255, 0, 85, 0.08); border: 1px solid rgba(255, 0, 85, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
               <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Grasa Corporal</span>
@@ -177,24 +193,23 @@
               <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">${fatKg.toFixed(1)} kg de grasa</span>
             </div>
 
-            <div style="background: rgba(0, 243, 255, 0.08); border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
-              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Masa Magra</span>
-              <span style="font-size: 32px; font-weight: 800; color: #00f3ff; line-height: 1;">${leanKg.toFixed(1)}<span style="font-size: 18px;">kg</span></span>
-              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Músculo + Hueso</span>
+            <div style="background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
+              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Índice (ICC)</span>
+              <span style="font-size: 32px; font-weight: 800; color: ${riskColor}; line-height: 1;">${icc}</span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Riesgo: ${riskLabel}</span>
             </div>
 
             <div style="background: rgba(255, 176, 32, 0.08); border: 1px solid rgba(255, 176, 32, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
-              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Calorías Diarias</span>
-              <span style="font-size: 32px; font-weight: 800; color: #ffb020; line-height: 1;">${Math.round(get)}</span>
-              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">kcal/día para mantener</span>
+              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">${goalLabel}</span>
+              <span style="font-size: 32px; font-weight: 800; color: #ffb020; line-height: 1;">${Math.round(planKcal)}</span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">kcal/día sugeridas</span>
             </div>
 
             <div style="background: rgba(0, 136, 255, 0.08); border: 1px solid rgba(0, 136, 255, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
-              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Agua Recomendada</span>
+              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Agua Diaria</span>
               <span style="font-size: 32px; font-weight: 800; color: #0088ff; line-height: 1;">${waterLiters}<span style="font-size: 18px;">L</span></span>
               <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Mínimo sugerido</span>
             </div>
-
           </div>
 
           <div style="background: #1a1f35; border-radius: 10px; padding: 14px; margin-bottom: 15px;">
@@ -203,15 +218,15 @@
               <span style="font-size: 12px; color: #aaa;">🥑 Grasas: <strong style="color:#fff;">${fatG}g</strong></span>
               <span style="font-size: 12px; color: #aaa;">🍚 Carbos: <strong style="color:#fff;">${carbsG}g</strong></span>
             </div>
-            <div style="font-size: 12px; color: #aaa; border-top: 1px solid #2a314d; padding-top: 8px; margin-top: 8px; display: flex; justify-content: space-between;">
-              <span>Riesgo Cardiovascular (ICC: ${icc}):</span>
-              <strong style="color: ${riskColor};">${riskLabel}</strong>
+            <div style="font-size: 12px; color: #888; border-top: 1px solid #2a314d; padding-top: 8px; margin-top: 8px; display: flex; justify-content: space-between;">
+              <span>Gasto Total (GET) para mantener peso:</span>
+              <strong style="color: #fff;">${Math.round(get)} kcal</strong>
             </div>
           </div>
 
-          <button type="button" onclick="syncWithNutrition(${get}, ${protG}, ${fatG}, ${carbsG})" 
+          <button type="button" onclick="syncWithNutrition(${planKcal}, ${protG}, ${fatG}, ${carbsG})" 
                   style="width: 100%; padding: 12px; background: linear-gradient(135deg, #00f3ff, #0088ff); color: #000; border: none; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.2);">
-            📥 Configurar estas metas en Alimentación
+            📥 Aplicar metas de tu plan a Alimentación
           </button>
         </div>
       `;
@@ -239,6 +254,9 @@
         </div>
         
         <div class="grid cols-2 gap-8 mb-16">
+          <label class="fs-12 text-faint" style="grid-column: span 2;">Tu Nombre: 
+            <input class="input mt-4" type="text" id="calc-name" placeholder="Ej. Juan Pérez" value="${p.name || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
+          </label>
           <label class="fs-12 text-faint">Sexo: 
             <select class="input mt-4" id="calc-gender" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
               <option value="male" ${selM}>Hombre</option>
@@ -260,16 +278,31 @@
           <label class="fs-12 text-faint">Cintura (cm): 
             <input class="input mt-4" type="number" id="calc-waist" step="0.5" placeholder="85" value="${p.waist || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
           </label>
-          <label class="fs-12 text-faint" style="grid-column: span 2;">Cadera (cm) <span style="font-size:10px; color:#ff0055;">(Requerido para Mujeres)</span>: 
+          <label class="fs-12 text-faint" style="grid-column: span 2;">Cadera (cm) <span style="font-size:10px; color:#ff0055;">(Obligatorio en Mujeres)</span>: 
             <input class="input mt-4" type="number" id="calc-hip" step="0.5" placeholder="95" value="${p.hip || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
           </label>
-          <label class="fs-12 text-faint" style="grid-column: span 2;">Nivel de Actividad Física: 
+          
+          <label class="fs-12 text-faint" style="grid-column: span 2; border-top: 1px solid #333; padding-top: 15px; margin-top: 5px;">Nivel de Actividad Física: 
             <select class="input mt-4" id="calc-activity" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
               <option value="sedentary" ${act('sedentary')}>Sedentario (Poco o nulo ejercicio)</option>
               <option value="light" ${act('light')}>Ligero (1-3 días/semana)</option>
               <option value="moderate" ${act('moderate')}>Moderado (3-5 días/semana)</option>
               <option value="active" ${act('active')}>Activo (6-7 días/semana)</option>
               <option value="very_active" ${act('very_active')}>Atleta / Trabajo muy físico</option>
+            </select>
+          </label>
+          <label class="fs-12 text-faint">🎯 Objetivo: 
+            <select class="input mt-4" id="calc-goal" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
+              <option value="lose" ${gl('lose')}>📉 Bajar de peso (Grasa)</option>
+              <option value="maintain" ${gl('maintain')}>⚖️ Mantener peso</option>
+              <option value="gain" ${gl('gain')}>📈 Subir masa muscular</option>
+            </select>
+          </label>
+          <label class="fs-12 text-faint">Ritmo: 
+            <select class="input mt-4" id="calc-pace" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
+              <option value="slow" ${pc('slow')}>Lento y sostenible</option>
+              <option value="moderate" ${pc('moderate')}>Moderado (Recomendado)</option>
+              <option value="aggressive" ${pc('aggressive')}>Agresivo (Rápido)</option>
             </select>
           </label>
         </div>
@@ -284,7 +317,7 @@
         </div>
 
         <div style="margin-top: 20px; padding: 10px 12px; background: rgba(255, 255, 255, 0.03); border-radius: 6px; border-left: 2px solid #888; font-size: 11px; color: #888; line-height: 1.4;">
-          ⚠️ <strong>Aviso informativo:</strong> Los resultados calculados son únicamente estimaciones con fines educativos y de seguimiento personal. No constituyen un diagnóstico ni una prescripción médica o nutricional. Ante cualquier duda o condición de salud, consulta siempre a un profesional certificado.
+          ⚠️ <strong>Aviso informativo:</strong> Los resultados calculados son estimaciones matemáticas basadas en fórmulas deportivas estándar para fines de seguimiento personal. No constituyen un diagnóstico clínico ni una prescripción médica. Ante cualquier condición de salud, por favor consulta a un médico o nutriólogo certificado.
         </div>
 
       </div>
@@ -292,7 +325,7 @@
     return div.firstElementChild;
   }
 
-  // ---------------- UI: HISTORIAL Y CALENDARIO ----------------
+  // ---------------- UI ORIGINAL: HISTORIAL Y CALENDARIO ----------------
   function historyRow(h) {
     const dLbl = dayLabelFor(h.date);
     return el("div", { class: "item" }, [
@@ -300,7 +333,6 @@
         el("div", { class: "item-title", text: dLbl }),
         el("div", { class: "item-meta" }, [
           el("span", { class: "chip", text: h.weight + " kg" }),
-          el("span", { class: "chip", text: "IMC " + h.imc }),
           h.fatPct ? el("span", { class: "chip bad", text: "Grasa: " + h.fatPct + "%" }) : null,
           el("span", { class: "text-faint fs-12", text: "GET: " + (h.get || 0) + " kcal" })
         ])
@@ -396,7 +428,7 @@
     container.appendChild(el("div", { class: "view-head" }, [
       el("div", {}, [
         el("h1", { class: "view-title" }, [N.Icons ? N.Icons.node("heart") : "❤️", "Salud y Avance"]),
-        el("p", { class: "view-desc", text: "Composición corporal, gasto calórico e integración con Alimentación." })
+        el("p", { class: "view-desc", text: "Diagnóstico corporal avanzado, gasto calórico y plan de macros." })
       ]),
       el("div", { class: "flex gap-8", style: "flex-wrap:wrap" }, [
         el("button", { class: "btn", onclick: openHistory, html: "📖 Ver Historial" })
