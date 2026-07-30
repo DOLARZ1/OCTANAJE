@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud (Antropometría Pro + Historial Integrado)
+   OCTANAJE · Módulo Salud Pro & Diagnóstico Antropométrico
    ===================================================================== */
 (function () {
   "use strict";
@@ -9,39 +9,40 @@
   const DateUtil = Store.DateUtil;
 
   const today = () => DateUtil.todayKey();
-  function dayLabelFor(key) { return DateUtil.parse(key).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }); }
+  function dayLabelFor(key) { 
+    return DateUtil.parse(key).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }); 
+  }
 
-  // ---------------- DATOS Y PERFIL ----------------
-  const ACTIVITY = [{ value: "sedentary", label: "Sedentario" }, { value: "light", label: "Ligero" }, { value: "moderate", label: "Moderado" }, { value: "active", label: "Activo" }, { value: "very_active", label: "Atleta" }];
-  const GOALS = [{ value: "lose", label: "📉 Bajar de peso" }, { value: "maintain", label: "⚖️ Mantener peso" }, { value: "gain", label: "📈 Aumentar masa" }];
-  function goalLabel(v) { return (GOALS.find((g) => g.value === v) || GOALS[1]).label; }
+  // ---------------- BASE DE DATOS Y PERFIL ----------------
+  const ACTIVITY = [
+    { value: "sedentary", label: "Sedentario (Sin ejercicio)" },
+    { value: "light", label: "Ligero (1-3 días/sem)" },
+    { value: "moderate", label: "Moderado (3-5 días/sem)" },
+    { value: "active", label: "Activo (6-7 días/sem)" },
+    { value: "very_active", label: "Atleta / Trabajo Físico" }
+  ];
   
   function health() {
     const s = Store.get();
     if (!s.health) s.health = { profile: {}, history: [], weights: [] };
     return s.health;
   }
-  function profile() { 
-    const pr = health().profile; 
-    if (!pr.goal) pr.goal = "maintain"; 
-    return pr; 
-  }
+  function profile() { return health().profile || {}; }
   function history() { return health().history || []; }
   function weights() { return health().weights || []; }
   function weightsSorted() { return weights().slice().sort((a, b) => a.date.localeCompare(b.date)); }
 
-  function r1(x) { return Math.round(x * 10) / 10; }
-
-  // ---------------- LÓGICA DE LA CALCULADORA PRO ----------------
+  // ---------------- MOSTRAR / OCULTAR INSTRUCCIONES ----------------
   window.toggleInstructions = function() {
     const guide = document.getElementById('measure-guide');
     if (guide) guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
   };
 
+  // ---------------- PROCESAR DIAGNÓSTICO Y GUARDAR ----------------
   window.processHealthCalculations = function() {
     const p = profile();
     
-    // 1. Recoger datos del DOM y guardarlos en el Perfil
+    // 1. Extraer entradas del formulario
     p.sex = document.getElementById('calc-gender').value === 'male' ? 'M' : 'F';
     p.age = parseFloat(document.getElementById('calc-age').value) || 0;
     p.weight = parseFloat(document.getElementById('calc-weight').value) || 0;
@@ -51,137 +52,247 @@
     p.hip = parseFloat(document.getElementById('calc-hip').value) || 0;
     p.activity = document.getElementById('calc-activity').value;
 
+    // Validación
     if (!p.weight || !p.height || !p.age || !p.neck || !p.waist) {
-      Audio.play("error"); toast({ icon: "⚠️", msg: "Completa peso, estatura, edad, cuello y cintura." });
+      if (Audio) Audio.play("error");
+      toast({ icon: "⚠️", msg: "Completa peso, estatura, edad, cuello y cintura." });
+      return;
+    }
+    if (p.sex === 'F' && !p.hip) {
+      if (Audio) Audio.play("error");
+      toast({ icon: "⚠️", msg: "Las mujeres requieren la medida de cadera." });
       return;
     }
 
-    // 2. Cálculos Matemáticos
+    // 2. Cálculos Nutricionales y Antropométricos
+    // Mifflin-St Jeor
     let tmb = (10 * p.weight) + (6.25 * p.height) - (5 * p.age);
     tmb = p.sex === 'F' ? tmb - 161 : tmb + 5;
     const actFactors = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
     const get = tmb * (actFactors[p.activity] || 1.2);
 
+    // US Navy Body Fat %
     let bf = 0;
     if (p.sex === 'M') {
       const diff = p.waist - p.neck;
       if (diff > 0) bf = (495 / (1.0324 - (0.19077 * Math.log10(diff)) + (0.15456 * Math.log10(p.height)))) - 450;
     } else {
-      if(!p.hip) { Audio.play("error"); toast({ icon: "⚠️", msg: "Mujeres requieren medida de cadera." }); return; }
       const sum = p.waist + p.hip - p.neck;
       if (sum > 0) bf = (495 / (1.29579 - (0.35004 * Math.log10(sum)) + (0.22100 * Math.log10(p.height)))) - 450;
     }
     bf = Math.max(3, Math.min(60, bf));
 
     const icc = p.hip > 0 ? (p.waist / p.hip).toFixed(2) : "0.00";
-    const imc = p.weight / ((p.height/100) * (p.height/100));
+    const imc = p.weight / ((p.height / 100) * (p.height / 100));
 
-    p.lastFat = bf.toFixed(1); // Guardar grasa calculada en perfil
+    p.lastFat = bf.toFixed(1);
 
-    // 3. Crear registro para el Historial (Calendario/PDF)
+    // 3. Registrar en Historial
     const entry = {
       id: Store.uid(), date: today(), name: p.name || "Usuario",
-      sex: p.sex, age: p.age, weight: p.weight, height: p.height, activity: p.activity, goal: p.goal,
+      sex: p.sex, age: p.age, weight: p.weight, height: p.height, activity: p.activity,
       neck: p.neck, waist: p.waist, hip: p.hip, fatPct: p.lastFat, icc: icc,
-      imc: r1(imc), geb: Math.round(tmb), get: Math.round(get)
+      imc: Math.round(imc * 10) / 10, geb: Math.round(tmb), get: Math.round(get)
     };
 
-    // Actualizar historial (si ya hay uno hoy, se reemplaza para no duplicar)
     const arr = history();
     const existingIdx = arr.findIndex(x => x.date === today());
     if (existingIdx >= 0) arr.splice(existingIdx, 1);
     arr.unshift(entry);
     
-    Store.commit(); // 💾 SE GUARDA EN BASE DE DATOS
+    Store.commit();
 
-    if (N.Audio) N.Audio.play("levelup");
-    if (N.Gami) N.Gami.award(5, "Diagnóstico Pro guardado 🔬");
-    toast({ icon: "💾", title: "Análisis Guardado", msg: "Tus medidas y % de grasa están en el historial." });
+    if (Audio) Audio.play("levelup");
+    if (Gami) Gami.award(5, "Diagnóstico Pro Guardado 🔬");
+    toast({ icon: "💾", title: "Diagnóstico Guardado", msg: "Revisa los resultados gráficos abajo." });
 
-    // 4. Forzar el redibujado de la pantalla con los nuevos datos
+    // Redibujar
     render(document.getElementById('view-health'), true);
   };
 
+  // ---------------- APLICAR METAS DIRECTO A ALIMENTACIÓN ----------------
+  window.syncWithNutrition = function(kcal, prot, fat, carbs) {
+    if (N.Nutrition && N.Nutrition.setGoals) {
+      N.Nutrition.setGoals({ kcal: Math.round(kcal), prot: Math.round(prot), carb: Math.round(carbs), fat: Math.round(fat) });
+      if (Audio) Audio.play("levelup");
+      toast({ 
+        icon: "🎯", 
+        title: "¡Metas sincronizadas!", 
+        msg: `${Math.round(kcal)} kcal · ${Math.round(prot)}g Prot · ${Math.round(carbs)}g Carbos · ${Math.round(fat)}g Grasas configuradas en Alimentación.` 
+      });
+    } else {
+      if (Audio) Audio.play("error");
+      toast({ icon: "⚠️", msg: "No se encontró el módulo de Alimentación activo." });
+    }
+  };
+
+  // ---------------- COMPONENTE GRÁFICO PRO ----------------
   function proCalculatorCard() {
     const p = profile();
     
-    // Variables para pre-llenar selectores
     const selM = p.sex === 'M' ? 'selected' : '';
     const selF = p.sex === 'F' ? 'selected' : '';
     const act = (val) => p.activity === val ? 'selected' : '';
 
-    // Generar resultados en tiempo real si existen los datos
     let resultsHTML = "";
     let displayStyle = "none";
 
     if (p.weight && p.height && p.neck && p.waist && p.age) {
+      // Cálculos
       let tmb = (10 * p.weight) + (6.25 * p.height) - (5 * p.age);
       tmb = p.sex === 'F' ? tmb - 161 : tmb + 5;
       const actFactors = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
       const get = tmb * (actFactors[p.activity] || 1.2);
-      const fatKg = p.weight * ((parseFloat(p.lastFat) || 0) / 100);
+      
+      const bfPct = parseFloat(p.lastFat) || 0;
+      const fatKg = p.weight * (bfPct / 100);
       const leanKg = p.weight - fatKg;
-      const protG = Math.round(p.weight * 2);
-      const fatG = Math.round(p.weight * 1);
+      
+      const protG = Math.round(p.weight * 2.0);
+      const fatG = Math.round(p.weight * 0.9);
       const carbsG = Math.max(0, Math.round((get - (protG * 4) - (fatG * 9)) / 4));
+      
       const icc = p.hip > 0 ? (p.waist / p.hip).toFixed(2) : "0.00";
-      let risk = "Alto"; if ((p.sex === 'M' && icc <= 0.90) || (p.sex === 'F' && icc <= 0.85)) risk = "Bajo";
-      const water = (p.weight * 35 / 1000).toFixed(1);
+      let riskLabel = "Bajo"; 
+      let riskColor = "#00ff88";
+      if ((p.sex === 'M' && icc > 0.90) || (p.sex === 'F' && icc > 0.85)) {
+        riskLabel = "Elevado";
+        riskColor = "#ff0055";
+      }
 
-      displayStyle = "grid";
+      const waterLiters = (p.weight * 35 / 1000).toFixed(1);
+
+      displayStyle = "block";
       resultsHTML = `
-        <div><span class="fs-12 text-faint block">1. TMB y Calorías (Mantenimiento):</span><span style="color:#00f3ff;font-weight:bold;margin-right:10px;">${Math.round(tmb)} kcal</span><span style="color:#00f3ff;font-weight:bold;">${Math.round(get)} kcal/día</span></div>
-        <div><span class="fs-12 text-faint block">2. Composición Corporal:</span><span style="color:#ff0055;font-weight:bold;font-size:16px;">${p.lastFat || 0}% Grasa</span><div class="fs-11 text-dim">${leanKg.toFixed(1)}kg magra / ${fatKg.toFixed(1)}kg grasa</div></div>
-        <div><span class="fs-12 text-faint block">3. Macros Sugeridos:</span><span style="font-size:14px;color:#fff;">🥩 ${protG}g Prot | 🥑 ${fatG}g Grasa | 🍚 ${carbsG}g Carbos</span></div>
-        <div><span class="fs-12 text-faint block">4. Índice Cintura-Cadera (Salud):</span><span style="color:#00ff88;font-weight:bold;">${icc} (${risk})</span></div>
-        <div><span class="fs-12 text-faint block">5. Hidratación Diaria:</span><span style="color:#0088ff;font-weight:bold;">💧 ${water} Litros</span></div>
+        <div style="border-top: 1px dashed rgba(0,243,255,0.3); margin-top: 20px; padding-top: 20px;">
+          <h4 style="color: #00f3ff; margin: 0 0 15px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">
+            📊 Diagnóstico Corporal Pro
+          </h4>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 15px;">
+            
+            <div style="background: rgba(255, 0, 85, 0.08); border: 1px solid rgba(255, 0, 85, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
+              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Grasa Corporal</span>
+              <span style="font-size: 32px; font-weight: 800; color: #ff0055; line-height: 1;">${bfPct}%</span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">${fatKg.toFixed(1)} kg de grasa</span>
+            </div>
+
+            <div style="background: rgba(0, 243, 255, 0.08); border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
+              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Masa Magra</span>
+              <span style="font-size: 32px; font-weight: 800; color: #00f3ff; line-height: 1;">${leanKg.toFixed(1)}<span style="font-size: 18px;">kg</span></span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Músculo + Hueso</span>
+            </div>
+
+            <div style="background: rgba(255, 176, 32, 0.08); border: 1px solid rgba(255, 176, 32, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
+              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Calorías Diarias</span>
+              <span style="font-size: 32px; font-weight: 800; color: #ffb020; line-height: 1;">${Math.round(get)}</span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">kcal/día para mantener</span>
+            </div>
+
+            <div style="background: rgba(0, 136, 255, 0.08); border: 1px solid rgba(0, 136, 255, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
+              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Agua Recomendada</span>
+              <span style="font-size: 32px; font-weight: 800; color: #0088ff; line-height: 1;">${waterLiters}<span style="font-size: 18px;">L</span></span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Mínimo sugerido</span>
+            </div>
+
+          </div>
+
+          <div style="background: #1a1f35; border-radius: 10px; padding: 14px; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 12px; color: #aaa;">🥩 Proteínas: <strong style="color:#fff;">${protG}g</strong></span>
+              <span style="font-size: 12px; color: #aaa;">🥑 Grasas: <strong style="color:#fff;">${fatG}g</strong></span>
+              <span style="font-size: 12px; color: #aaa;">🍚 Carbos: <strong style="color:#fff;">${carbsG}g</strong></span>
+            </div>
+            <div style="font-size: 12px; color: #aaa; border-top: 1px solid #2a314d; padding-top: 8px; margin-top: 8px; display: flex; justify-content: space-between;">
+              <span>Riesgo Cardiovascular (ICC: ${icc}):</span>
+              <strong style="color: ${riskColor};">${riskLabel}</strong>
+            </div>
+          </div>
+
+          <button type="button" onclick="syncWithNutrition(${get}, ${protG}, ${fatG}, ${carbsG})" 
+                  style="width: 100%; padding: 12px; background: linear-gradient(135deg, #00f3ff, #0088ff); color: #000; border: none; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.2);">
+            📥 Configurar estas metas en Alimentación
+          </button>
+        </div>
       `;
     }
 
     const div = document.createElement('div');
     div.id = "pro-calc-card"; 
     div.innerHTML = `
-      <div class="card mb-16" style="padding: 15px; border-radius: 10px; border: 1px solid #00f3ff; background: #111424;">
-        <h3 style="color: #00f3ff; margin-top: 0;">🔬 Evaluación Antropométrica Pro</h3>
-        <button type="button" onclick="toggleInstructions()" class="btn-secondary" style="margin-bottom: 15px; font-size: 14px; background: transparent; border: 1px solid #00f3ff; color: #00f3ff; padding: 5px 10px; border-radius: 5px;">📖 ¿Cómo medirme?</button>
+      <div class="card mb-16" style="padding: 16px; border-radius: 12px; border: 1px solid #00f3ff; background: #111424; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 style="color: #00f3ff; margin: 0; font-size: 16px; display: flex; align-items: center; gap: 6px;">
+            🔬 Evaluación Antropométrica Pro
+          </h3>
+          <button type="button" onclick="toggleInstructions()" class="btn-secondary" style="font-size: 12px; background: transparent; border: 1px solid #00f3ff; color: #00f3ff; padding: 4px 8px; border-radius: 5px; cursor: pointer;">
+            📖 ¿Cómo medirme?
+          </button>
+        </div>
 
-        <div id="measure-guide" style="display: none; background: rgba(0,255,255,0.05); border-left: 3px solid #00f3ff; padding: 15px; margin-bottom: 15px; font-size: 13px; color: #ccc;">
+        <div id="measure-guide" style="display: none; background: rgba(0,255,255,0.05); border-left: 3px solid #00f3ff; padding: 12px; margin-bottom: 15px; font-size: 12px; color: #ccc; border-radius: 4px; line-height: 1.5;">
           <strong>📍 Cuello:</strong> Por debajo de la nuez de Adán. Cinta horizontal.<br>
-          <strong>📍 Cintura (Hombres):</strong> Exactamente altura del ombligo.<br>
+          <strong>📍 Cintura (Hombres):</strong> Exactamente a la altura del ombligo.<br>
           <strong>📍 Cintura (Mujeres):</strong> Parte más estrecha del torso (arriba del ombligo).<br>
           <strong>📍 Cadera:</strong> Talones juntos, parte más ancha de los glúteos.<br>
         </div>
         
         <div class="grid cols-2 gap-8 mb-16">
-          <label class="fs-12 text-faint">Sexo: <select class="input mt-4" id="calc-gender"><option value="male" ${selM}>Hombre</option><option value="female" ${selF}>Mujer</option></select></label>
-          <label class="fs-12 text-faint">Edad: <input class="input mt-4" type="number" id="calc-age" placeholder="25" value="${p.age || ''}" /></label>
-          <label class="fs-12 text-faint">Peso (kg): <input class="input mt-4" type="number" id="calc-weight" step="0.1" placeholder="75" value="${p.weight || ''}" /></label>
-          <label class="fs-12 text-faint">Altura (cm): <input class="input mt-4" type="number" id="calc-height" placeholder="175" value="${p.height || ''}" /></label>
-          <label class="fs-12 text-faint">Cuello (cm): <input class="input mt-4" type="number" id="calc-neck" step="0.5" value="${p.neck || ''}" /></label>
-          <label class="fs-12 text-faint">Cintura (cm): <input class="input mt-4" type="number" id="calc-waist" step="0.5" value="${p.waist || ''}" /></label>
-          <label class="fs-12 text-faint" style="grid-column: span 2;">Cadera (cm) <span style="font-size:10px">(Obligatorio en mujeres)</span>: <input class="input mt-4" type="number" id="calc-hip" step="0.5" value="${p.hip || ''}" /></label>
-          <label class="fs-12 text-faint" style="grid-column: span 2;">Actividad: 
-            <select class="input mt-4" id="calc-activity">
-              <option value="sedentary" ${act('sedentary')}>Sedentario (Nada)</option>
-              <option value="light" ${act('light')}>Ligero (1-3 días)</option>
-              <option value="moderate" ${act('moderate')}>Moderado (3-5 días)</option>
-              <option value="active" ${act('active')}>Activo (6-7 días)</option>
-              <option value="very_active" ${act('very_active')}>Atleta / Muy Activo</option>
+          <label class="fs-12 text-faint">Sexo: 
+            <select class="input mt-4" id="calc-gender" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
+              <option value="male" ${selM}>Hombre</option>
+              <option value="female" ${selF}>Mujer</option>
+            </select>
+          </label>
+          <label class="fs-12 text-faint">Edad (años): 
+            <input class="input mt-4" type="number" id="calc-age" placeholder="25" value="${p.age || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
+          </label>
+          <label class="fs-12 text-faint">Peso (kg): 
+            <input class="input mt-4" type="number" id="calc-weight" step="0.1" placeholder="75.5" value="${p.weight || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
+          </label>
+          <label class="fs-12 text-faint">Altura (cm): 
+            <input class="input mt-4" type="number" id="calc-height" placeholder="175" value="${p.height || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
+          </label>
+          <label class="fs-12 text-faint">Cuello (cm): 
+            <input class="input mt-4" type="number" id="calc-neck" step="0.5" placeholder="38" value="${p.neck || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
+          </label>
+          <label class="fs-12 text-faint">Cintura (cm): 
+            <input class="input mt-4" type="number" id="calc-waist" step="0.5" placeholder="85" value="${p.waist || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
+          </label>
+          <label class="fs-12 text-faint" style="grid-column: span 2;">Cadera (cm) <span style="font-size:10px; color:#ff0055;">(Requerido para Mujeres)</span>: 
+            <input class="input mt-4" type="number" id="calc-hip" step="0.5" placeholder="95" value="${p.hip || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" />
+          </label>
+          <label class="fs-12 text-faint" style="grid-column: span 2;">Nivel de Actividad Física: 
+            <select class="input mt-4" id="calc-activity" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;">
+              <option value="sedentary" ${act('sedentary')}>Sedentario (Poco o nulo ejercicio)</option>
+              <option value="light" ${act('light')}>Ligero (1-3 días/semana)</option>
+              <option value="moderate" ${act('moderate')}>Moderado (3-5 días/semana)</option>
+              <option value="active" ${act('active')}>Activo (6-7 días/semana)</option>
+              <option value="very_active" ${act('very_active')}>Atleta / Trabajo muy físico</option>
             </select>
           </label>
         </div>
 
-        <button type="button" onclick="processHealthCalculations()" class="btn primary block mb-16" style="background:#00f3ff; color:#000; font-weight:bold;">💾 Calcular y Guardar Diagnóstico</button>
+        <button type="button" onclick="processHealthCalculations()" class="btn primary block mb-16" 
+                style="width: 100%; padding: 12px; background: #00f3ff; color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;">
+          💾 Calcular y Guardar Diagnóstico
+        </button>
 
-        <div id="health-results" class="grid gap-12" style="display:${displayStyle}; border-top: 1px solid #333; padding-top: 15px;">
+        <div id="health-results" style="display:${displayStyle};">
           ${resultsHTML}
         </div>
+
+        <div style="margin-top: 20px; padding: 10px 12px; background: rgba(255, 255, 255, 0.03); border-radius: 6px; border-left: 2px solid #888; font-size: 11px; color: #888; line-height: 1.4;">
+          ⚠️ <strong>Aviso informativo:</strong> Los resultados calculados son únicamente estimaciones con fines educativos y de seguimiento personal. No constituyen un diagnóstico ni una prescripción médica o nutricional. Ante cualquier duda o condición de salud, consulta siempre a un profesional certificado.
+        </div>
+
       </div>
     `;
     return div.firstElementChild;
   }
 
-  // ---------------- UI ORIGINAL: HISTORIAL Y PESOS ----------------
+  // ---------------- UI: HISTORIAL Y CALENDARIO ----------------
   function historyRow(h) {
     const dLbl = dayLabelFor(h.date);
     return el("div", { class: "item" }, [
@@ -197,7 +308,7 @@
       el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => {
         UI.confirmBox("Eliminar revisión", "¿Eliminar el registro del " + dLbl + "?", () => {
           const arr = history(); const i = arr.indexOf(h); if (i >= 0) arr.splice(i, 1);
-          Store.commit(); Audio.play("delete"); toast({ icon: "🗑️", msg: "Registro eliminado" }); openHistory();
+          Store.commit(); if (Audio) Audio.play("delete"); toast({ icon: "🗑️", msg: "Registro eliminado" }); openHistory();
           render(document.getElementById("view-health"), true);
         }, "Eliminar");
       } })
@@ -213,7 +324,7 @@
       list.forEach((h) => body.appendChild(historyRow(h)));
     }
     UI.openModal("📖 Historial de Diagnósticos (" + list.length + ")", body);
-  }
+  };
 
   function openDayDetail(key) {
     const items = history().filter(h => h.date === key);
@@ -260,7 +371,7 @@
     const chartWrap = el("div", { class: "chart-box" }, [cv]);
     const series = list.slice(-30);
     setTimeout(() => {
-      if(Charts && series.length) Charts.line(cv, {
+      if (Charts && series.length) Charts.line(cv, {
         values: series.map((w) => w.weight),
         labels: series.map((w) => DateUtil.parse(w.date).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }))
       }, { color: "--accent", height: 170 });
@@ -277,7 +388,7 @@
   function render(container, forceRender = false) {
     if (!container) return;
     
-    // Escudo: Si ya está dibujada y no forzamos actualización, detenemos
+    // Escudo: Evita que el teclado borre el formulario
     if (!forceRender && container.querySelector('#pro-calc-card')) return;
 
     container.innerHTML = "";
@@ -285,20 +396,20 @@
     container.appendChild(el("div", { class: "view-head" }, [
       el("div", {}, [
         el("h1", { class: "view-title" }, [N.Icons ? N.Icons.node("heart") : "❤️", "Salud y Avance"]),
-        el("p", { class: "view-desc", text: "Mide tu porcentaje de grasa, calcula tus macros y observa tu progreso real." })
+        el("p", { class: "view-desc", text: "Composición corporal, gasto calórico e integración con Alimentación." })
       ]),
       el("div", { class: "flex gap-8", style: "flex-wrap:wrap" }, [
         el("button", { class: "btn", onclick: openHistory, html: "📖 Ver Historial" })
       ])
     ]));
 
-    // 1. Calculadora Pro (Conectada a la Base de Datos)
+    // 1. Calculadora Pro Gráfica
     container.appendChild(proCalculatorCard());
 
-    // 2. Calendario de Revisiones
+    // 2. Calendario
     container.appendChild(buildCalendar());
 
-    // 3. Gráfica de Tendencia
+    // 3. Gráfica de Tendencia de Peso
     if (weightsSorted().length > 0) {
       container.appendChild(weightCard());
     }
