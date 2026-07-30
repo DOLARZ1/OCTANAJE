@@ -183,13 +183,12 @@
       const cat = getImcClass(imc);
       const minImc = 15, maxImc = 42;
       const pctImc = Math.max(0, Math.min(100, ((imc - minImc) / (maxImc - minImc)) * 100));
-      
       const gradient = `linear-gradient(90deg, #00f3ff 0%, #00f3ff 13%, #00ff88 13%, #00ff88 37%, #ffb020 37%, #ffb020 55%, #ff5470 55%, #ff5470 74%, #ff0055 74%, #ff0055 100%)`;
 
       displayStyle = "block";
       resultsHTML = `
         <div style="border-top: 1px dashed rgba(0,243,255,0.3); margin-top: 20px; padding-top: 20px;">
-          <h4 style="color: #00f3ff; margin: 0 0 15px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">📊 Resultados y Plan</h4>
+          <h4 style="color: #00f3ff; margin: 0 0 15px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">📊 Resultados y Plan Pro</h4>
 
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 15px;">
             <div style="background: rgba(255, 0, 85, 0.08); border: 1px solid rgba(255, 0, 85, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
@@ -211,6 +210,28 @@
               <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Agua Diaria</span>
               <span style="font-size: 32px; font-weight: 800; color: #0088ff; line-height: 1;">${waterLiters}<span style="font-size: 18px;">L</span></span>
               <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Mínimo sugerido</span>
+            </div>
+          </div>
+
+          <div style="background: #15192b; border-radius: 14px; padding: 18px; margin-bottom: 15px; border: 1px solid rgba(0, 243, 255, 0.3); box-shadow: inset 0 0 15px rgba(0,243,255,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a314d; padding-bottom: 12px; margin-bottom: 14px;">
+              <span style="font-size: 13px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px;">Gasto Total (GET Mantenimiento):</span>
+              <strong style="color: #ffb020; font-size: 20px; font-weight: 900; text-shadow: 0 0 10px rgba(255,176,32,0.4);">${Math.round(get)} kcal</strong>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+              <div style="background: rgba(0, 243, 255, 0.05); border: 1px solid rgba(0, 243, 255, 0.2); border-radius: 10px; padding: 12px 6px;">
+                <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">🥩 Proteína</span>
+                <span style="font-size: 26px; font-weight: 900; color: #00f3ff; text-shadow: 0 0 10px rgba(0,243,255,0.5);">${protG}<span style="font-size: 14px;">g</span></span>
+              </div>
+              <div style="background: rgba(255, 176, 32, 0.05); border: 1px solid rgba(255, 176, 32, 0.2); border-radius: 10px; padding: 12px 6px;">
+                <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">🥑 Grasas</span>
+                <span style="font-size: 26px; font-weight: 900; color: #ffb020; text-shadow: 0 0 10px rgba(255,176,32,0.5);">${fatG}<span style="font-size: 14px;">g</span></span>
+              </div>
+              <div style="background: rgba(0, 255, 136, 0.05); border: 1px solid rgba(0, 255, 136, 0.2); border-radius: 10px; padding: 12px 6px;">
+                <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">🍚 Carbos</span>
+                <span style="font-size: 26px; font-weight: 900; color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.5);">${carbsG}<span style="font-size: 14px;">g</span></span>
+              </div>
             </div>
           </div>
 
@@ -238,18 +259,6 @@
             Es un indicador de salud cardiovascular. Evalúa dónde almacenas la grasa. Si tu grasa se acumula en el abdomen 🍎 (cuerpo de manzana / riesgo elevado), es más peligrosa para el corazón que si se almacena en las caderas y muslos 🍐 (cuerpo de pera / riesgo bajo).
           </div>
 
-          <div style="background: #1a1f35; border-radius: 10px; padding: 14px; margin-bottom: 15px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 13px; color: #aaa;">🥩 Proteínas: <strong style="color:#fff;">${protG}g</strong></span>
-              <span style="font-size: 13px; color: #aaa;">🥑 Grasas: <strong style="color:#fff;">${fatG}g</strong></span>
-              <span style="font-size: 13px; color: #aaa;">🍚 Carbos: <strong style="color:#fff;">${carbsG}g</strong></span>
-            </div>
-            <div style="font-size: 12px; color: #888; border-top: 1px solid #2a314d; padding-top: 8px; margin-top: 8px; display: flex; justify-content: space-between;">
-              <span>Gasto Total (GET) para mantener peso:</span>
-              <strong style="color: #fff;">${Math.round(get)} kcal</strong>
-            </div>
-          </div>
-
           <button type="button" onclick="syncWithNutrition(${planKcal}, ${protG}, ${fatG}, ${carbsG})" 
                   style="width: 100%; padding: 14px; background: linear-gradient(135deg, #00f3ff, #0088ff); color: #000; border: none; border-radius: 8px; font-weight: 900; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.2);">
             📥 Aplicar metas de tu plan a Alimentación
@@ -268,7 +277,7 @@
             🔬 Evaluación Antropométrica Pro
           </h3>
           <button type="button" onclick="toggleInstructions()" class="btn-secondary" style="font-size: 12px; background: transparent; border: 1px solid #00f3ff; color: #00f3ff; padding: 4px 8px; border-radius: 5px; cursor: pointer;">
-            📖 ¿Cómo medirme?
+            📖 ¿Cómo medirse?
           </button>
         </div>
 
@@ -347,7 +356,7 @@
     return div.firstElementChild;
   }
 
-  // ---------------- UI ORIGINAL: HISTORIAL Y CALENDARIO NAVEGABLE ----------------
+  // ---------------- UI ORIGINAL: HISTORIAL Y CALENDARIO ----------------
   function historyRow(h) {
     const dLbl = dayLabelFor(h.date);
     return el("div", { class: "item" }, [
@@ -411,7 +420,6 @@
       grid.appendChild(el("div", { class: cls + " clickable", title: tip, text: String(d), onclick: () => openDayDetail(key) }));
     }
     
-    // Controles de Navegación de Meses
     const navHeader = el("div", { style: "display:flex; justify-content:space-between; align-items:center; width:100%; font-size:14px; color:#fff;" }, [
       el("button", { html: "◀", class: "icon-btn", onclick: () => window.changeCalMonth(-1), style: "padding:5px;" }),
       el("span", { text: monthLabel, style: "text-transform:capitalize; font-weight:bold; color:var(--accent);" }),
@@ -449,7 +457,6 @@
   function render(container, forceRender = false) {
     if (!container) return;
     
-    // Escudo: Evita que el teclado borre el formulario
     if (!forceRender && container.querySelector('#pro-calc-card')) return;
 
     container.innerHTML = "";
@@ -464,13 +471,9 @@
       ])
     ]));
 
-    // 1. Calculadora Pro Gráfica
     container.appendChild(proCalculatorCard());
-
-    // 2. Calendario Navegable
     container.appendChild(buildCalendar());
 
-    // 3. Gráfica de Tendencia de Peso
     if (weightsSorted().length > 0) {
       container.appendChild(weightCard());
     }
