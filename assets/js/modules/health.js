@@ -113,20 +113,16 @@
 
     let bf = 0;
     if (p.sex === 'M') {
-      const diff = p.waist - p.neck;
-      if (diff > 0) bf = (495 / (1.0324 - (0.19077 * Math.log10(diff)) + (0.15456 * Math.log10(dataHeightFormulaCorrection(p.height))))) - 450; // Usando altura
-      // Fórmula estándar segura:
       const safeDiff = p.waist - p.neck;
       if (safeDiff > 0) {
-        bf = 86.010 * Math.log10(p.waist - p.neck) - 70.041 * Math.log10(p.height) + 36.76; // U.S. Navy Formula estándar hombres
+        bf = 86.010 * Math.log10(p.waist - p.neck) - 70.041 * Math.log10(p.height) + 36.76;
       }
     } else {
       const sum = p.waist + p.hip - p.neck;
       if (sum > 0) {
-        bf = 163.205 * Math.log10(p.waist + p.hip - p.neck) - 97.684 * Math.log10(p.height) - 78.387; // U.S. Navy Formula estándar mujeres
+        bf = 163.205 * Math.log10(p.waist + p.hip - p.neck) - 97.684 * Math.log10(p.height) - 78.387;
       }
     }
-    // Aseguramos límites lógicos
     bf = Math.max(3, Math.min(60, isNaN(bf) ? 20 : bf));
     p.lastFat = bf.toFixed(1);
 
@@ -151,12 +147,8 @@
     if (Gami) Gami.award(5, "Diagnóstico Pro Guardado 🔬");
     toast({ icon: "💾", title: "Diagnóstico Guardado", msg: "Los colores y resultados se han actualizado." });
 
-    // Forzamos el renderizado completo para que los colores se actualicen de inmediato
     render(document.getElementById('view-health'), true);
   };
-
-  // Función de apoyo auxiliar para cálculos limpios
-  function dataHeightFormulaCorrection(h) { return h; }
 
   // ---------------- APLICAR METAS DIRECTO A ALIMENTACIÓN ----------------
   window.syncWithNutrition = function(kcal, prot, fat, carbs) {
@@ -192,7 +184,7 @@
       const get = tmb * (actFactors[p.activity] || 1.2);
       
       const bfPct = parseFloat(p.lastFat) || 0;
-      const bfInfo = getBfLevel(bfPct, p.sex); // Color y etiqueta dinámica según el % actual
+      const bfInfo = getBfLevel(bfPct, p.sex);
       const fatKg = p.weight * (bfPct / 100);
 
       let planKcal = get;
@@ -407,8 +399,11 @@
     const items = history().filter(h => h.date === key);
     const dLbl = DateUtil.parse(key).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
     const body = el("div", {});
-    if (!items.length) body.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "📋" }, [el("div", { text: "Sin revisiones este día." })]));
-    else items.forEach((h) => body.appendChild(historyRow(h)));
+    if (!items.length) {
+      body.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "📋" }), el("div", { text: "Sin revisiones este día." })]));
+    } else {
+      items.forEach((h) => body.appendChild(historyRow(h)));
+    }
     UI.openModal("📅 " + dLbl, body);
   }
 
