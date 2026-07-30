@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro (Con Kilos de Grasa y Estilo Dinámico)
+   OCTANAJE · Módulo Salud Pro (Diseño Responsivo & Lógica de Cadera Fija)
    ===================================================================== */
 (function () {
   "use strict";
@@ -54,7 +54,7 @@
   }
   function history() { return health().history || []; }
   function weights() { return health().weights || []; }
-  function weightsSorted() { return weights().slice().sort((a, b) => a.date.localeCompare(b.date)); }
+  function weightsSorted() { return weights().slice().sort((a, b) => b.date.localeCompare(a.date)); }
 
   // ---------------- ESCALAS CLÍNICAS (IMC) ----------------
   const IMC_RANGES = [
@@ -104,6 +104,9 @@
 
     if (!p.weight || !p.height || !p.age || !p.neck || !p.waist) {
       if (Audio) Audio.play("error"); toast({ icon: "⚠️", msg: "Completa peso, estatura, edad, cuello y cintura." }); return;
+    }
+    if (p.sex === 'F' && !p.hip) {
+      if (Audio) Audio.play("error"); toast({ icon: "⚠️", msg: "Las mujeres requieren la medida de cadera." }); return;
     }
 
     let tmb = (10 * p.weight) + (6.25 * p.height) - (5 * p.age);
@@ -185,7 +188,7 @@
       
       const bfPct = parseFloat(p.lastFat) || 0;
       const bfInfo = getBfLevel(bfPct, p.sex);
-      const fatKg = ((p.weight * bfPct) / 100).toFixed(1); // Cálculo exacto de los kilos de grasa
+      const fatKg = ((p.weight * bfPct) / 100).toFixed(1);
 
       let planKcal = get;
       let goalLabel = "Mantenimiento";
@@ -336,21 +339,85 @@
           <strong>📍 Cadera (Solo mujeres):</strong> Talones juntos, parte más ancha de los glúteos.
         </div>
         
-        <div class="grid cols-2 gap-8 mb-16">
-          <label class="fs-12 text-faint" style="grid-column: span 2;">Tu Nombre: <input class="input mt-4" type="text" id="calc-name" value="${p.name || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
-          <label class="fs-12 text-faint">Sexo: <select class="input mt-4" id="calc-gender" onchange="handleGenderChange()" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;"><option value="male" ${selM}>Hombre</option><option value="female" ${selF}>Mujer</option></select></label>
-          <label class="fs-12 text-faint">Edad: <input class="input mt-4" type="number" id="calc-age" value="${p.age || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
-          <label class="fs-12 text-faint">Peso (kg): <input class="input mt-4" type="number" id="calc-weight" step="0.1" value="${p.weight || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
-          <label class="fs-12 text-faint">Altura (cm): <input class="input mt-4" type="number" id="calc-height" value="${p.height || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
-          <label class="fs-12 text-faint">Cuello (cm): <input class="input mt-4" type="number" id="calc-neck" value="${p.neck || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
-          <label class="fs-12 text-faint">Cintura (cm): <input class="input mt-4" type="number" id="calc-waist" value="${p.waist || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label>
-          <div id="calc-hip-container" style="grid-column: span 2; display: ${hipDisplay};"><label class="fs-12 text-faint" style="width:100%; display:block;">Cadera (cm): <input class="input mt-4" type="number" id="calc-hip" step="0.5" value="${p.hip || ''}" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;" /></label></div>
-          <label class="fs-12 text-faint" style="grid-column: span 2; border-top: 1px solid #333; padding-top: 15px;">Actividad: <select class="input mt-4" id="calc-activity" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;"><option value="sedentary" ${act('sedentary')}>Sedentario</option><option value="light" ${act('light')}>Ligero</option><option value="moderate" ${act('moderate')}>Moderado</option><option value="active" ${act('active')}>Activo</option><option value="very_active" ${act('very_active')}>Atleta</option></select></label>
-          <label class="fs-12 text-faint">🎯 Objetivo: <select class="input mt-4" id="calc-goal" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;"><option value="lose" ${gl('lose')}>📉 Bajar Grasa</option><option value="maintain" ${gl('maintain')}>⚖️ Mantener</option><option value="gain" ${gl('gain')}>📈 Subir Músculo</option></select></label>
-          <label class="fs-12 text-faint">Ritmo: <select class="input mt-4" id="calc-pace" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;"><option value="slow" ${pc('slow')}>Lento</option><option value="moderate" ${pc('moderate')}>Ideal</option><option value="aggressive" ${pc('aggressive')}>Rápido</option></select></label>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+          <div style="width: 100%;">
+            <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Tu Nombre:</label>
+            <input type="text" id="calc-name" value="${p.name || ''}" placeholder="Ej. Juan Pérez" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+          </div>
+
+          <div style="display: flex; gap: 10px; width: 100%;">
+            <div style="flex: 1;">
+              <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Sexo:</label>
+              <select id="calc-gender" onchange="handleGenderChange()" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;">
+                <option value="male" ${selM}>Hombre</option>
+                <option value="female" ${selF}>Mujer</option>
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Edad (años):</label>
+              <input type="number" id="calc-age" value="${p.age || ''}" placeholder="25" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; width: 100%;">
+            <div style="flex: 1;">
+              <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Peso (kg):</label>
+              <input type="number" id="calc-weight" step="0.1" value="${p.weight || ''}" placeholder="75.5" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Altura (cm):</label>
+              <input type="number" id="calc-height" value="${p.height || ''}" placeholder="175" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; width: 100%;">
+            <div style="flex: 1;">
+              <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Cuello (cm):</label>
+              <input type="number" id="calc-neck" step="0.5" value="${p.neck || ''}" placeholder="38" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Cintura (cm):</label>
+              <input type="number" id="calc-waist" step="0.5" value="${p.waist || ''}" placeholder="85" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+            </div>
+          </div>
+
+          <div id="calc-hip-container" style="width: 100%; display: ${hipDisplay};">
+            <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Cadera (cm) <span style="font-size:10px; color:#ff0055;">(Obligatorio Mujeres)</span>:</label>
+            <input type="number" id="calc-hip" step="0.5" value="${p.hip || ''}" placeholder="95" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+          </div>
+
+          <div style="width: 100%; border-top: 1px solid #2a314d; padding-top: 12px; margin-top: 4px;">
+            <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Nivel de Actividad Física:</label>
+            <select id="calc-activity" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;">
+              <option value="sedentary" ${act('sedentary')}>Sedentario (Sin ejercicio)</option>
+              <option value="light" ${act('light')}>Ligero (1-3 días/semana)</option>
+              <option value="moderate" ${act('moderate')}>Moderado (3-5 días/semana)</option>
+              <option value="active" ${act('active')}>Activo (6-7 días/semana)</option>
+              <option value="very_active" ${act('very_active')}>Atleta / Trabajo muy físico</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 10px; width: 100%;">
+            <div style="flex: 1;">
+              <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">🎯 Objetivo:</label>
+              <select id="calc-goal" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;">
+                <option value="lose" ${gl('lose')}>📉 Bajar Grasa</option>
+                <option value="maintain" ${gl('maintain')}>⚖️ Mantener</option>
+                <option value="gain" ${gl('gain')}>📈 Subir Músculo</option>
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Ritmo:</label>
+              <select id="calc-pace" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;">
+                <option value="slow" ${pc('slow')}>Lento (Sano)</option>
+                <option value="moderate" ${pc('moderate')}>Moderado (Ideal)</option>
+                <option value="aggressive" ${pc('aggressive')}>Agresivo (Rápido)</option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        <button type="button" onclick="processHealthCalculations()" class="btn primary block mb-16" style="width: 100%; padding: 12px; background: #00f3ff; color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;">💾 Calcular y Guardar Diagnóstico</button>
+        <button type="button" onclick="processHealthCalculations()" class="btn primary block mb-16" style="width: 100%; padding: 14px; background: #00f3ff; color: #000; font-weight: 900; font-size: 14px; border: none; border-radius: 8px; cursor: pointer; text-transform: uppercase;">💾 Calcular y Guardar Diagnóstico</button>
 
         <div id="health-results" style="display:${displayStyle};">${resultsHTML}</div>
 
