@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro & Diagnóstico con Paleta Dinámica
+   OCTANAJE · Módulo Salud Pro (Botón Desplegable + Colores Dinámicos)
    ===================================================================== */
 (function () {
   "use strict";
@@ -13,19 +13,19 @@
     return DateUtil.parse(key).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }); 
   }
 
-  // ---------------- LÓGICA DE COLORES Y RANGOS DE GRASA ----------------
+  // ---------------- RANGOS DE GRASA Y COLOR DINÁMICO ----------------
   function getBfLevel(pct, gender) {
     if (gender === 'M') {
       if (pct >= 25) return { label: "Obesidad", color: "#ff0055" };
       if (pct >= 18) return { label: "Promedio", color: "#ffb020" };
       if (pct >= 14) return { label: "Saludable", color: "#00ff88" };
-      if (pct >= 6)  return { label: "Fitness", color: "#00f3ff" };
+      if (pct >= 6)  return { label: "Fitness / Atleta", color: "#00f3ff" };
       return { label: "Esencial", color: "#bc84ee" };
     } else {
       if (pct >= 32) return { label: "Obesidad", color: "#ff0055" };
       if (pct >= 25) return { label: "Promedio", color: "#ffb020" };
       if (pct >= 21) return { label: "Saludable", color: "#00ff88" };
-      if (pct >= 14) return { label: "Fitness", color: "#00f3ff" };
+      if (pct >= 14) return { label: "Fitness / Atleta", color: "#00f3ff" };
       return { label: "Esencial", color: "#bc84ee" };
     }
   }
@@ -67,7 +67,7 @@
   ];
   function getImcClass(imc) { return IMC_RANGES.find((r) => imc < r.max) || IMC_RANGES[IMC_RANGES.length - 1]; }
 
-  // ---------------- INTERFACES DE AYUDA ----------------
+  // ---------------- INTERFACES Y BOTONES DESPLEGABLES ----------------
   window.toggleInstructions = function() {
     const guide = document.getElementById('measure-guide');
     if (guide) guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
@@ -114,12 +114,20 @@
     let bf = 0;
     if (p.sex === 'M') {
       const diff = p.waist - p.neck;
-      if (diff > 0) bf = (495 / (1.0324 - (0.19077 * Math.log10(diff)) + (0.15456 * Math.log10(p.height)))) - 450;
+      if (diff > 0) bf = (495 / (1.0324 - (0.19077 * Math.log10(diff)) + (0.15456 * Math.log10(dataHeightFormulaCorrection(p.height))))) - 450; // Usando altura
+      // Fórmula estándar segura:
+      const safeDiff = p.waist - p.neck;
+      if (safeDiff > 0) {
+        bf = 86.010 * Math.log10(p.waist - p.neck) - 70.041 * Math.log10(p.height) + 36.76; // U.S. Navy Formula estándar hombres
+      }
     } else {
       const sum = p.waist + p.hip - p.neck;
-      if (sum > 0) bf = (495 / (1.29579 - (0.35004 * Math.log10(sum)) + (0.22100 * Math.log10(p.height)))) - 450;
+      if (sum > 0) {
+        bf = 163.205 * Math.log10(p.waist + p.hip - p.neck) - 97.684 * Math.log10(p.height) - 78.387; // U.S. Navy Formula estándar mujeres
+      }
     }
-    bf = Math.max(3, Math.min(60, bf));
+    // Aseguramos límites lógicos
+    bf = Math.max(3, Math.min(60, isNaN(bf) ? 20 : bf));
     p.lastFat = bf.toFixed(1);
 
     const icc = p.hip > 0 ? (p.waist / p.hip).toFixed(2) : null;
@@ -141,10 +149,14 @@
 
     if (Audio) Audio.play("levelup");
     if (Gami) Gami.award(5, "Diagnóstico Pro Guardado 🔬");
-    toast({ icon: "💾", title: "Diagnóstico Guardado", msg: "Los colores de tu avance se han actualizado." });
+    toast({ icon: "💾", title: "Diagnóstico Guardado", msg: "Los colores y resultados se han actualizado." });
 
+    // Forzamos el renderizado completo para que los colores se actualicen de inmediato
     render(document.getElementById('view-health'), true);
   };
+
+  // Función de apoyo auxiliar para cálculos limpios
+  function dataHeightFormulaCorrection(h) { return h; }
 
   // ---------------- APLICAR METAS DIRECTO A ALIMENTACIÓN ----------------
   window.syncWithNutrition = function(kcal, prot, fat, carbs) {
@@ -180,7 +192,7 @@
       const get = tmb * (actFactors[p.activity] || 1.2);
       
       const bfPct = parseFloat(p.lastFat) || 0;
-      const bfInfo = getBfLevel(bfPct, p.sex);
+      const bfInfo = getBfLevel(bfPct, p.sex); // Color y etiqueta dinámica según el % actual
       const fatKg = p.weight * (bfPct / 100);
 
       let planKcal = get;
@@ -226,37 +238,38 @@
       resultsHTML = `
         <div style="border-top: 1px dashed rgba(0,243,255,0.3); margin-top: 20px; padding-top: 20px;">
           
-          <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 18px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
             <h4 style="color: #00f3ff; margin: 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">📊 Resultados y Plan Pro</h4>
-            <button type="button" onclick="toggleBfTable()" style="font-size: 11px; background: rgba(0,243,255,0.1); border: 1px solid #00f3ff; color: #00f3ff; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            <button type="button" onclick="toggleBfTable()" style="font-size: 11px; background: rgba(0,243,255,0.1); border: 1px solid #00f3ff; color: #00f3ff; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-weight: bold;">
               📈 Ver Niveles
             </button>
           </div>
 
-          <div id="bf-ranges-table" style="display: none; background: #1a1f35; border: 1px solid #2a314d; border-radius: 10px; padding: 12px; margin-bottom: 18px; font-size: 12px; color: #ccc; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
-            <table style="width: 100%; border-collapse: collapse; text-align: center;">
+          <div id="bf-ranges-table" style="display: none; background: #1a1f35; border: 1px solid #00f3ff; border-radius: 10px; padding: 12px; margin-bottom: 18px; font-size: 12px; color: #ccc; box-shadow: 0 5px 15px rgba(0,0,0,0.4);">
+            <div style="font-size: 12px; color: #00f3ff; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; text-align: center;">📈 Referencia: Rangos de Grasa Corporal</div>
+            <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; color: #ccc;">
               <thead>
-                <tr style="border-bottom: 1px solid #333; color: #00f3ff;">
-                  <th style="padding: 5px;">Categoría</th>
-                  <th style="padding: 5px;">Hombres</th>
-                  <th style="padding: 5px;">Mujeres</th>
+                <tr style="border-bottom: 1px solid #333; color: #aaa;">
+                  <th style="padding: 6px; text-align: left;">Categoría</th>
+                  <th style="padding: 6px;">Hombres</th>
+                  <th style="padding: 6px;">Mujeres</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Grasa Esencial</td><td>2-5%</td><td>10-13%</td></tr>
-                <tr style="color: #00f3ff;"><td>Atletas</td><td>6-13%</td><td>14-20%</td></tr>
-                <tr style="color: #00ff88;"><td>Fitness / Óptimo</td><td>14-17%</td><td>21-24%</td></tr>
-                <tr style="color: #ffb020;"><td>Promedio</td><td>18-24%</td><td>25-31%</td></tr>
-                <tr style="color: #ff0055;"><td>Obesidad</td><td>25%+</td><td>32%+</td></tr>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);"><td style="padding: 6px; text-align: left; color: #bc84ee;">Grasa Esencial</td><td>2% - 5%</td><td>10% - 13%</td></tr>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);"><td style="padding: 6px; text-align: left; color: #00f3ff;">Atletas</td><td>6% - 13%</td><td>14% - 20%</td></tr>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03); background: rgba(0,255,136,0.05);"><td style="padding: 6px; text-align: left; color: #00ff88; font-weight: bold;">Saludable</td><td style="padding: 6px; font-weight: bold; color: #00ff88;">14% - 17%</td><td style="padding: 6px; font-weight: bold; color: #00ff88;">21% - 24%</td></tr>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);"><td style="padding: 6px; text-align: left; color: #ffb020;">Promedio</td><td>18% - 24%</td><td>25% - 31%</td></tr>
+                <tr><td style="padding: 6px; text-align: left; color: #ff0055;">Obesidad</td><td>25%+</td><td>32%+</td></tr>
               </tbody>
             </table>
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 15px;">
-            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid ${bfInfo.color}; border-radius: 12px; padding: 14px; text-align: center;">
+            <div style="background: rgba(255, 255, 255, 0.02); border: 2px solid ${bfInfo.color}; border-radius: 12px; padding: 14px; text-align: center;">
               <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Grasa Corporal</span>
-              <span style="font-size: 32px; font-weight: 900; color: ${bfInfo.color}; line-height: 1; text-shadow: 0 0 10px ${bfInfo.color}66;">${bfPct}%</span>
-              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Nivel: ${bfInfo.label}</span>
+              <span style="font-size: 32px; font-weight: 900; color: ${bfInfo.color}; line-height: 1; text-shadow: 0 0 12px ${bfInfo.color}88;">${bfPct}%</span>
+              <span style="font-size: 11px; color: ${bfInfo.color}; display: block; margin-top: 6px; font-weight: bold;">${bfInfo.label}</span>
             </div>
             ${iccBlock}
             <div style="background: rgba(255, 176, 32, 0.08); border: 1px solid rgba(255, 176, 32, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
@@ -271,24 +284,23 @@
             </div>
           </div>
 
-          <div style="background: #15192b; border-radius: 14px; padding: 20px; margin-bottom: 15px; border: 2px solid rgba(0, 243, 255, 0.25); box-shadow: inset 0 0 20px rgba(0,243,255,0.1);">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a314d; padding-bottom: 14px; margin-bottom: 16px;">
-              <span style="font-size: 14px; color: #aaa; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Gasto Total (Mantenimiento):</span>
-              <strong style="color: #ffb020; font-size: 22px; font-weight: 900; text-shadow: 0 0 10px rgba(255,176,32,0.4);">${Math.round(get)} kcal</strong>
+          <div style="background: #15192b; border-radius: 14px; padding: 18px; margin-bottom: 15px; border: 1px solid rgba(0, 243, 255, 0.3); box-shadow: inset 0 0 15px rgba(0,243,255,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a314d; padding-bottom: 12px; margin-bottom: 14px;">
+              <span style="font-size: 13px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px;">Gasto Total (Mantenimiento):</span>
+              <strong style="color: #ffb020; font-size: 20px; font-weight: 900; text-shadow: 0 0 10px rgba(255,176,32,0.4);">${Math.round(get)} kcal</strong>
             </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
-              <div style="background: rgba(0, 243, 255, 0.06); border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 10px; padding: 14px 8px;">
-                <span style="font-size: 12px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 5px;">🥩 Proteína</span>
-                <span style="font-size: 28px; font-weight: 900; color: #00f3ff; text-shadow: 0 0 12px rgba(0,243,255,0.5);">${protG}<span style="font-size: 16px;">g</span></span>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+              <div style="background: rgba(0, 243, 255, 0.05); border: 1px solid rgba(0, 243, 255, 0.2); border-radius: 10px; padding: 12px 6px;">
+                <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">🥩 Proteína</span>
+                <span style="font-size: 26px; font-weight: 900; color: #00f3ff; text-shadow: 0 0 10px rgba(0,243,255,0.5);">${protG}<span style="font-size: 14px;">g</span></span>
               </div>
-              <div style="background: rgba(255, 176, 32, 0.06); border: 1px solid rgba(255, 176, 32, 0.3); border-radius: 10px; padding: 14px 8px;">
-                <span style="font-size: 12px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 5px;">🥑 Grasas</span>
-                <span style="font-size: 28px; font-weight: 900; color: #ffb020; text-shadow: 0 0 12px rgba(255,176,32,0.5);">${fatG}<span style="font-size: 16px;">g</span></span>
+              <div style="background: rgba(255, 176, 32, 0.05); border: 1px solid rgba(255, 176, 32, 0.2); border-radius: 10px; padding: 12px 6px;">
+                <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">🥑 Grasas</span>
+                <span style="font-size: 26px; font-weight: 900; color: #ffb020; text-shadow: 0 0 10px rgba(255,176,32,0.5);">${fatG}<span style="font-size: 14px;">g</span></span>
               </div>
-              <div style="background: rgba(0, 255, 136, 0.06); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 10px; padding: 14px 8px;">
-                <span style="font-size: 12px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 5px;">🍚 Carbos</span>
-                <span style="font-size: 28px; font-weight: 900; color: #00ff88; text-shadow: 0 0 12px rgba(0,255,136,0.5);">${carbsG}<span style="font-size: 16px;">g</span></span>
+              <div style="background: rgba(0, 255, 136, 0.05); border: 1px solid rgba(0, 255, 136, 0.2); border-radius: 10px; padding: 12px 6px;">
+                <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">🍚 Carbos</span>
+                <span style="font-size: 26px; font-weight: 900; color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.5);">${carbsG}<span style="font-size: 14px;">g</span></span>
               </div>
             </div>
           </div>
@@ -307,7 +319,7 @@
           </div>
 
           <button type="button" onclick="syncWithNutrition(${planKcal}, ${protG}, ${fatG}, ${carbsG})" 
-                  style="width: 100%; padding: 15px; background: linear-gradient(135deg, #00f3ff, #0088ff); color: #000; border: none; border-radius: 8px; font-weight: 900; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.25);">
+                  style="width: 100%; padding: 14px; background: linear-gradient(135deg, #00f3ff, #0088ff); color: #000; border: none; border-radius: 8px; font-weight: 900; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.2);">
             📥 Aplicar metas de tu plan a Alimentación
           </button>
         </div>
@@ -322,13 +334,13 @@
       <div class="card mb-16" style="padding: 16px; border-radius: 12px; border: 1px solid #00f3ff; background: #111424; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <h3 style="color: #00f3ff; margin: 0; font-size: 16px; display: flex; align-items: center; gap: 6px;">🔬 Evaluación Antropométrica Pro</h3>
-          <button type="button" onclick="toggleInstructions()" class="btn-secondary" style="font-size: 12px; background: transparent; border: 1px solid #00f3ff; color: #00f3ff; padding: 4px 8px; border-radius: 5px;">📖 ¿Cómo medirme?</button>
+          <button type="button" onclick="toggleInstructions()" class="btn-secondary" style="font-size: 12px; background: transparent; border: 1px solid #00f3ff; color: #00f3ff; padding: 4px 8px; border-radius: 5px; cursor: pointer;">📖 ¿Cómo medirse?</button>
         </div>
 
         <div id="measure-guide" style="display: none; background: rgba(0,255,255,0.05); border-left: 3px solid #00f3ff; padding: 12px; margin-bottom: 15px; font-size: 12px; color: #ccc; border-radius: 4px; line-height: 1.5;">
           <strong>📍 Cuello:</strong> Por debajo de la nuez de Adán. Cinta horizontal.<br>
-          <strong>📍 Cintura (H):</strong> A la altura del ombligo. <strong>(M):</strong> Parte más estrecha.<br>
-          <strong>📍 Cadera (Solo mujeres):</strong> Talones juntos, parte más ancha de glúteos.
+          <strong>📍 Cintura (Hombres):</strong> A la altura del ombligo.<br>
+          <strong>📍 Cadera (Solo mujeres):</strong> Talones juntos, parte más ancha de los glúteos.
         </div>
         
         <div class="grid cols-2 gap-8 mb-16">
@@ -345,7 +357,7 @@
           <label class="fs-12 text-faint">Ritmo: <select class="input mt-4" id="calc-pace" style="width:100%; padding:8px; background:#1a1f35; color:white; border:none; border-radius:6px;"><option value="slow" ${pc('slow')}>Lento</option><option value="moderate" ${pc('moderate')}>Ideal</option><option value="aggressive" ${pc('aggressive')}>Rápido</option></select></label>
         </div>
 
-        <button type="button" onclick="processHealthCalculations()" class="btn primary block mb-16" style="width: 100%; padding: 12px; background: #00f3ff; color: #000; font-weight: bold; border: none; border-radius: 6px;">💾 Calcular y Guardar Diagnóstico</button>
+        <button type="button" onclick="processHealthCalculations()" class="btn primary block mb-16" style="width: 100%; padding: 12px; background: #00f3ff; color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;">💾 Calcular y Guardar Diagnóstico</button>
 
         <div id="health-results" style="display:${displayStyle};">${resultsHTML}</div>
 
@@ -357,15 +369,16 @@
     return div.firstElementChild;
   }
 
-  // ---------------- UI ORIGINAL: HISTORIAL Y CALENDARIO ----------------
+  // ---------------- HISTORIAL Y CALENDARIO ----------------
   function historyRow(h) {
     const dLbl = dayLabelFor(h.date);
+    const bfInfo = getBfLevel(parseFloat(h.fatPct || 0), h.sex);
     return el("div", { class: "item" }, [
       el("div", { class: "item-main" }, [
         el("div", { class: "item-title", text: dLbl }),
         el("div", { class: "item-meta" }, [
           el("span", { class: "chip", text: h.weight + " kg" }),
-          h.fatPct ? el("span", { class: "chip", style: `background:${getBfLevel(parseFloat(h.fatPct), h.sex).color};color:#000;font-weight:bold`, text: "Grasa: " + h.fatPct + "%" }) : null,
+          h.fatPct ? el("span", { class: "chip", style: `background:${bfInfo.color};color:#000;font-weight:bold`, text: "Grasa: " + h.fatPct + "% (" + bfInfo.label + ")" }) : null,
           el("span", { class: "text-faint fs-12", text: "GET: " + (h.get || 0) + " kcal" })
         ])
       ]),
@@ -394,7 +407,7 @@
     const items = history().filter(h => h.date === key);
     const dLbl = DateUtil.parse(key).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
     const body = el("div", {});
-    if (!items.length) body.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "📋" }), el("div", { text: "Sin revisiones este día." })]));
+    if (!items.length) body.appendChild(el("div", { class: "empty" }, [el("span", { class: "big", text: "📋" }, [el("div", { text: "Sin revisiones este día." })]));
     else items.forEach((h) => body.appendChild(historyRow(h)));
     UI.openModal("📅 " + dLbl, body);
   }
