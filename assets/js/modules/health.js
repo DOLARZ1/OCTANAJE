@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro (Diseño Responsivo & Lógica de Cadera Fija)
+   OCTANAJE · Módulo Salud Pro (Formulario Estable & Selector Sincronizado)
    ===================================================================== */
 (function () {
   "use strict";
@@ -49,7 +49,7 @@
     const pr = health().profile || {}; 
     if (!pr.goal) pr.goal = "maintain";
     if (!pr.pace) pr.pace = "moderate";
-    if (!pr.sex) pr.sex = "male";
+    if (!pr.sex) pr.sex = "M"; // Aseguramos que inicie en Masculino por defecto de forma estricta
     return pr; 
   }
   function history() { return health().history || []; }
@@ -67,10 +67,12 @@
   ];
   function getImcClass(imc) { return IMC_RANGES.find((r) => imc < r.max) || IMC_RANGES[IMC_RANGES.length - 1]; }
 
-  // ---------------- INTERFACES Y BOTONES DESPLEGABLES ----------------
+  // ---------------- INTERFACES Y BOTONES DESPLEGABLES (SIN BORRAR FORMULARIO) ----------------
   window.toggleInstructions = function() {
     const guide = document.getElementById('measure-guide');
-    if (guide) guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
+    if (guide) {
+      guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
+    }
   };
 
   window.toggleBfTable = function() {
@@ -322,7 +324,7 @@
       `;
     }
 
-    const hipDisplay = p.sex === 'female' ? 'block' : 'none';
+    const initialHipDisplay = p.sex === 'F' ? 'block' : 'none';
 
     const div = document.createElement('div');
     div.id = "pro-calc-card"; 
@@ -349,8 +351,8 @@
             <div style="flex: 1;">
               <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Sexo:</label>
               <select id="calc-gender" onchange="handleGenderChange()" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;">
-                <option value="male" ${selM}>Hombre</option>
-                <option value="female" ${selF}>Mujer</option>
+                <option value="male" ${p.sex === 'M' ? 'selected' : ''}>Hombre</option>
+                <option value="female" ${p.sex === 'F' ? 'selected' : ''}>Mujer</option>
               </select>
             </div>
             <div style="flex: 1;">
@@ -381,7 +383,7 @@
             </div>
           </div>
 
-          <div id="calc-hip-container" style="width: 100%; display: ${hipDisplay};">
+          <div id="calc-hip-container" style="width: 100%; display: ${initialHipDisplay};">
             <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Cadera (cm) <span style="font-size:10px; color:#ff0055;">(Obligatorio Mujeres)</span>:</label>
             <input type="number" id="calc-hip" step="0.5" value="${p.hip || ''}" placeholder="95" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
           </div>
