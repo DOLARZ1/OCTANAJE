@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro (Fórmula Matemática Corregida - U.S. Navy)
+   OCTANAJE · Módulo Salud Pro (Nombres de Categorías Ajustados por UX)
    ===================================================================== */
 (function () {
   "use strict";
@@ -13,17 +13,17 @@
     return DateUtil.parse(key).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }); 
   }
 
-  // ---------------- RANGOS DE GRASA Y COLOR DINÁMICO ----------------
+  // ---------------- RANGOS DE GRASA Y COLOR DINÁMICO (UX MEJORADO) ----------------
   function getBfLevel(pct, gender) {
     if (gender === 'M') {
-      if (pct >= 25) return { label: "Obesidad", color: "#ff0055" };
-      if (pct >= 18) return { label: "Promedio", color: "#ffb020" };
+      if (pct >= 25) return { label: "Elevado", color: "#ff0055" };
+      if (pct >= 18) return { label: "Aceptable", color: "#ffb020" };
       if (pct >= 14) return { label: "Saludable", color: "#00ff88" };
       if (pct >= 6)  return { label: "Fitness / Atleta", color: "#00f3ff" };
       return { label: "Esencial", color: "#bc84ee" };
     } else {
-      if (pct >= 32) return { label: "Obesidad", color: "#ff0055" };
-      if (pct >= 25) return { label: "Promedio", color: "#ffb020" };
+      if (pct >= 32) return { label: "Elevado", color: "#ff0055" };
+      if (pct >= 25) return { label: "Aceptable", color: "#ffb020" };
       if (pct >= 21) return { label: "Saludable", color: "#00ff88" };
       if (pct >= 14) return { label: "Fitness / Atleta", color: "#00f3ff" };
       return { label: "Esencial", color: "#bc84ee" };
@@ -56,7 +56,7 @@
   function weights() { return health().weights || []; }
   function weightsSorted() { return weights().slice().sort((a, b) => a.date.localeCompare(b.date)); }
 
-  // ---------------- ESCALAS CLÍNICAS (IMC) ----------------
+  // ---------------- ESCALAS CLÍNICAS (IMC - ESTÁNDAR OMS) ----------------
   const IMC_RANGES = [
     { max: 18.5, label: "Bajo peso", color: "#00f3ff" },
     { max: 25.0, label: "Normal", color: "#00ff88" },
@@ -86,7 +86,7 @@
     }
   };
 
-  // ---------------- PROCESAR DIAGNÓSTICO Y GUARDAR (FÓRMULAS CORREGIDAS) ----------------
+  // ---------------- PROCESAR DIAGNÓSTICO Y GUARDAR ----------------
   window.processHealthCalculations = function() {
     const p = profile();
     
@@ -109,14 +109,11 @@
       if (Audio) Audio.play("error"); toast({ icon: "⚠️", msg: "Las mujeres requieren la medida de cadera." }); return;
     }
 
-    // 1. TMB (Mifflin-St Jeor - Esta fórmula sí es en cm y kg)
     let tmb = (10 * p.weight) + (6.25 * p.height) - (5 * p.age);
     tmb = p.sex === 'F' ? tmb - 161 : tmb + 5;
     const actFactors = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
     const get = tmb * (actFactors[p.activity] || 1.2);
 
-    // 2. Porcentaje de Grasa (U.S. Navy Method)
-    // ¡CORRECCIÓN CRÍTICA! Convertimos cm a pulgadas antes de usar los logaritmos
     const h_in = p.height / 2.54;
     const n_in = p.neck / 2.54;
     const w_in = p.waist / 2.54;
@@ -134,7 +131,6 @@
         bf = 163.205 * Math.log10(sum) - 97.684 * Math.log10(h_in) - 78.387;
       }
     }
-    // Aseguramos límites biológicos lógicos
     bf = Math.max(3, Math.min(60, isNaN(bf) ? 20 : bf));
     p.lastFat = bf.toFixed(1);
 
@@ -157,7 +153,7 @@
 
     if (Audio) Audio.play("levelup");
     if (Gami) Gami.award(5, "Diagnóstico Pro Guardado 🔬");
-    toast({ icon: "💾", title: "Cálculo Exitoso", msg: "Tus métricas de grasa han sido ajustadas." });
+    toast({ icon: "💾", title: "Cálculo Exitoso", msg: "Tus métricas se han guardado correctamente." });
 
     render(document.getElementById('view-health'), true);
   };
@@ -241,7 +237,7 @@
           </div>
 
           <div id="bf-ranges-table" style="display: none; background: #1a1f35; border: 1px solid #00f3ff; border-radius: 10px; padding: 12px; margin-bottom: 18px; font-size: 12px; color: #ccc; box-shadow: 0 5px 15px rgba(0,0,0,0.4);">
-            <div style="font-size: 12px; color: #00f3ff; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; text-align: center;">📈 Referencia: Rangos de Grasa Corporal</div>
+            <div style="font-size: 12px; color: #00f3ff; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; text-align: center;">📈 Referencia: Composición Corporal</div>
             <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; color: #ccc;">
               <thead>
                 <tr style="border-bottom: 1px solid #333; color: #aaa;">
@@ -254,8 +250,8 @@
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);"><td style="padding: 6px; text-align: left; color: #bc84ee;">Grasa Esencial</td><td>2% - 5%</td><td>10% - 13%</td></tr>
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);"><td style="padding: 6px; text-align: left; color: #00f3ff;">Atletas</td><td>6% - 13%</td><td>14% - 20%</td></tr>
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.03); background: rgba(0,255,136,0.05);"><td style="padding: 6px; text-align: left; color: #00ff88; font-weight: bold;">Saludable</td><td style="padding: 6px; font-weight: bold; color: #00ff88;">14% - 17%</td><td style="padding: 6px; font-weight: bold; color: #00ff88;">21% - 24%</td></tr>
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);"><td style="padding: 6px; text-align: left; color: #ffb020;">Promedio</td><td>18% - 24%</td><td>25% - 31%</td></tr>
-                <tr><td style="padding: 6px; text-align: left; color: #ff0055;">Obesidad</td><td>25%+</td><td>32%+</td></tr>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);"><td style="padding: 6px; text-align: left; color: #ffb020;">Aceptable</td><td>18% - 24%</td><td>25% - 31%</td></tr>
+                <tr><td style="padding: 6px; text-align: left; color: #ff0055;">Elevado</td><td>25%+</td><td>32%+</td></tr>
               </tbody>
             </table>
           </div>
@@ -343,7 +339,7 @@
 
         <div id="measure-guide" style="display: none; background: rgba(0,255,255,0.05); border-left: 3px solid #00f3ff; padding: 12px; margin-bottom: 15px; font-size: 12px; color: #ccc; border-radius: 4px; line-height: 1.5;">
           <strong>📍 Cuello:</strong> Por debajo de la nuez de Adán. Cinta horizontal.<br>
-          <strong>📍 Cintura (H):</strong> A la altura del ombligo.<br>
+          <strong>📍 Cintura (Hombres):</strong> A la altura del ombligo.<br>
           <strong>📍 Cadera (Solo mujeres):</strong> Talones juntos, parte más ancha de los glúteos.
         </div>
         
