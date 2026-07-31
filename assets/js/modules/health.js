@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro (Diseño PDF Tamaño Carta + Fondo Blanco)
+   OCTANAJE · Módulo Salud Pro (Diseño Intacto + Medidas Musculares Opcionales)
    ===================================================================== */
 (function () {
   "use strict";
@@ -51,6 +51,11 @@
     if (guide) guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
   };
 
+  window.toggleMuscleMeasures = function() {
+    const container = document.getElementById('muscle-measures-container');
+    if (container) container.style.display = container.style.display === 'none' ? 'block' : 'none';
+  };
+
   // ---------------- BASE DE DATOS Y PERFIL ----------------
   function health() {
     const s = Store.get();
@@ -91,7 +96,7 @@
     }
   };
 
-  // ---------------- GENERADOR DE DOCUMENTO PDF ----------------
+  // ---------------- GENERADOR DE DOCUMENTO PDF (HOJA CARTA BLANCA) ----------------
   window.exportPDF = function(entry) {
     const hist = history();
     if (entry) {
@@ -140,7 +145,7 @@
     
     const btn = el("button", { 
       style: "width:100%; padding:12px; background:#00f3ff; color:#000; font-weight:bold; border:none; border-radius:6px; cursor:pointer; text-transform:uppercase;", 
-      text: "📄 DESCARGAR REPORTES PDF",
+      text: "📄 DESCARGAR REPORTE PDF",
       onclick: () => {
         const idx = parseInt(document.getElementById("pdf-date-select").value, 10);
         UI.closeModal();
@@ -209,11 +214,7 @@
         <meta charset="UTF-8">
         <title>OCTANAJE - Diagnóstico Antropométrico ${name}</title>
         <style>
-          @page {
-            size: letter portrait;
-            margin: 12mm 15mm;
-            background-color: #ffffff;
-          }
+          @page { size: letter portrait; margin: 12mm 15mm; background-color: #ffffff; }
           *, *::before, *::after { box-sizing: border-box; }
           body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -229,14 +230,7 @@
           .btn-print { background: #0284c7; color: #ffffff; border: none; padding: 10px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; text-transform: uppercase; font-size: 11px; }
           @media print { .action-bar { display: none; } body { background: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 
-          /* Encabezado */
-          .header {
-            display: table;
-            width: 100%;
-            border-bottom: 3px solid #0284c7;
-            padding-bottom: 10px;
-            margin-bottom: 16px;
-          }
+          .header { display: table; width: 100%; border-bottom: 3px solid #0284c7; padding-bottom: 10px; margin-bottom: 16px; }
           .header-left { display: table-cell; vertical-align: middle; text-align: left; }
           .header-right { display: table-cell; vertical-align: middle; text-align: right; }
           .logo-box { font-size: 22pt; font-weight: 900; color: #0f172a; letter-spacing: 1.5px; }
@@ -245,45 +239,21 @@
           .doc-title { font-size: 13pt; font-weight: 800; color: #0284c7; text-transform: uppercase; letter-spacing: 0.5px; }
           .doc-date { font-size: 9.5pt; color: #475569; margin-top: 4px; font-weight: 500; }
 
-          /* Títulos de sección */
-          .section-title {
-            font-size: 10.5pt;
-            font-weight: 700;
-            color: #0284c7;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-            padding-bottom: 3px;
-            border-bottom: 1px solid #e2e8f0;
-          }
+          .section-title { font-size: 10.5pt; font-weight: 700; color: #0284c7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding-bottom: 3px; border-bottom: 1px solid #e2e8f0; }
 
-          /* Ficha de datos personales */
-          .info-card {
-            background-color: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 12px 14px;
-            margin-bottom: 16px;
-          }
+          .info-card { background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
           .info-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
           .info-table td { padding: 5px 8px; vertical-align: middle; }
           .info-table td.lbl { color: #475569; font-weight: 700; width: 18%; }
           .info-table td.val { color: #0f172a; font-weight: 500; width: 32%; }
 
-          /* Contenedor de Tarjetas Hacia Abajo */
           .cards-container { margin-bottom: 16px; }
           .cards-row { display: table; width: 100%; table-layout: fixed; margin-bottom: 12px; }
           .card-cell { display: table-cell; padding: 0 5px; vertical-align: top; }
           .card-cell:first-child { padding-left: 0; }
           .card-cell:last-child { padding-right: 0; }
 
-          .metric-card {
-            background: #ffffff;
-            border-radius: 8px;
-            padding: 10px 8px;
-            text-align: center;
-            border: 1px solid #cbd5e1;
-          }
+          .metric-card { background: #ffffff; border-radius: 8px; padding: 10px 8px; text-align: center; border: 1px solid #cbd5e1; }
           .metric-card.bf { border: 2px solid ${bfInfo.color}; background-color: #f0fdf4; }
           .metric-card.lean { border: 1.5px solid #0284c7; background-color: #f0f9ff; }
           .metric-card.kcal { border: 1.5px solid #d97706; background-color: #fffbeb; }
@@ -293,14 +263,7 @@
           .card-val { font-size: 20pt; font-weight: 900; line-height: 1.1; display: block; }
           .card-sub { font-size: 8pt; color: #64748b; margin-top: 4px; display: block; font-weight: 600; }
 
-          /* Macros */
-          .macros-card {
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 16px;
-          }
+          .macros-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
           .get-header { display: table; width: 100%; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 10px; }
           .get-title { display: table-cell; font-size: 9.5pt; color: #334155; font-weight: 700; text-transform: uppercase; }
           .get-val { display: table-cell; text-align: right; color: #d97706; font-size: 14pt; font-weight: 900; }
@@ -309,14 +272,7 @@
           .macro-lbl { font-size: 8pt; color: #64748b; font-weight: 700; display: block; margin-bottom: 2px; }
           .macro-val { font-size: 15pt; font-weight: 800; display: block; }
 
-          /* IMC */
-          .imc-card {
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 10px 14px;
-            margin-bottom: 16px;
-          }
+          .imc-card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; }
           .imc-header { display: table; width: 100%; }
           .imc-lbl { display: table-cell; font-size: 9.5pt; font-weight: 700; color: #334155; }
           .imc-val { display: table-cell; text-align: right; font-size: 13pt; font-weight: 800; color: ${cat.color}; }
@@ -326,37 +282,11 @@
           .imc-scale { display: table; width: 100%; margin-top: 4px; font-size: 7.5pt; color: #64748b; }
           .imc-scale div { display: table-cell; }
 
-          /* Disclaimer */
-          .disclaimer {
-            padding: 8px 10px;
-            background: #f1f5f9;
-            border-radius: 6px;
-            border-left: 3px solid #64748b;
-            font-size: 8pt;
-            color: #475569;
-            line-height: 1.35;
-            margin-bottom: 24px;
-          }
+          .disclaimer { padding: 8px 10px; background: #f1f5f9; border-radius: 6px; border-left: 3px solid #64748b; font-size: 8pt; color: #475569; line-height: 1.35; margin-bottom: 24px; }
 
-          /* Recuadro de Firma Limpio al Final */
-          .signature-container {
-            margin-top: 25px;
-            text-align: center;
-            page-break-inside: avoid;
-          }
-          .signature-box {
-            border: 1px dashed #94a3b8;
-            width: 280px;
-            height: 70px;
-            margin: 0 auto;
-            border-radius: 6px;
-            background-color: #fafafa;
-          }
-          .signature-line {
-            border-top: 1.5px solid #334155;
-            width: 280px;
-            margin: 8px auto 0 auto;
-          }
+          .signature-container { margin-top: 25px; text-align: center; page-break-inside: avoid; }
+          .signature-box { border: 1px dashed #94a3b8; width: 280px; height: 70px; margin: 0 auto; border-radius: 6px; background-color: #fafafa; }
+          .signature-line { border-top: 1.5px solid #334155; width: 280px; margin: 8px auto 0 auto; }
         </style>
       </head>
       <body>
@@ -494,6 +424,7 @@
     printWin.document.close();
   };
 
+  // ---------------- PROCESAR DIAGNÓSTICO Y GUARDAR ----------------
   window.processHealthCalculations = function() {
     const p = profile();
     p.name = document.getElementById('calc-name').value || "Usuario";
@@ -507,6 +438,12 @@
     p.activity = document.getElementById('calc-activity').value;
     p.goal = document.getElementById('calc-goal').value;
     p.pace = document.getElementById('calc-pace').value;
+
+    // Medidas musculares opcionales
+    p.chest = parseFloat(document.getElementById('calc-chest')?.value) || 0;
+    p.biceps = parseFloat(document.getElementById('calc-biceps')?.value) || 0;
+    p.thigh = parseFloat(document.getElementById('calc-thigh')?.value) || 0;
+    p.calf = parseFloat(document.getElementById('calc-calf')?.value) || 0;
 
     if (!p.weight || !p.height || !p.age || !p.neck || !p.waist) {
       if (Audio) Audio.play("error"); toast({ icon: "⚠️", msg: "Completa los datos obligatorios." }); return;
@@ -535,6 +472,7 @@
     const entry = {
       id: Store.uid(), date: today(), name: p.name, sex: p.sex, age: p.age, weight: p.weight, height: p.height, 
       neck: p.neck, waist: p.waist, hip: p.hip, activity: p.activity, goal: p.goal, pace: p.pace, 
+      chest: p.chest, biceps: p.biceps, thigh: p.thigh, calf: p.calf,
       fatPct: p.lastFat, icc: icc, imc: Math.round(imc * 10) / 10, geb: Math.round(tmb), get: Math.round(get)
     };
 
@@ -741,6 +679,36 @@
           <div id="calc-hip-container" style="display:${hipDisplay};">
             <label style="font-size:11px; color:#aaa; display:block; margin-bottom:4px;">Cadera (cm) <span style="color:#ff0055;">(Obligatorio Mujeres)</span>:</label>
             <input type="number" id="calc-hip" step="0.5" value="${p.hip || ''}" placeholder="Ej. 95" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+          </div>
+
+          <div style="text-align: center; margin: 4px 0;">
+            <button type="button" onclick="toggleMuscleMeasures()" style="background: transparent; border: 1px dashed #00f3ff; color: #00f3ff; padding: 8px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold;">
+              💪 Medidas Musculares (Opcional)
+            </button>
+          </div>
+
+          <div id="muscle-measures-container" style="display: none; background: rgba(0, 243, 255, 0.03); border: 1px solid rgba(0, 243, 255, 0.2); border-radius: 8px; padding: 12px; margin-bottom: 4px;">
+            <div style="font-size: 11px; color: #00f3ff; font-weight: bold; margin-bottom: 8px; text-transform: uppercase;">📐 Perímetros de Hipertrofia (cm)</div>
+            <div style="display:flex; gap:12px; margin-bottom: 8px;">
+              <div style="flex:1;">
+                <label style="font-size:10px; color:#aaa; display:block; margin-bottom:2px;">Pecho / Tórax:</label>
+                <input type="number" id="calc-chest" step="0.5" value="${p.chest || ''}" placeholder="Ej. 100" style="width:100%; box-sizing:border-box; padding:8px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:10px; color:#aaa; display:block; margin-bottom:2px;">Bíceps / Brazo:</label>
+                <input type="number" id="calc-biceps" step="0.5" value="${p.biceps || ''}" placeholder="Ej. 38" style="width:100%; box-sizing:border-box; padding:8px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+              </div>
+            </div>
+            <div style="display:flex; gap:12px;">
+              <div style="flex:1;">
+                <label style="font-size:10px; color:#aaa; display:block; margin-bottom:2px;">Muslo / Pierna:</label>
+                <input type="number" id="calc-thigh" step="0.5" value="${p.thigh || ''}" placeholder="Ej. 58" style="width:100%; box-sizing:border-box; padding:8px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:10px; color:#aaa; display:block; margin-bottom:2px;">Pantorrilla:</label>
+                <input type="number" id="calc-calf" step="0.5" value="${p.calf || ''}" placeholder="Ej. 37" style="width:100%; box-sizing:border-box; padding:8px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
+              </div>
+            </div>
           </div>
 
           <div style="border-top:1px solid #2a314d; padding-top:12px; margin-top:4px;">
