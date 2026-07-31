@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro (Nombres de Categorías Ajustados por UX)
+   OCTANAJE · Módulo Salud Pro (Integración con GCalendar & Aviso Original)
    ===================================================================== */
 (function () {
   "use strict";
@@ -37,6 +37,14 @@
     if (N.Health && N.Health.render) {
       N.Health.render(document.getElementById('view-health'), true);
     }
+  };
+
+  // ---------------- GOOGLE CALENDAR SCHEDULER ----------------
+  window.scheduleWeighIn = function() {
+    const title = encodeURIComponent("Revisión Antropométrica (OCTANAJE)");
+    const details = encodeURIComponent("Es hora de registrar tu peso y medidas corporales en la app OCTANAJE para mantener tu progreso actualizado.");
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}`;
+    window.open(url, '_blank');
   };
 
   // ---------------- BASE DE DATOS Y PERFIL ----------------
@@ -426,7 +434,7 @@
         <div id="health-results" style="display:${displayStyle};">${resultsHTML}</div>
 
         <div style="margin-top: 20px; padding: 10px 12px; background: rgba(255, 255, 255, 0.03); border-radius: 6px; border-left: 2px solid #888; font-size: 11px; color: #888; line-height: 1.4;">
-          ⚠️ <strong>Aviso Informativo:</strong> Los cálculos aquí mostrados son estimaciones basadas en fórmulas deportivas estándar. No sustituyen un diagnóstico médico.
+          ⚠️ <strong>Aviso Informativo:</strong> Los cálculos aquí mostrados son estimaciones basadas en fórmulas deportivas estándar (Mifflin-St Jeor / Marina de EE. UU.) para uso personal y educativo. No sustituyen un diagnóstico clínico, plan nutricional o consejo médico. Consulta siempre a un especialista de la salud.
         </div>
       </div>
     `;
@@ -532,13 +540,19 @@
     if (!container) return;
     if (!forceRender && container.querySelector('#pro-calc-card')) return;
     container.innerHTML = "";
+    
+    // BOTÓN DE CALENDARIO AÑADIDO AQUÍ
     container.appendChild(el("div", { class: "view-head" }, [
       el("div", {}, [
         el("h1", { class: "view-title" }, [N.Icons ? N.Icons.node("heart") : "❤️", "Salud"]),
         el("p", { class: "view-desc", text: "Diagnóstico corporal, gasto calórico y plan de nutrición." })
       ]),
-      el("div", { class: "flex gap-8", style: "flex-wrap:wrap" }, [el("button", { class: "btn", onclick: openHistory, html: "📖 Ver Historial" })])
+      el("div", { class: "flex gap-8", style: "flex-wrap:wrap; margin-top: 10px;" }, [
+        el("button", { class: "btn", onclick: openHistory, html: "📖 Ver Historial" }),
+        el("button", { class: "btn", style: "background: rgba(0, 243, 255, 0.1); border: 1px solid #00f3ff; color: #00f3ff;", onclick: scheduleWeighIn, html: "📅 Agendar Revisión" })
+      ])
     ]));
+    
     container.appendChild(proCalculatorCard());
     container.appendChild(buildCalendar());
     if (weightsSorted().length > 0) container.appendChild(weightCard());
