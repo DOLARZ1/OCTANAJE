@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Entrenamientos (Deportes Completos + Favoritos ⭐)
+   OCTANAJE · Módulo Entrenamientos (Diseño Neón + Calendario + Alinear)
    ===================================================================== */
 (function () {
   "use strict";
@@ -7,6 +7,8 @@
   const { Store, UI, Audio, Gami, Charts } = N;
   const { el, fmt, toast } = UI;
   const DateUtil = Store.DateUtil;
+
+  const today = () => DateUtil.todayKey();
 
   // SUPER BASE DE DATOS INTELIGENTE (Pesas + Calistenia + Crossfit + Parkour)
   const EXERCISE_DB = [
@@ -54,7 +56,6 @@
     '<path d="M8 16c3.314 0 6-2 6-5.5 0-1.5-.5-4-2-6 .25 1.5-1.25 2-1.25 2C11 4 9 .5 6 0c.357 2 .5 4-2 6-1.25 1-2 2.729-2 4.5C2 14 4.686 16 8 16Zm0-1c-1.657 0-3-1-3-2.75 0-.75.25-2 1-2.75.25 1.25-1 2.5-1 2.5S6.5 12 6.5 10.5c0-1.5 1-3.5 1.5-4C7.5 8 7 6 6 4c0 0 3.5 1 3.5 4.5V9c0 1.5 1.5 2.5 1.5 4.25S9.657 15 8 15Z"/>' +
     '</svg>';
 
-  // LISTA RESTAURADA Y COMPLETA
   const TYPES = [
     { value: "fuerza", name: "Fuerza / Pesas", icon: "🏋️" },
     { value: "cardio", name: "Cardio", icon: "🏃" },
@@ -94,7 +95,6 @@
 
   function workouts() { return Store.get().workouts; }
 
-  // Detectores Dinámicos (Leen si elegiste "Otro" y pusiste tu propio icono/nombre)
   function getWorkoutName(w) {
     if (w.type === "otro" && w.customName) return w.customName;
     const t = TYPES.find((x) => x.value === w.type);
@@ -213,7 +213,7 @@
     setTimeout(() => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {} setTimeout(() => iframe.remove(), 1500); }, 500);
   }
 
-  // ---------------- FORMULARIO DE EJERCICIOS CON VOLUMEN Y FAVORITOS ⭐ ----------------
+  // ---------------- FORMULARIO DE EJERCICIOS CON ALINEACIÓN PERFECTA ⭐ ----------------
   function buildExerciseSection() {
     if (!document.getElementById("ex-datalist")) {
       const dlist = el("datalist", { id: "ex-datalist" });
@@ -221,7 +221,7 @@
       document.body.appendChild(dlist);
     }
 
-    const list = el("div", { style: "display:flex; flex-direction:column; gap:8px;" });
+    const list = el("div", { style: "display:flex; flex-direction:column; gap:10px;" });
     
     function addRow(ex) {
       let isFav = ex ? (ex.isFav || false) : false;
@@ -230,31 +230,36 @@
         type: "button", 
         html: isFav ? "⭐" : "☆", 
         title: "Marcar como Favorito",
-        style: "background:transparent; border:none; cursor:pointer; font-size:16px; padding:0 8px 0 0;", 
+        style: "background:transparent; border:none; cursor:pointer; font-size:18px; padding:0 8px 0 0; outline:none; display:flex; align-items:center;", 
         onclick: () => { 
           isFav = !isFav; 
           favBtn.innerHTML = isFav ? "⭐" : "☆"; 
         }
       });
 
-      const nameI = el("input", { class: "input", placeholder: "Ejercicio (ej. Press)", style: "flex:1; background:transparent; border:none; padding:8px; color:white; outline:none;" });
+      const nameI = el("input", { class: "input", placeholder: "Ejercicio (ej. Press)", style: "flex:1; min-width:0; background:transparent; border:none; padding:10px 8px; color:white; outline:none; box-sizing:border-box;" });
       nameI.setAttribute("list", "ex-datalist");
       
-      const nameWrap = el("div", { style: "display:flex; align-items:center; margin-bottom:6px; background:#1a1f35; border:1px solid #2a314d; border-radius:6px; padding-left:8px;" }, [
+      const nameWrap = el("div", { style: "display:flex; align-items:center; margin-bottom:8px; background:#1a1f35; border:1px solid #2a314d; border-radius:6px; padding-left:10px;" }, [
         favBtn, nameI
       ]);
 
-      const setsI = el("input", { class: "input", type: "number", min: 0, placeholder: "Series", style: "flex:1; text-align:center;" });
-      const repsI = el("input", { class: "input", type: "number", min: 0, placeholder: "Reps", style: "flex:1; text-align:center;" });
-      const weightI = el("input", { class: "input", type: "number", step: "0.5", min: 0, placeholder: "Peso kg", style: "flex:1.5; text-align:center;" });
+      const setsI = el("input", { class: "input", type: "number", min: 0, placeholder: "Series", style: "flex:1; min-width:0; text-align:center; padding:10px 4px; box-sizing:border-box; border:1px solid #2a314d; border-radius:6px; background:#1a1f35; color:white;" });
+      const repsI = el("input", { class: "input", type: "number", min: 0, placeholder: "Reps", style: "flex:1; min-width:0; text-align:center; padding:10px 4px; box-sizing:border-box; border:1px solid #2a314d; border-radius:6px; background:#1a1f35; color:white;" });
+      const weightI = el("input", { class: "input", type: "number", step: "0.5", min: 0, placeholder: "Peso kg", style: "flex:1.5; min-width:0; text-align:center; padding:10px 4px; box-sizing:border-box; border:1px solid #2a314d; border-radius:6px; background:#1a1f35; color:white;" });
       
       if (ex) { nameI.value = ex.name || ""; setsI.value = ex.sets || ""; repsI.value = ex.reps || ""; weightI.value = ex.weight || ""; }
       
-      const row = el("div", { style: "background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 8px; border-radius: 8px;" }, [
+      const row = el("div", { style: "background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 10px; border-radius: 8px;" }, [
         nameWrap,
-        el("div", { style: "display:flex; gap:6px; align-items:center;" }, [
-          setsI, el("span", { class: "text-faint", text: "×" }), repsI, el("span", { class: "text-faint", text: "@" }), weightI,
-          el("button", { class: "icon-btn", type: "button", html: "🗑️", onclick: () => { if (list.children.length > 1) row.remove(); else { nameI.value = ""; setsI.value = ""; repsI.value = ""; weightI.value = ""; isFav = false; favBtn.innerHTML = "☆"; } }})
+        el("div", { style: "display:flex; gap:8px; align-items:center; width:100%; justify-content:space-between;" }, [
+          setsI, el("span", { class: "text-faint", style:"font-weight:bold;", text: "×" }), 
+          repsI, el("span", { class: "text-faint", style:"font-weight:bold;", text: "@" }), 
+          weightI,
+          el("button", { class: "icon-btn", type: "button", html: "🗑️", style:"margin:0; padding:8px; display:flex; align-items:center;", onclick: () => { 
+            if (list.children.length > 1) row.remove(); 
+            else { nameI.value = ""; setsI.value = ""; repsI.value = ""; weightI.value = ""; isFav = false; favBtn.innerHTML = "☆"; } 
+          }})
         ])
       ]);
       row._get = () => ({ name: nameI.value.trim(), sets: Number(setsI.value) || 0, reps: Number(repsI.value) || 0, weight: Number(weightI.value) || 0, isFav: isFav });
@@ -262,7 +267,11 @@
     }
     addRow(null);
     return { 
-      node: el("div", { class: "field" }, [el("label", { text: "🏋️ Ejercicios y Cargas" }), list, el("button", { class: "btn sm", type: "button", html: "＋ Añadir Ejercicio", style: "margin-top:6px; width:100%; border:1px dashed #00f3ff; color:#00f3ff; background:transparent;", onclick: () => addRow(null) })]), 
+      node: el("div", { class: "field" }, [
+        el("label", { text: "🏋️ Ejercicios y Cargas" }), 
+        list, 
+        el("button", { class: "btn sm", type: "button", html: "＋ Añadir Ejercicio", style: "margin-top:10px; width:100%; border:1px dashed #00f3ff; color:#00f3ff; background:transparent; padding:10px;", onclick: () => addRow(null) })
+      ]), 
       getData: () => Array.from(list.children).map((r) => r._get()).filter((x) => x.name) 
     };
   }
@@ -300,7 +309,7 @@
       const xp = Math.min(30, 10 + Math.round(dur / 5));
       workouts().push({ 
         id: Store.uid(), name: data.name, type: data.type, 
-        customName: data.customName, customIcon: data.customIcon, // Guardamos los datos de "Otro"
+        customName: data.customName, customIcon: data.customIcon, 
         date: data.date, duration: dur, calories: Number(data.calories) || 0, 
         volume: finalVolume, notes: data.notes, exercises: exData, xpEarned: xp 
       });
@@ -357,7 +366,7 @@
     if (w.exercises && w.exercises.length) {
       const exWrap = el("div", { style: "display:flex;flex-wrap:wrap;gap:6px;margin-top:10px" });
       w.exercises.forEach((e) => {
-        let txt = e.isFav ? "⭐ " + e.name : e.name; // Agregamos la estrella si es favorito
+        let txt = e.isFav ? "⭐ " + e.name : e.name;
         if (e.sets || e.reps) txt += `  ${e.sets||0}×${e.reps||0}`;
         if (e.weight) txt += ` @ ${e.weight}kg`;
         if (e.sets && e.reps && e.weight) {
@@ -381,26 +390,59 @@
     UI.openModal("📅 " + key, body);
   }
 
+  // ---------------- CALENDARIO CON REGLAS DE COLOR (VERDE Y ROJO) ----------------
   function buildCalendar() {
     const y = currentCalWorkouts.getFullYear(), mo = currentCalWorkouts.getMonth(), monthLabel = currentCalWorkouts.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
-    const grid = el("div", { class: "cal" });
-    ["L", "M", "M", "J", "V", "S", "D"].forEach(h => grid.appendChild(el("div", { class: "cal-h", text: h })));
+    const grid = el("div", { class: "cal", style: "display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; text-align:center;" });
+    
+    ["L", "M", "M", "J", "V", "S", "D"].forEach(h => grid.appendChild(el("div", { class: "cal-h", style: "font-size:12px; color:#aaa; font-weight:bold; padding:4px 0;", text: h })));
+    
     const startCol = (new Date(y, mo, 1).getDay() + 6) % 7;
     for (let i = 0; i < startCol; i++) grid.appendChild(el("div", { class: "cal-day empty" }));
+    
+    const todayStr = today();
     for (let d = 1; d <= new Date(y, mo+1, 0).getDate(); d++) {
       const key = DateUtil.key(new Date(y, mo, d));
-      let cls = "cal-day" + (key === today() ? " today" : "") + (workouts().some(h => h.date === key) ? " done" : "");
-      grid.appendChild(el("div", { class: cls + " clickable", text: String(d), onclick: () => openWorkoutDayDetail(key) }));
+      const hasWorkout = workouts().some(h => h.date === key);
+      
+      let dayStyle = "display:flex; align-items:center; justify-content:center; height:38px; border-radius:8px; font-size:13px; font-weight:bold; cursor:pointer; transition:all 0.2s;";
+      
+      if (hasWorkout) {
+        // verde neón (entrenado)
+        dayStyle += " background:rgba(0, 255, 136, 0.2); border:1px solid #00ff88; color:#00ff88;";
+      } else if (key < todayStr) {
+        // rojo neón (día pasado sin entrenar)
+        dayStyle += " background:rgba(255, 0, 85, 0.15); border:1px solid #ff0055; color:#ff0055;";
+      } else if (key === todayStr) {
+        // cian (hoy aún no registrado)
+        dayStyle += " background:rgba(0, 243, 255, 0.1); border:2px solid #00f3ff; color:#ffffff;";
+      } else {
+        // futuro
+        dayStyle += " background:rgba(255, 255, 255, 0.03); border:1px solid rgba(255, 255, 255, 0.08); color:#888888;";
+      }
+
+      grid.appendChild(el("div", { 
+        class: "cal-day clickable", 
+        style: dayStyle, 
+        text: String(d), 
+        onclick: () => openWorkoutDayDetail(key) 
+      }));
     }
-    return el("div", { class: "card mb-16" }, [
-      el("div", { class: "card-head", style: "border-bottom: 1px solid var(--border); padding-bottom:10px; margin-bottom:10px;" }, [
+
+    return el("div", { class: "card mb-16", style: "border:1px solid rgba(0, 243, 255, 0.2); margin-top:20px;" }, [
+      el("div", { class: "card-head", style: "border-bottom: 1px solid var(--border); padding-bottom:10px; margin-bottom:12px;" }, [
         el("div", { style: "display:flex; justify-content:space-between; align-items:center; width:100%;" }, [
           el("button", { html: "◀", class: "icon-btn", onclick: () => window.changeWorkoutCalMonth(-1) }),
-          el("span", { text: monthLabel, style: "text-transform:capitalize; font-weight:bold; color:#00f3ff;" }),
+          el("span", { text: "📅 Calendario de Disciplina: " + monthLabel, style: "text-transform:capitalize; font-weight:bold; color:#00f3ff; font-size:14px;" }),
           el("button", { html: "▶", class: "icon-btn", onclick: () => window.changeWorkoutCalMonth(1) })
         ])
       ]),
-      grid
+      grid,
+      el("div", { style: "display:flex; justify-content:center; gap:16px; margin-top:12px; font-size:11px; color:#aaa;" }, [
+        el("span", { html: "<span style='color:#00ff88;'>●</span> Entrenado" }),
+        el("span", { html: "<span style='color:#ff0055;'>●</span> Sin entrenar" }),
+        el("span", { html: "<span style='color:#00f3ff;'>●</span> Hoy" })
+      ])
     ]);
   }
 
@@ -457,10 +499,7 @@
     `;
     container.appendChild(kpiHtml);
 
-    // 3. Calendario Mensual
-    container.appendChild(buildCalendar());
-
-    // 4. Gráfica Neón Dinámica (Línea)
+    // 3. Gráfica Neón Dinámica (Línea)
     const chartCard = el("div", { class: "card mb-16" }, [
       el("div", { class: "card-head", style: "display:flex; align-items:center; gap:6px;" }, [
         el("span", { class: "dot", style: "background:#00f3ff;" }),
@@ -471,7 +510,6 @@
     chartCard.appendChild(el("div", { class: "chart-box" }, [cv]));
     container.appendChild(chartCard);
     
-    // Dibujar línea Neón
     setTimeout(() => {
       if (Charts) Charts.line(cv, { 
         labels: weekMinutes().labels, 
@@ -479,7 +517,7 @@
       }, { color: "#00f3ff", height: 170 });
     }, 30);
 
-    // 5. Historial Completo
+    // 4. Historial Completo
     const arr = workouts().slice().sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
     const listCard = el("div", { class: "card" }, [
       el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Historial de Cargas y Volumen"])])
@@ -490,6 +528,9 @@
       arr.slice(0, 20).forEach((w) => listCard.appendChild(createWorkoutItem(w)));
     }
     container.appendChild(listCard);
+
+    // 5. Calendario Mensual al Final
+    container.appendChild(buildCalendar());
   }
 
   N.Workouts = { render, stats, weekMinutes, streak };
