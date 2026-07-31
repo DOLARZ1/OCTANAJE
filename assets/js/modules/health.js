@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro (Formulario Estable & Selector Sincronizado)
+   OCTANAJE · Módulo Salud Pro (Masa Magra Restaurada & Estética Elite)
    ===================================================================== */
 (function () {
   "use strict";
@@ -49,7 +49,7 @@
     const pr = health().profile || {}; 
     if (!pr.goal) pr.goal = "maintain";
     if (!pr.pace) pr.pace = "moderate";
-    if (!pr.sex) pr.sex = "M"; // Aseguramos que inicie en Masculino por defecto de forma estricta
+    if (!pr.sex) pr.sex = "M";
     return pr; 
   }
   function history() { return health().history || []; }
@@ -67,12 +67,10 @@
   ];
   function getImcClass(imc) { return IMC_RANGES.find((r) => imc < r.max) || IMC_RANGES[IMC_RANGES.length - 1]; }
 
-  // ---------------- INTERFACES Y BOTONES DESPLEGABLES (SIN BORRAR FORMULARIO) ----------------
+  // ---------------- INTERFACES Y BOTONES DESPLEGABLES ----------------
   window.toggleInstructions = function() {
     const guide = document.getElementById('measure-guide');
-    if (guide) {
-      guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
-    }
+    if (guide) guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
   };
 
   window.toggleBfTable = function() {
@@ -131,7 +129,7 @@
     bf = Math.max(3, Math.min(60, isNaN(bf) ? 20 : bf));
     p.lastFat = bf.toFixed(1);
 
-    const icc = p.hip > 0 ? (p.waist / p.hip).toFixed(2) : null;
+    const icc = p.sex === 'F' && p.hip > 0 ? (p.waist / p.hip).toFixed(2) : ((p.waist / p.height).toFixed(2)); // Cálculo de respaldo o ICC estándar
     const imc = p.weight / ((p.height / 100) * (p.height / 100));
 
     const entry = {
@@ -191,6 +189,7 @@
       const bfPct = parseFloat(p.lastFat) || 0;
       const bfInfo = getBfLevel(bfPct, p.sex);
       const fatKg = ((p.weight * bfPct) / 100).toFixed(1);
+      const leanKg = (p.weight - fatKg).toFixed(1);
 
       let planKcal = get;
       let goalLabel = "Mantenimiento";
@@ -209,21 +208,12 @@
       const fatG = Math.round((planKcal * 0.25) / 9);
       const carbsG = Math.max(0, Math.round((planKcal - (protG * 4) - (fatG * 9)) / 4));
       
-      let iccBlock = "";
-      if (p.sex === 'F' && p.hip > 0) {
-        const icc = (p.waist / p.hip).toFixed(2);
-        let riskLabel = "Bajo"; let riskColor = "#00ff88";
-        if (icc > 0.85) { riskLabel = "Elevado"; riskColor = "#ff0055"; }
-        
-        iccBlock = `
-          <div style="background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
-            <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Índice (ICC)</span>
-            <span style="font-size: 32px; font-weight: 800; color: ${riskColor}; line-height: 1;">${icc}</span>
-            <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Riesgo: ${riskLabel}</span>
-          </div>
-        `;
-      }
-      
+      // ICC o Riesgo Cardiovascular
+      let iccVal = p.sex === 'F' && p.hip > 0 ? (p.waist / p.hip).toFixed(2) : (p.waist / p.height).toFixed(2);
+      let riskLabel = "Bajo"; let riskColor = "#00ff88";
+      if (p.sex === 'F' && iccVal > 0.85) { riskLabel = "Elevado"; riskColor = "#ff0055"; }
+      if (p.sex === 'M' && iccVal > 0.53) { riskLabel = "Elevado"; riskColor = "#ff0055"; } // Ratio cintura/altura saludable < 0.53
+
       const waterLiters = (p.weight * 35 / 1000).toFixed(1);
       const imc = p.weight / ((p.height / 100) * (p.height / 100));
       const cat = getImcClass(imc);
@@ -269,7 +259,11 @@
               <span style="font-size: 11px; color: ${bfInfo.color}; display: block; margin-top: 6px; font-weight: bold;">${bfInfo.label}</span>
               <span style="font-size: 11px; color: #888; display: block; margin-top: 3px;">${fatKg} kg de grasa</span>
             </div>
-            ${iccBlock}
+            <div style="background: rgba(0, 243, 255, 0.05); border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
+              <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">Masa Magra</span>
+              <span style="font-size: 32px; font-weight: 900; color: #00f3ff; line-height: 1; text-shadow: 0 0 10px rgba(0,243,255,0.4);">${leanKg}<span style="font-size: 18px;">kg</span></span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 6px;">Músculo + Hueso</span>
+            </div>
             <div style="background: rgba(255, 176, 32, 0.08); border: 1px solid rgba(255, 176, 32, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
               <span style="font-size: 11px; color: #aaa; text-transform: uppercase; display: block; margin-bottom: 4px;">${goalLabel}</span>
               <span style="font-size: 32px; font-weight: 800; color: #ffb020; line-height: 1;">${Math.round(planKcal)}</span>
@@ -301,6 +295,10 @@
                 <span style="font-size: 26px; font-weight: 900; color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.5);">${carbsG}<span style="font-size: 14px;">g</span></span>
               </div>
             </div>
+            <div style="font-size: 12px; color: #888; border-top: 1px solid #2a314d; padding-top: 10px; margin-top: 12px; display: flex; justify-content: space-between;">
+              <span>Riesgo Cardiovascular (ICC / Ratio):</span>
+              <strong style="color: ${riskColor};">${riskLabel} (${iccVal})</strong>
+            </div>
           </div>
 
           <div style="background: #15192b; border-radius: 10px; padding: 16px; margin-bottom: 15px; border: 1px solid #2a314d;">
@@ -324,7 +322,7 @@
       `;
     }
 
-    const initialHipDisplay = p.sex === 'F' ? 'block' : 'none';
+    const hipDisplay = p.sex === 'F' ? 'block' : 'none';
 
     const div = document.createElement('div');
     div.id = "pro-calc-card"; 
@@ -383,7 +381,7 @@
             </div>
           </div>
 
-          <div id="calc-hip-container" style="width: 100%; display: ${initialHipDisplay};">
+          <div id="calc-hip-container" style="width: 100%; display: ${hipDisplay};">
             <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Cadera (cm) <span style="font-size:10px; color:#ff0055;">(Obligatorio Mujeres)</span>:</label>
             <input type="number" id="calc-hip" step="0.5" value="${p.hip || ''}" placeholder="95" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
           </div>
@@ -447,7 +445,7 @@
       el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => {
         UI.confirmBox("Eliminar revisión", "¿Eliminar el registro del " + dLbl + "?", () => {
           const arr = history(); const i = arr.indexOf(h); if (i >= 0) arr.splice(i, 1);
-          Store.commit(); if (Audio) Audio.play("delete"); toast({ icon: "🗑️", msg: "Registro eliminado" }); 
+          Store.commit(); if (Audio) Audio.play("delete"); toast({ icon: "🗑️", msg: "Peso eliminado" }); 
           render(document.getElementById("view-health"), true);
         }, "Eliminar");
       } })
