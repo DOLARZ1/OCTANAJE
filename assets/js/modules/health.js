@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro (Colores Neón Restaurados en Grasa)
+   OCTANAJE · Módulo Salud Pro (Calendario Restaurado + Colores Neón)
    ===================================================================== */
 (function () {
   "use strict";
@@ -79,12 +79,12 @@
   function weightsSorted() { return weights().slice().sort((a, b) => a.date.localeCompare(b.date)); }
 
   const IMC_RANGES = [
-    { max: 18.5, label: "Bajo peso", color: "#0284c7" },
-    { max: 25.0, label: "Normal", color: "#059669" },
-    { max: 30.0, label: "Sobrepeso", color: "#d97706" },
-    { max: 35.0, label: "Obesidad I", color: "#dc2626" },
-    { max: 40.0, label: "Obesidad II", color: "#b91c1c" },
-    { max: Infinity, label: "Obesidad III", color: "#7f1d1d" }
+    { max: 18.5, label: "Bajo peso", color: "#00f3ff" },
+    { max: 25.0, label: "Normal", color: "#00ff88" },
+    { max: 30.0, label: "Sobrepeso", color: "#ffb020" },
+    { max: 35.0, label: "Obesidad I", color: "#ff5470" },
+    { max: 40.0, label: "Obesidad II", color: "#ff0055" },
+    { max: Infinity, label: "Obesidad III", color: "#cc0000" }
   ];
   function getImcClass(imc) { return IMC_RANGES.find((r) => imc < r.max) || IMC_RANGES[IMC_RANGES.length - 1]; }
 
@@ -513,7 +513,7 @@
                 <span style="font-size:13px; color:#ccc; font-weight:bold;">Tu Índice de Masa Corporal (IMC)</span>
                 <strong style="color:${cat.color}; font-size:20px;">${imc.toFixed(1)} <span style="font-size:11px; color:#888; font-weight:normal;">(${cat.label})</span></strong>
              </div>
-             <div style="position:relative; height:12px; background:linear-gradient(90deg, #0284c7 0%, #059669 25%, #d97706 55%, #dc2626 80%, #7f1d1d 100%); border-radius:6px; margin-bottom:8px;">
+             <div style="position:relative; height:12px; background:linear-gradient(90deg, #00f3ff 0%, #00f3ff 13%, #00ff88 13%, #00ff88 37%, #ffb020 37%, #ffb020 55%, #ff5470 55%, #ff5470 74%, #ff0055 74%, #ff0055 100%); border-radius:6px; margin-bottom:8px;">
                 <div style="position:absolute; top:-14px; left:${pctImc}%; transform:translateX(-50%); color:#fff; font-size:14px;">▼</div>
              </div>
              <div style="display:flex; justify-content:space-between; font-size:10px; color:#777;">
@@ -714,14 +714,73 @@
 
         <button type="button" onclick="processHealthCalculations()" style="width:100%; padding:14px; background:#00f3ff; color:#000; font-weight:900; font-size:14px; border:none; border-radius:8px; cursor:pointer;">💾 CALCULAR Y GUARDAR</button>
         
-        <div id="health-results"></div>
+        <div id="health-results" style="display:${displayStyle};">${resultsHTML}</div>
+        
+        <div style="margin-top:20px; padding:10px; background:rgba(255,255,255,0.03); border-radius:6px; border-left:2px solid #888; font-size:11px; color:#888; line-height:1.4;">
+          ⚠️ <strong>Aviso Informativo:</strong> Los cálculos aquí mostrados son estimaciones basadas en fórmulas deportivas estándar (Mifflin-St Jeor / Marina de EE. UU.) para uso personal y educativo. No sustituyen un diagnóstico clínico, plan nutricional o consejo médico. Consulta siempre a un especialista de la salud.
+        </div>
       </div>
     `;
     return div.firstElementChild;
   }
 
+  // ---------------- UI HISTORIAL Y CALENDARIO ----------------
+  function historyRow(h) {
+    const dLbl = dayLabelFor(h.date), bfInfo = getBfLevel(parseFloat(h.fatPct||0), h.sex);
+    return el("div", { class: "item" }, [
+      el("div", { class: "item-main" }, [
+        el("div", { class: "item-title", text: dLbl }),
+        el("div", { class: "item-meta" }, [
+          el("span", { class: "chip", text: h.weight + " kg" }),
+          h.fatPct ? el("span", { class: "chip", style: `background:${bfInfo.color};color:#000;font-weight:bold`, text: h.fatPct + "% (" + bfInfo.label + ")" }) : null
+        ])
+      ]),
+      el("div", { class: "flex gap-4" }, [
+        el("button", { class: "icon-btn", html: "📄", title: "PDF de este día", onclick: () => window.exportPDF(h) }),
+        el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => {
+          UI.confirmBox("Eliminar", "¿Borrar registro del " + dLbl + "?", () => {
+            const arr = history(), i = arr.indexOf(h); if (i >= 0) arr.splice(i, 1);
+            Store.commit(); render(document.getElementById("view-health"), true);
+          });
+        } })
+      ])
+    ]);
+  }
+
+  function openDayDetail(key) {
+    const items = history().filter(h => h.date === key);
+    const body = el("div", {});
+    if (!items.length) body.appendChild(el("div", { class: "empty", text: "Sin revisiones este día." }));
+    else items.forEach(h => body.appendChild(historyRow(h)));
+    UI.openModal("📅 " + key, body);
+  }
+
+  function buildCalendar() {
+    const y = currentCal.getFullYear(), mo = currentCal.getMonth(), monthLabel = currentCal.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+    const grid = el("div", { class: "cal" });
+    ["L", "M", "M", "J", "V", "S", "D"].forEach(h => grid.appendChild(el("div", { class: "cal-h", text: h })));
+    const startCol = (new Date(y, mo, 1).getDay() + 6) % 7;
+    for (let i = 0; i < startCol; i++) grid.appendChild(el("div", { class: "cal-day empty" }));
+    for (let d = 1; d <= new Date(y, mo+1, 0).getDate(); d++) {
+      const key = DateUtil.key(new Date(y, mo, d));
+      let cls = "cal-day" + (key === today() ? " today" : "") + (history().some(h => h.date === key) ? " done" : "");
+      grid.appendChild(el("div", { class: cls + " clickable", text: String(d), onclick: () => openDayDetail(key) }));
+    }
+    return el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head", style: "border-bottom: 1px solid var(--border); padding-bottom:10px; margin-bottom:10px;" }, [
+        el("div", { style: "display:flex; justify-content:space-between; align-items:center; width:100%;" }, [
+          el("button", { html: "◀", class: "icon-btn", onclick: () => window.changeCalMonth(-1) }),
+          el("span", { text: monthLabel, style: "text-transform:capitalize; font-weight:bold; color:var(--accent);" }),
+          el("button", { html: "▶", class: "icon-btn", onclick: () => window.changeCalMonth(1) })
+        ])
+      ]),
+      grid
+    ]);
+  }
+
   function render(container, forceRender = false) {
-    if (!container || (!forceRender && container.querySelector('#pro-calc-card'))) return;
+    if (!container) return;
+    if (!forceRender && container.querySelector('#pro-calc-card')) return;
     container.innerHTML = "";
     
     container.appendChild(el("div", { class: "view-head" }, [
@@ -743,117 +802,7 @@
       ])
     ]));
     
-    const card = proCalculatorCard();
-    container.appendChild(card);
-    
-    const p = profile();
-    if (p.weight && p.height && p.neck && p.waist) {
-      const bfPct = parseFloat(p.lastFat) || 0, bfInfo = getBfLevel(bfPct, p.sex);
-      const fatKg = ((p.weight * bfPct) / 100).toFixed(1), leanKg = (p.weight - fatKg).toFixed(1);
-      const imc = p.weight / ((p.height / 100) * (p.height / 100)), cat = getImcClass(imc);
-      const tmb = (10 * p.weight) + (6.25 * p.height) - (5 * p.age) + (p.sex === 'F' ? -161 : 5);
-      const get = tmb * ({ sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 }[p.activity] || 1.2);
-      
-      let planKcal = get, goalLabel = "Mantenimiento";
-      if (p.goal === "lose") { planKcal = get - (p.pace === "slow" ? 250 : p.pace === "moderate" ? 500 : 750); goalLabel = "Déficit Calórico"; }
-      else if (p.goal === "gain") { planKcal = get + (p.pace === "slow" ? 200 : p.pace === "moderate" ? 350 : 500); goalLabel = "Superávit Muscular"; }
-      
-      const protG = Math.round(p.weight * (p.goal === "lose" ? 2.2 : 2.0)), fatG = Math.round((planKcal * 0.25) / 9);
-      const carbsG = Math.max(0, Math.round((planKcal - (protG * 4) - (fatG * 9)) / 4));
-      const water = (p.weight * 35 / 1000).toFixed(1);
-      let iccVal = p.sex === 'F' && p.hip > 0 ? (p.waist / p.hip).toFixed(2) : (p.waist / p.height).toFixed(2);
-      let riskLabel = "Bajo", riskColor = "#00ff88";
-      if (p.sex === 'F' && iccVal > 0.85) { riskLabel = "Elevado"; riskColor = "#ff0055"; }
-      if (p.sex === 'M' && iccVal > 0.53) { riskLabel = "Elevado"; riskColor = "#ff0055"; }
-      const pctImc = Math.max(0, Math.min(100, ((imc - 15) / (42 - 15)) * 100));
-
-      const resDiv = card.querySelector('#health-results');
-      resDiv.style.display = "block";
-      resDiv.innerHTML = `
-        <div style="border-top: 1px dashed rgba(0,243,255,0.3); margin-top: 20px; padding-top: 20px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h4 style="color: #00f3ff; margin: 0; font-size: 15px; text-transform: uppercase;">📊 Resultados</h4>
-            <button type="button" onclick="toggleBfTable()" style="font-size: 11px; background: rgba(0,243,255,0.1); border: 1px solid #00f3ff; color: #00f3ff; padding: 4px 8px; border-radius: 5px; cursor: pointer;">📈 Ver Niveles</button>
-          </div>
-          <div id="bf-ranges-table" style="display: none; background: #1a1f35; border: 1px solid #00f3ff; border-radius: 10px; padding: 12px; margin-bottom: 18px; font-size: 12px; color: #ccc;">
-            <table style="width: 100%; border-collapse: collapse; text-align: center;">
-              <thead><tr style="color: #aaa; border-bottom: 1px solid #333;"><th style="padding:6px;text-align:left">Categoría</th><th>Hombres</th><th>Mujeres</th></tr></thead>
-              <tbody>
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);"><td style="padding:6px;text-align:left;color:#bc84ee">Esencial</td><td>2-5%</td><td>10-13%</td></tr>
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);"><td style="padding:6px;text-align:left;color:#00f3ff">Atleta</td><td>6-13%</td><td>14-20%</td></tr>
-                <tr style="background:rgba(0,255,136,0.1); border-bottom: 1px solid rgba(255,255,255,0.03);"><td style="padding:6px;text-align:left;color:#00ff88;font-weight:bold;">Saludable</td><td style="color:#00ff88;font-weight:bold;">14-17%</td><td style="color:#00ff88;font-weight:bold;">21-24%</td></tr>
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);"><td style="padding:6px;text-align:left;color:#ffb020">Aceptable</td><td>18-24%</td><td>25-31%</td></tr>
-                <tr><td style="padding:6px;text-align:left;color:#ff0055">Elevado</td><td>25%+</td><td>32%+</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 15px;">
-            <div style="background:rgba(255,255,255,0.02); border: 2px solid ${bfInfo.color}; border-radius: 12px; padding: 14px; text-align: center;">
-              <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:4px;">Grasa Corporal</span>
-              <span style="font-size:32px; font-weight:900; color:${bfInfo.color}; line-height:1;">${bfPct}%</span>
-              <span style="font-size:11px; color:${bfInfo.color}; font-weight:bold; display:block; margin-top:6px;">${bfInfo.label}</span>
-              <span style="font-size:11px; color:#888; display:block; margin-top:3px;">${fatKg} kg de grasa</span>
-            </div>
-            <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.3); border-radius:12px; padding:14px; text-align:center;">
-              <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:4px;">Masa Magra</span>
-              <span style="font-size:32px; font-weight:900; color:#00f3ff; line-height:1;">${leanKg}<span style="font-size:18px">kg</span></span>
-              <span style="font-size:11px; color:#888; display:block; margin-top:6px;">Músculo + Hueso</span>
-            </div>
-            <div style="background:rgba(255,176,32,0.08); border:1px solid rgba(255,176,32,0.3); border-radius:12px; padding:14px; text-align:center;">
-              <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:4px;">${goalLabel}</span>
-              <span style="font-size:32px; font-weight:800; color:#ffb020; line-height:1;">${Math.round(planKcal)}</span>
-              <span style="font-size:11px; color:#888; display:block; margin-top:6px;">kcal/día sugeridas</span>
-            </div>
-            <div style="background:rgba(0,136,255,0.08); border:1px solid rgba(0,136,255,0.3); border-radius:12px; padding:14px; text-align:center;">
-              <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:4px;">Agua Diaria</span>
-              <span style="font-size:32px; font-weight:800; color:#0088ff; line-height:1;">${water}<span style="font-size:18px">L</span></span>
-              <span style="font-size:11px; color:#888; display:block; margin-top:6px;">Mínimo sugerido</span>
-            </div>
-          </div>
-          <div style="background:#15192b; border-radius:14px; padding:18px; margin-bottom:15px; border:1px solid rgba(0,243,255,0.3);">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2a314d; padding-bottom:12px; margin-bottom:14px;">
-              <span style="font-size:13px; color:#aaa; text-transform:uppercase;">Gasto Total (Mantenimiento):</span>
-              <strong style="color:#ffb020; font-size:20px;">${Math.round(get)} kcal</strong>
-            </div>
-            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; text-align:center;">
-              <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.2); border-radius:10px; padding:12px 6px;">
-                <span style="font-size:11px; color:#aaa; display:block; margin-bottom:4px;">PROTEÍNA</span>
-                <span style="font-size:26px; font-weight:900; color:#00f3ff;">${protG}<span style="font-size:14px">g</span></span>
-              </div>
-              <div style="background:rgba(255,176,32,0.05); border:1px solid rgba(255,176,32,0.2); border-radius:10px; padding:12px 6px;">
-                <span style="font-size:11px; color:#aaa; display:block; margin-bottom:4px;">GRASAS</span>
-                <span style="font-size:26px; font-weight:900; color:#ffb020;">${fatG}<span style="font-size:14px">g</span></span>
-              </div>
-              <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.2); border-radius:10px; padding:12px 6px;">
-                <span style="font-size:11px; color:#aaa; display:block; margin-bottom:4px;">CARBOS</span>
-                <span style="font-size:26px; font-weight:900; color:#00ff88;">${carbsG}<span style="font-size:14px">g</span></span>
-              </div>
-            </div>
-            <div style="font-size:12px; color:#888; border-top:1px solid #2a314d; padding-top:10px; margin-top:12px; display:flex; justify-content:space-between;">
-              <span>Riesgo Cardiovascular (ICC/Ratio):</span>
-              <strong style="color:${riskColor};">${riskLabel} (${iccVal})</strong>
-            </div>
-          </div>
-          <div style="background:#15192b; border-radius:10px; padding:16px; margin-bottom:15px; border:1px solid #2a314d;">
-             <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:15px;">
-                <span style="font-size:13px; color:#ccc; font-weight:bold;">Tu Índice de Masa Corporal (IMC)</span>
-                <strong style="color:${cat.color}; font-size:20px;">${imc.toFixed(1)} <span style="font-size:11px; color:#888; font-weight:normal;">(${cat.label})</span></strong>
-             </div>
-             <div style="position:relative; height:12px; background:linear-gradient(90deg, #0284c7 0%, #059669 25%, #d97706 55%, #dc2626 80%, #7f1d1d 100%); border-radius:6px; margin-bottom:8px;">
-                <div style="position:absolute; top:-14px; left:${pctImc}%; transform:translateX(-50%); color:#fff; font-size:14px;">▼</div>
-             </div>
-             <div style="display:flex; justify-content:space-between; font-size:10px; color:#777;">
-                <span>15.0</span><span>18.5 (Normal)</span><span>25.0 (Sobrepeso)</span><span>30.0 (Obesidad)</span><span>42.0+</span>
-             </div>
-          </div>
-          <button type="button" onclick="syncWithNutrition(${planKcal}, ${protG}, ${fatG}, ${carbsG})" 
-                  style="width:100%; padding:14px; background:linear-gradient(135deg, #00f3ff, #0088ff); color:#000; border:none; border-radius:8px; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
-            🚀 Aplicar metas a Alimentación
-          </button>
-        </div>
-      `;
-    }
-
+    container.appendChild(proCalculatorCard());
     container.appendChild(buildCalendar());
     if (weightsSorted().length > 0) {
       const cv = el("canvas"), chartWrap = el("div", { class: "chart-box" }, [cv]), series = weightsSorted().slice(-30);
