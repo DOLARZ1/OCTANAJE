@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro (Calendario Restaurado + Colores Neón)
+   OCTANAJE · Módulo Salud Pro (Gráfica Dinámica Muscular + PDF)
    ===================================================================== */
 (function () {
   "use strict";
@@ -75,8 +75,7 @@
     return pr; 
   }
   function history() { return health().history || []; }
-  function weights() { return health().weights || []; }
-  function weightsSorted() { return weights().slice().sort((a, b) => a.date.localeCompare(b.date)); }
+  function historySorted() { return history().slice().sort((a, b) => a.date.localeCompare(b.date)); }
 
   const IMC_RANGES = [
     { max: 18.5, label: "Bajo peso", color: "#00f3ff" },
@@ -104,8 +103,15 @@
   // ---------------- GENERADOR DE DOCUMENTO PDF ----------------
   window.exportPDF = function(entry) {
     const hist = history();
+    
+    // Capturar la gráfica actual en pantalla
+    const cv = document.getElementById("health-chart-canvas");
+    const chartDataUrl = cv ? cv.toDataURL("image/png") : null;
+    const sel = document.getElementById("health-chart-select");
+    const chartTitle = sel ? sel.options[sel.selectedIndex].text : "Evolución Gráfica";
+
     if (entry) {
-      window.generatePdfDocument(entry);
+      window.generatePdfDocument(entry, chartDataUrl, chartTitle);
       return;
     }
     
@@ -116,7 +122,7 @@
     }
 
     if (hist.length === 1) {
-      window.generatePdfDocument(hist[0]);
+      window.generatePdfDocument(hist[0], chartDataUrl, chartTitle);
       return;
     }
 
@@ -135,14 +141,14 @@
       onclick: () => {
         const idx = parseInt(document.getElementById("pdf-date-select").value, 10);
         UI.closeModal();
-        window.generatePdfDocument(hist[idx]);
+        window.generatePdfDocument(hist[idx], chartDataUrl, chartTitle);
       }
     });
     body.appendChild(btn);
     UI.openModal("📄 Generar PDF Antropométrico", body);
   };
 
-  window.generatePdfDocument = function(e) {
+  window.generatePdfDocument = function(e, chartImg, chartTitle) {
     const actMap = {
       sedentary: 'Sedentario (Sin ejercicio)', light: 'Ligero (1-3 días/semana)',
       moderate: 'Moderado (3-5 días/semana)', active: 'Activo (6-7 días/semana)',
@@ -316,6 +322,15 @@
             <div class="card-cell"><div class="macro-box"><span class="macro-lbl">🍚 CARBOHIDRATOS</span><span class="macro-val" style="color: #059669;">${carbsG}g</span></div></div>
           </div>
         </div>
+
+        ${chartImg ? `
+        <div class="info-card" style="padding: 10px; margin-bottom: 12px; page-break-inside: avoid;">
+          <div class="section-title">📈 Evolución: ${chartTitle}</div>
+          <div style="background: #111424; padding: 10px; border-radius: 8px; text-align: center;">
+            <img src="${chartImg}" style="max-width: 100%; height: auto; max-height: 180px; filter: contrast(1.1);">
+          </div>
+        </div>
+        ` : ''}
 
         <div class="imc-card">
           <div class="imc-header"><div class="imc-lbl">Índice de Masa Corporal (IMC):</div><div class="imc-val">${imc.toFixed(1)} <span style="font-size: 8.5pt; color: #64748b; font-weight: normal;">(${cat.label})</span></div></div>
@@ -779,8 +794,7 @@
   }
 
   function render(container, forceRender = false) {
-    if (!container) return;
-    if (!forceRender && container.querySelector('#pro-calc-card')) return;
+    if (!container || (!forceRender && container.querySelector('#pro-calc-card'))) return;
     container.innerHTML = "";
     
     container.appendChild(el("div", { class: "view-head" }, [
@@ -804,10 +818,60 @@
     
     container.appendChild(proCalculatorCard());
     container.appendChild(buildCalendar());
-    if (weightsSorted().length > 0) {
-      const cv = el("canvas"), chartWrap = el("div", { class: "chart-box" }, [cv]), series = weightsSorted().slice(-30);
-      setTimeout(() => { if (Charts) Charts.line(cv, { values: series.map(w => w.weight), labels: series.map(w => w.date.slice(-2)) }, { color: "--accent", height: 170 }); }, 30);
-      container.appendChild(el("div", { class: "card mb-16" }, [el("div", { class: "card-head" }, [el("div", { class: "card-title", text: "⚖️ Tendencia de Peso" })]), chartWrap]));
+    
+    // BLOQUE DE LA GRÁFICA DINÁMICA DE TENDENCIAS
+    const histData = historySorted();
+    if (histData.length > 0) {
+      const chartCard = el("div", { class: "card mb-16" });
+      const head = el("div", { class: "card-head", style: "display:flex; align-items:center; gap:6px;" });
+      head.appendChild(el("span", { class: "dot" }));
+
+      // Selector de métrica en vez de título fijo
+      const sel = el("select", {
+        id: "health-chart-select",
+        style: "background:transparent; border:none; color:var(--accent); font-weight:bold; font-size:14px; outline:none; cursor:pointer;",
+        onchange: () => drawDynamicChart(sel.value)
+      });
+      const opts = [
+        { v: 'weight', l: '⚖️ Evolución de Peso (kg)' },
+        { v: 'fatPct', l: '🩸 Tendencia % Grasa' },
+        { v: 'chest', l: '📐 Pecho (cm)' },
+        { v: 'back', l: '📐 Espalda (cm)' },
+        { v: 'biceps_l', l: '💪 Bíceps Izquierdo (cm)' },
+        { v: 'biceps_r', l: '💪 Bíceps Derecho (cm)' },
+        { v: 'thigh_l', l: '🦵 Muslo Izquierdo (cm)' },
+        { v: 'thigh_r', l: '🦵 Muslo Derecho (cm)' },
+        { v: 'calf_l', l: '🦵 Pantorrilla Izquierda (cm)' },
+        { v: 'calf_r', l: '🦵 Pantorrilla Derecha (cm)' }
+      ];
+      opts.forEach(o => sel.appendChild(el("option", { value: o.v, text: o.l })));
+      head.appendChild(sel);
+      chartCard.appendChild(head);
+
+      const chartWrap = el("div", { class: "chart-box" });
+      chartCard.appendChild(chartWrap);
+      container.appendChild(chartCard);
+
+      function drawDynamicChart(metric) {
+        chartWrap.innerHTML = "";
+        const cv = el("canvas", { id: "health-chart-canvas" });
+        chartWrap.appendChild(cv);
+        
+        const seriesData = histData.filter(x => x[metric] && Number(x[metric]) > 0).slice(-30);
+        if (seriesData.length === 0) {
+          chartWrap.appendChild(el("div", { class: "text-dim fs-12", style:"padding:20px;text-align:center;", text: "No hay datos suficientes de esta medida." }));
+          return;
+        }
+
+        setTimeout(() => { 
+          if (Charts) Charts.line(cv, { 
+            values: seriesData.map(w => Number(w[metric])), 
+            labels: seriesData.map(w => w.date.slice(-2)) 
+          }, { color: "--accent", height: 170 }); 
+        }, 30);
+      }
+      
+      drawDynamicChart('weight');
     }
   }
 
