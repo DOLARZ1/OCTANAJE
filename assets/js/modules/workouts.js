@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Entrenamientos (Calendario + Combos Marciales 🥋🥊)
+   OCTANAJE · Módulo Entrenamientos (Cambio Garantizado a Combos 🥋🥊)
    ===================================================================== */
 (function () {
   "use strict";
@@ -66,19 +66,6 @@
     return el("span", { style: "font-size:22px", text: (t && t.icon) || "💪" });
   }
   function getWorkoutEmoji(w) { return (w.type === "otro" && w.customIcon) ? w.customIcon : (TYPES.find(x => x.value === w.type)?.icon || "💪"); }
-
-  // ---------------- DELEGADOR DE EVENTOS PARA EL FORMULARIO DINÁMICO ----------------
-  document.addEventListener("change", (e) => {
-    if (e.target && e.target.name === "type") {
-      const stdWrap = document.getElementById("standard-section-wrap");
-      const comboWrap = document.getElementById("combo-section-wrap");
-      if (stdWrap && comboWrap) {
-        const isMartial = ["boxeo", "taekwondo", "artesmarciales"].includes(e.target.value);
-        stdWrap.style.display = isMartial ? "none" : "block";
-        comboWrap.style.display = isMartial ? "block" : "none";
-      }
-    }
-  });
 
   // ---------------- CALENDARIO Y GOOGLE CALENDAR ----------------
   let currentCalWorkouts = new Date();
@@ -220,7 +207,7 @@
       selectMove.appendChild(el("option", { value: "", text: "Diccionario de Movimientos..." }));
       MARTIAL_DB.forEach(m => selectMove.appendChild(el("option", { value: m, text: m })));
 
-      const addMoveBtn = el("button", { type: "button", html: "➕ Sumar Movimiento", style: "padding:10px 12px; background:rgba(188,132,238,0.15); color:#bc84ee; border:1px solid #bc84ee; border-radius:6px; font-weight:bold; cursor:pointer; white-space:nowrap;" });
+      const addMoveBtn = el("button", { type: "button", html: "➕ Sumar", style: "padding:10px 12px; background:rgba(188,132,238,0.15); color:#bc84ee; border:1px solid #bc84ee; border-radius:6px; font-weight:bold; cursor:pointer; white-space:nowrap;" });
       addMoveBtn.onclick = () => {
         if(selectMove.value) {
           seqI.value = seqI.value ? seqI.value + " + " + selectMove.value : selectMove.value;
@@ -265,8 +252,6 @@
   function add() {
     const stdSec = buildExerciseSection();
     const cmbSec = buildComboSection();
-    
-    // Contenedor dual
     const dualWrap = el("div", {}, [stdSec.node, cmbSec.node]);
 
     const body = UI.form([
@@ -310,6 +295,35 @@
       UI.closeModal(); render(document.getElementById("view-workouts")); N.App && N.App.refreshTop();
     }, "Registrar entrenamiento", () => dualWrap);
     
+    // DETECTOR EN TIEMPO REAL (Garantiza el cambio de menú)
+    setTimeout(() => {
+        const loop = setInterval(() => {
+            const stdWrap = document.getElementById("standard-section-wrap");
+            const comboWrap = document.getElementById("combo-section-wrap");
+            if (!stdWrap || !comboWrap) {
+                clearInterval(loop); // Modal cerrado, se destruye el escáner
+                return;
+            }
+            
+            const selects = document.querySelectorAll("select");
+            let typeVal = null;
+            selects.forEach(sel => {
+                if (sel.innerHTML.includes("boxeo") || sel.innerHTML.includes("taekwondo")) typeVal = sel.value;
+            });
+            
+            if (typeVal) {
+                const isMartial = ["boxeo", "taekwondo", "artesmarciales"].includes(typeVal);
+                if (isMartial && stdWrap.style.display !== "none") {
+                    stdWrap.style.display = "none";
+                    comboWrap.style.display = "block";
+                } else if (!isMartial && stdWrap.style.display === "none") {
+                    stdWrap.style.display = "block";
+                    comboWrap.style.display = "none";
+                }
+            }
+        }, 150); // Revisa 6 veces por segundo, sin consumir recursos notables
+    }, 100);
+
     UI.openModal("Nuevo entrenamiento", body);
   }
 
