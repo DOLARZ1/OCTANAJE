@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro (Formulario Rígido Alineado al 100%)
+   OCTANAJE · Módulo Salud Pro (Con Generador de PDF & Selector de Fecha)
    ===================================================================== */
 (function () {
   "use strict";
@@ -89,6 +89,264 @@
     if (genderSelect && hipContainer) {
       hipContainer.style.display = genderSelect.value === 'female' ? 'block' : 'none';
     }
+  };
+
+  // ---------------- GENERADOR DE DOCUMENTO PDF ----------------
+  window.exportPDF = function(entry) {
+    const hist = history();
+    if (entry) {
+      window.generatePdfDocument(entry);
+      return;
+    }
+    
+    if (hist.length === 0) {
+      const p = profile();
+      if (!p.weight || !p.height) {
+        if (Audio) Audio.play("error"); 
+        toast({ icon: "⚠️", msg: "Calcula o guarda un registro antes de exportar en PDF." }); 
+        return;
+      }
+      window.generatePdfDocument({
+        date: today(),
+        name: document.getElementById('calc-name')?.value || p.name || "Usuario",
+        sex: document.getElementById('calc-gender')?.value === 'female' ? 'F' : 'M',
+        age: parseFloat(document.getElementById('calc-age')?.value) || p.age || 25,
+        weight: parseFloat(document.getElementById('calc-weight')?.value) || p.weight || 70,
+        height: parseFloat(document.getElementById('calc-height')?.value) || p.height || 170,
+        neck: parseFloat(document.getElementById('calc-neck')?.value) || p.neck || 38,
+        waist: parseFloat(document.getElementById('calc-waist')?.value) || p.waist || 80,
+        hip: parseFloat(document.getElementById('calc-hip')?.value) || p.hip || 90,
+        activity: document.getElementById('calc-activity')?.value || p.activity || 'moderate',
+        goal: document.getElementById('calc-goal')?.value || p.goal || 'maintain',
+        pace: document.getElementById('calc-pace')?.value || p.pace || 'moderate',
+        fatPct: p.lastFat || "20.0"
+      });
+      return;
+    }
+
+    if (hist.length === 1) {
+      window.generatePdfDocument(hist[0]);
+      return;
+    }
+
+    // Modal para seleccionar la fecha a exportar
+    const body = el("div", { style: "padding: 10px;" });
+    const select = el("select", { id: "pdf-date-select", style: "width:100%; padding:10px; margin-bottom:15px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" });
+    hist.forEach((item, idx) => {
+      const opt = el("option", { value: String(idx), text: `${dayLabelFor(item.date)} - ${item.weight} kg (${item.fatPct || 'N/A'}% Grasa)` });
+      select.appendChild(opt);
+    });
+    body.appendChild(el("label", { style: "font-size:12px; color:#aaa; display:block; margin-bottom:6px;", text: "Selecciona la fecha del registro:" }));
+    body.appendChild(select);
+    
+    const btn = el("button", { 
+      style: "width:100%; padding:12px; background:#00f3ff; color:#000; font-weight:bold; border:none; border-radius:6px; cursor:pointer; text-transform:uppercase;", 
+      text: "📄 DESCARGAR REPORTES PDF",
+      onclick: () => {
+        const idx = parseInt(document.getElementById("pdf-date-select").value, 10);
+        UI.closeModal();
+        window.generatePdfDocument(hist[idx]);
+      }
+    });
+    body.appendChild(btn);
+    UI.openModal("📄 Generar PDF Antropométrico", body);
+  };
+
+  window.generatePdfDocument = function(e) {
+    const actMap = {
+      sedentary: 'Sedentario (Sin ejercicio)',
+      light: 'Ligero (1-3 días/semana)',
+      moderate: 'Moderado (3-5 días/semana)',
+      active: 'Activo (6-7 días/semana)',
+      very_active: 'Atleta / Trabajo muy físico'
+    };
+    const goalMap = { lose: '📉 Bajar Grasa', maintain: '⚖️ Mantener', gain: '📈 Subir Músculo' };
+    const paceMap = { slow: 'Lento (Sano)', moderate: 'Moderado (Ideal)', aggressive: 'Rápido (Agresivo)' };
+
+    const name = e.name || "Usuario";
+    const sexLabel = e.sex === 'F' ? 'Mujer' : 'Hombre';
+    const h_in = (e.height || 170) / 2.54, n_in = (e.neck || 38) / 2.54, w_in = (e.waist || 80) / 2.54, hip_in = (e.hip || 90) / 2.54;
+    
+    let bf = 0;
+    if (e.sex === 'M') {
+      const diff = w_in - n_in;
+      if (diff > 0) bf = 86.010 * Math.log10(diff) - 70.041 * Math.log10(h_in) + 36.76;
+    } else {
+      const sum = w_in + hip_in - n_in;
+      if (sum > 0) bf = 163.205 * Math.log10(sum) - 97.684 * Math.log10(h_in) - 78.387;
+    }
+    bf = Math.max(3, Math.min(60, isNaN(bf) ? parseFloat(e.fatPct || 20) : bf));
+    const fatPctStr = bf.toFixed(1);
+    const bfInfo = getBfLevel(bf, e.sex);
+
+    const fatKg = ((e.weight * bf) / 100).toFixed(1);
+    const leanKg = (e.weight - fatKg).toFixed(1);
+    const imc = e.weight / ((e.height / 100) * (e.height / 100));
+    const cat = getImcClass(imc);
+    const tmb = (10 * e.weight) + (6.25 * e.height) - (5 * e.age) + (e.sex === 'F' ? -161 : 5);
+    const actFactor = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 }[e.activity] || 1.2;
+    const get = tmb * actFactor;
+
+    let planKcal = get, goalLabel = "Mantenimiento";
+    if (e.goal === "lose") { planKcal = get - (e.pace === "slow" ? 250 : e.pace === "moderate" ? 500 : 750); goalLabel = "Déficit Calórico"; }
+    else if (e.goal === "gain") { planKcal = get + (e.pace === "slow" ? 200 : e.pace === "moderate" ? 350 : 500); goalLabel = "Superávit Muscular"; }
+    
+    const protG = Math.round(e.weight * (e.goal === "lose" ? 2.2 : 2.0));
+    const fatG = Math.round((planKcal * 0.25) / 9);
+    const carbsG = Math.max(0, Math.round((planKcal - (protG * 4) - (fatG * 9)) / 4));
+    const water = (e.weight * 35 / 1000).toFixed(1);
+    const dateLabel = dayLabelFor(e.date || today());
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      toast({ icon: "⚠️", msg: "Permite las ventanas emergentes en tu navegador para generar el PDF." });
+      return;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <title>OCTANAJE - Diagnóstico Antropométrico ${name}</title>
+        <style>
+          @page { size: A4 portrait; margin: 10mm; }
+          * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+          body { background: #0b0e18; color: #ffffff; margin: 0; padding: 20px; font-size: 12px; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00f3ff; padding-bottom: 12px; margin-bottom: 15px; }
+          .logo-box { font-size: 24px; font-weight: 900; color: #00f3ff; letter-spacing: 2px; }
+          .logo-sub { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+          .doc-title { text-align: right; font-size: 14px; font-weight: bold; color: #fff; text-transform: uppercase; }
+          .doc-date { font-size: 11px; color: #00f3ff; margin-top: 3px; }
+          
+          .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+          .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+          .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
+          
+          .card { background: #15192b; border: 1px solid #2a314d; border-radius: 8px; padding: 12px; }
+          .card-title { font-size: 10px; color: #aaa; text-transform: uppercase; margin-bottom: 4px; display: block; }
+          .val-big { font-size: 24px; font-weight: 900; line-height: 1; }
+          .val-sub { font-size: 10px; color: #888; margin-top: 4px; display: block; }
+          
+          .info-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
+          .info-table td { padding: 6px 10px; border-bottom: 1px solid #2a314d; background: #15192b; }
+          .info-table td.lbl { color: #aaa; font-weight: bold; width: 30%; }
+          .info-table td.val { color: #fff; }
+
+          .action-bar { margin-bottom: 15px; text-align: right; }
+          .btn-print { background: #00f3ff; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; cursor: pointer; text-transform: uppercase; }
+          @media print { .action-bar { display: none; } body { background: #0b0e18 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="action-bar">
+          <button class="btn-print" onclick="window.print()">🖨️ Guardar como PDF / Imprimir</button>
+        </div>
+
+        <div class="header">
+          <div>
+            <div class="logo-box">⚡ OCTANAJE</div>
+            <div class="logo-sub">Plataforma de Productividad y Salud Pro</div>
+          </div>
+          <div class="doc-title">
+            EVALUACIÓN ANTROPOMÉTRICA PRO
+            <div class="doc-date">📅 Fecha: ${dateLabel}</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 15px;">
+          <div style="font-size: 11px; color: #00f3ff; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">👤 Datos del Usuario y Mediciones</div>
+          <table class="info-table" style="margin-bottom: 0;">
+            <tr>
+              <td class="lbl">Nombre:</td><td class="val">${name}</td>
+              <td class="lbl">Sexo:</td><td class="val">${sexLabel}</td>
+            </tr>
+            <tr>
+              <td class="lbl">Edad:</td><td class="val">${e.age} años</td>
+              <td class="lbl">Peso / Estatura:</td><td class="val">${e.weight} kg / ${e.height} cm</td>
+            </tr>
+            <tr>
+              <td class="lbl">Cuello / Cintura:</td><td class="val">${e.neck} cm / ${e.waist} cm</td>
+              <td class="lbl">Cadera:</td><td class="val">${e.hip ? e.hip + ' cm' : 'N/A (Hombre)'}</td>
+            </tr>
+            <tr>
+              <td class="lbl">Actividad Física:</td><td class="val">${actMap[e.activity] || e.activity}</td>
+              <td class="lbl">Objetivo / Ritmo:</td><td class="val">${goalMap[e.goal] || e.goal} (${paceMap[e.pace] || e.pace})</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="grid-4">
+          <div class="card" style="border: 2px solid ${bfInfo.color}; text-align: center;">
+            <span class="card-title">Grasa Corporal</span>
+            <span class="val-big" style="color: ${bfInfo.color};">${fatPctStr}%</span>
+            <span class="val-sub" style="color: ${bfInfo.color}; font-weight: bold;">${bfInfo.label}</span>
+            <span class="val-sub">${fatKg} kg de grasa</span>
+          </div>
+          <div class="card" style="border: 1px solid #00f3ff; text-align: center;">
+            <span class="card-title">Masa Magra</span>
+            <span class="val-big" style="color: #00f3ff;">${leanKg}<small style="font-size: 14px;">kg</small></span>
+            <span class="val-sub">Músculo + Hueso</span>
+          </div>
+          <div class="card" style="border: 1px solid #ffb020; text-align: center;">
+            <span class="card-title">${goalLabel}</span>
+            <span class="val-big" style="color: #ffb020;">${Math.round(planKcal)}</span>
+            <span class="val-sub">kcal/día meta</span>
+          </div>
+          <div class="card" style="border: 1px solid #0088ff; text-align: center;">
+            <span class="card-title">Agua Diaria</span>
+            <span class="val-big" style="color: #0088ff;">${water}<small style="font-size: 14px;">L</small></span>
+            <span class="val-sub">Mínimo sugerido</span>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 15px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a314d; padding-bottom: 8px; margin-bottom: 10px;">
+            <span style="font-size: 11px; color: #aaa; text-transform: uppercase;">Gasto Total Mantenimiento (GET):</span>
+            <strong style="color: #ffb020; font-size: 18px;">${Math.round(get)} kcal</strong>
+          </div>
+          <div class="grid-3" style="margin-bottom: 0;">
+            <div style="background: rgba(0, 243, 255, 0.05); padding: 8px; border-radius: 6px; text-align: center; border: 1px solid rgba(0,243,255,0.2);">
+              <span style="font-size: 9px; color: #888; display: block;">🥩 PROTEÍNA</span>
+              <span style="font-size: 20px; font-weight: bold; color: #00f3ff;">${protG}g</span>
+            </div>
+            <div style="background: rgba(255, 176, 32, 0.05); padding: 8px; border-radius: 6px; text-align: center; border: 1px solid rgba(255,176,32,0.2);">
+              <span style="font-size: 9px; color: #888; display: block;">🥑 GRASAS</span>
+              <span style="font-size: 20px; font-weight: bold; color: #ffb020;">${fatG}g</span>
+            </div>
+            <div style="background: rgba(0, 255, 136, 0.05); padding: 8px; border-radius: 6px; text-align: center; border: 1px solid rgba(0,255,136,0.2);">
+              <span style="font-size: 9px; color: #888; display: block;">🍚 CARBOHIDRATOS</span>
+              <span style="font-size: 20px; font-weight: bold; color: #00ff88;">${carbsG}g</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 15px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: #ccc;">Índice de Masa Corporal (IMC)</span>
+            <strong style="color: ${cat.color}; font-size: 16px;">${imc.toFixed(1)} <small style="font-size: 10px; color: #888;">(${cat.label})</small></strong>
+          </div>
+        </div>
+
+        <div style="padding: 8px 12px; background: rgba(255, 255, 255, 0.03); border-radius: 6px; border-left: 2px solid #888; font-size: 9px; color: #888; line-height: 1.3; margin-bottom: 25px;">
+          ⚠️ <strong>Aviso Informativo:</strong> Los cálculos aquí mostrados son estimaciones basadas en fórmulas deportivas estándar (Mifflin-St Jeor / Marina de EE. UU.) para uso personal y educativo. No sustituyen un diagnóstico clínico, plan nutricional o consejo médico. Consulta siempre a un especialista de la salud.
+        </div>
+
+        <div style="margin-top: 30px; text-align: center; page-break-inside: avoid;">
+          <div style="border: 1px dashed #00f3ff; width: 260px; height: 60px; margin: 0 auto 8px auto; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: rgba(0,243,255,0.02);">
+            <span style="font-size: 10px; color: #444; font-style: italic;">FIRMA DEL EVALUADO</span>
+          </div>
+          <div style="border-top: 1px solid #00f3ff; width: 260px; margin: 0 auto 4px auto;"></div>
+          <div style="font-size: 13px; font-weight: 900; color: #fff; text-transform: uppercase;">${name}</div>
+          <div style="font-size: 9px; color: #aaa;">Firma de Conformidad / Paciente</div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
   };
 
   window.processHealthCalculations = function() {
@@ -376,7 +634,7 @@
         <div id="health-results" style="display:${displayStyle};">${resultsHTML}</div>
         
         <div style="margin-top:20px; padding:10px; background:rgba(255,255,255,0.03); border-radius:6px; border-left:2px solid #888; font-size:11px; color:#888; line-height:1.4;">
-          ⚠️ <strong>Aviso Informativo:</strong> Los cálculos aquí mostrados son estimaciones basadas en fórmulas deportivas estándar (Mifflin-St Jeor / Marina de EE. UU.) para uso educativo. No sustituyen un diagnóstico clínico.
+          ⚠️ <strong>Aviso Informativo:</strong> Los cálculos aquí mostrados son estimaciones basadas en fórmulas deportivas estándar (Mifflin-St Jeor / Marina de EE. UU.) para uso personal y educativo. No sustituyen un diagnóstico clínico, plan nutricional o consejo médico. Consulta siempre a un especialista de la salud.
         </div>
       </div>
     `;
@@ -394,19 +652,22 @@
           h.fatPct ? el("span", { class: "chip", style: `background:${bfInfo.color};color:#000;font-weight:bold`, text: h.fatPct + "% (" + bfInfo.label + ")" }) : null
         ])
       ]),
-      el("button", { class: "icon-btn", html: "🗑️", onclick: () => {
-        UI.confirmBox("Eliminar", "¿Borrar registro del " + dLbl + "?", () => {
-          const arr = history(), i = arr.indexOf(h); if (i >= 0) arr.splice(i, 1);
-          Store.commit(); render(document.getElementById("view-health"), true);
-        });
-      } })
+      el("div", { class: "flex gap-4" }, [
+        el("button", { class: "icon-btn", html: "📄", title: "PDF de este día", onclick: () => window.exportPDF(h) }),
+        el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => {
+          UI.confirmBox("Eliminar", "¿Borrar registro del " + dLbl + "?", () => {
+            const arr = history(), i = arr.indexOf(h); if (i >= 0) arr.splice(i, 1);
+            Store.commit(); render(document.getElementById("view-health"), true);
+          });
+        } })
+      ])
     ]);
   }
 
   function openDayDetail(key) {
     const items = history().filter(h => h.date === key);
     const body = el("div", {});
-    if (!items.length) body.appendChild(el("div", { class: "empty", text: "Sin revisiones." }));
+    if (!items.length) body.appendChild(el("div", { class: "empty", text: "Sin revisiones este día." }));
     else items.forEach(h => body.appendChild(historyRow(h)));
     UI.openModal("📅 " + key, body);
   }
@@ -452,6 +713,7 @@
           UI.openModal("📖 Historial", body);
         }, html: "📖 Historial" }),
         el("button", { class: "btn", style: "font-size:12px; padding:6px 10px; background:rgba(0,243,255,0.1); border:1px solid #00f3ff; color:#00f3ff;", onclick: scheduleWeighIn, html: "📅 Agendar" }),
+        el("button", { class: "btn", style: "font-size:12px; padding:6px 10px; background:rgba(255,0,85,0.15); border:1px solid #ff0055; color:#ff0055; font-weight:bold;", onclick: () => window.exportPDF(), html: "📄 PDF" }),
         el("button", { class: "btn", style: "font-size:12px; padding:6px 10px; background:rgba(255,255,255,0.05); border:1px solid #888; color:#ccc;", onclick: toggleInstructions, html: "📖 Guía" })
       ])
     ]));
