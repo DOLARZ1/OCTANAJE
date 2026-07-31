@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Entrenamientos (Cambio Garantizado a Combos 🥋🥊)
+   OCTANAJE · Módulo Entrenamientos (Alineación de Inputs Corregida)
    ===================================================================== */
 (function () {
   "use strict";
@@ -66,6 +66,19 @@
     return el("span", { style: "font-size:22px", text: (t && t.icon) || "💪" });
   }
   function getWorkoutEmoji(w) { return (w.type === "otro" && w.customIcon) ? w.customIcon : (TYPES.find(x => x.value === w.type)?.icon || "💪"); }
+
+  // ---------------- DELEGADOR DE EVENTOS PARA EL FORMULARIO DINÁMICO ----------------
+  document.addEventListener("change", (e) => {
+    if (e.target && e.target.name === "type") {
+      const stdWrap = document.getElementById("standard-section-wrap");
+      const comboWrap = document.getElementById("combo-section-wrap");
+      if (stdWrap && comboWrap) {
+        const isMartial = ["boxeo", "taekwondo", "artesmarciales"].includes(e.target.value);
+        stdWrap.style.display = isMartial ? "none" : "block";
+        comboWrap.style.display = isMartial ? "block" : "none";
+      }
+    }
+  });
 
   // ---------------- CALENDARIO Y GOOGLE CALENDAR ----------------
   let currentCalWorkouts = new Date();
@@ -258,8 +271,8 @@
       { name: "name", label: "Nombre de la sesión", placeholder: "Ej. Día Pesado / Clase de Box", required: true },
       { name: "type", label: "Tipo principal", type: "select", value: "fuerza", options: TYPES.map((t) => ({ value: t.value, label: t.icon + " " + t.name })) },
       { type: "row", fields: [
-        { name: "customName", label: "Actividad (Si elegiste 'Otro')", placeholder: "Ej. Parkour" },
-        { name: "customIcon", label: "Icono (Emoji)", placeholder: "Ej. 🥷" }
+        { name: "customName", label: "Deporte ('Otro')", placeholder: "Ej. Parkour" },
+        { name: "customIcon", label: "Icono ('Otro')", placeholder: "Ej. 🥷" }
       ]},
       { type: "row", fields: [
         { name: "date", label: "Fecha", type: "date", value: DateUtil.todayKey(), required: true },
