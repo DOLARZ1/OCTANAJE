@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Salud Pro (Masa Magra Restaurada & Estética Elite)
+   OCTANAJE · Módulo Salud Pro (Fórmula Matemática Corregida - U.S. Navy)
    ===================================================================== */
 (function () {
   "use strict";
@@ -54,7 +54,7 @@
   }
   function history() { return health().history || []; }
   function weights() { return health().weights || []; }
-  function weightsSorted() { return weights().slice().sort((a, b) => b.date.localeCompare(a.date)); }
+  function weightsSorted() { return weights().slice().sort((a, b) => a.date.localeCompare(b.date)); }
 
   // ---------------- ESCALAS CLÍNICAS (IMC) ----------------
   const IMC_RANGES = [
@@ -86,7 +86,7 @@
     }
   };
 
-  // ---------------- PROCESAR DIAGNÓSTICO Y GUARDAR ----------------
+  // ---------------- PROCESAR DIAGNÓSTICO Y GUARDAR (FÓRMULAS CORREGIDAS) ----------------
   window.processHealthCalculations = function() {
     const p = profile();
     
@@ -109,27 +109,36 @@
       if (Audio) Audio.play("error"); toast({ icon: "⚠️", msg: "Las mujeres requieren la medida de cadera." }); return;
     }
 
+    // 1. TMB (Mifflin-St Jeor - Esta fórmula sí es en cm y kg)
     let tmb = (10 * p.weight) + (6.25 * p.height) - (5 * p.age);
     tmb = p.sex === 'F' ? tmb - 161 : tmb + 5;
     const actFactors = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
     const get = tmb * (actFactors[p.activity] || 1.2);
 
+    // 2. Porcentaje de Grasa (U.S. Navy Method)
+    // ¡CORRECCIÓN CRÍTICA! Convertimos cm a pulgadas antes de usar los logaritmos
+    const h_in = p.height / 2.54;
+    const n_in = p.neck / 2.54;
+    const w_in = p.waist / 2.54;
+    const hip_in = p.hip / 2.54;
+
     let bf = 0;
     if (p.sex === 'M') {
-      const safeDiff = p.waist - p.neck;
-      if (safeDiff > 0) {
-        bf = 86.010 * Math.log10(p.waist - p.neck) - 70.041 * Math.log10(p.height) + 36.76;
+      const diff = w_in - n_in;
+      if (diff > 0) {
+        bf = 86.010 * Math.log10(diff) - 70.041 * Math.log10(h_in) + 36.76;
       }
     } else {
-      const sum = p.waist + p.hip - p.neck;
+      const sum = w_in + hip_in - n_in;
       if (sum > 0) {
-        bf = 163.205 * Math.log10(p.waist + p.hip - p.neck) - 97.684 * Math.log10(p.height) - 78.387;
+        bf = 163.205 * Math.log10(sum) - 97.684 * Math.log10(h_in) - 78.387;
       }
     }
+    // Aseguramos límites biológicos lógicos
     bf = Math.max(3, Math.min(60, isNaN(bf) ? 20 : bf));
     p.lastFat = bf.toFixed(1);
 
-    const icc = p.sex === 'F' && p.hip > 0 ? (p.waist / p.hip).toFixed(2) : ((p.waist / p.height).toFixed(2)); // Cálculo de respaldo o ICC estándar
+    const icc = p.sex === 'F' && p.hip > 0 ? (p.waist / p.hip).toFixed(2) : ((p.waist / p.height).toFixed(2));
     const imc = p.weight / ((p.height / 100) * (p.height / 100));
 
     const entry = {
@@ -148,7 +157,7 @@
 
     if (Audio) Audio.play("levelup");
     if (Gami) Gami.award(5, "Diagnóstico Pro Guardado 🔬");
-    toast({ icon: "💾", title: "Diagnóstico Guardado", msg: "Los colores y resultados se han actualizado." });
+    toast({ icon: "💾", title: "Cálculo Exitoso", msg: "Tus métricas de grasa han sido ajustadas." });
 
     render(document.getElementById('view-health'), true);
   };
@@ -208,11 +217,10 @@
       const fatG = Math.round((planKcal * 0.25) / 9);
       const carbsG = Math.max(0, Math.round((planKcal - (protG * 4) - (fatG * 9)) / 4));
       
-      // ICC o Riesgo Cardiovascular
       let iccVal = p.sex === 'F' && p.hip > 0 ? (p.waist / p.hip).toFixed(2) : (p.waist / p.height).toFixed(2);
       let riskLabel = "Bajo"; let riskColor = "#00ff88";
       if (p.sex === 'F' && iccVal > 0.85) { riskLabel = "Elevado"; riskColor = "#ff0055"; }
-      if (p.sex === 'M' && iccVal > 0.53) { riskLabel = "Elevado"; riskColor = "#ff0055"; } // Ratio cintura/altura saludable < 0.53
+      if (p.sex === 'M' && iccVal > 0.53) { riskLabel = "Elevado"; riskColor = "#ff0055"; } 
 
       const waterLiters = (p.weight * 35 / 1000).toFixed(1);
       const imc = p.weight / ((p.height / 100) * (p.height / 100));
@@ -322,7 +330,7 @@
       `;
     }
 
-    const hipDisplay = p.sex === 'F' ? 'block' : 'none';
+    const initialHipDisplay = p.sex === 'F' ? 'block' : 'none';
 
     const div = document.createElement('div');
     div.id = "pro-calc-card"; 
@@ -335,7 +343,7 @@
 
         <div id="measure-guide" style="display: none; background: rgba(0,255,255,0.05); border-left: 3px solid #00f3ff; padding: 12px; margin-bottom: 15px; font-size: 12px; color: #ccc; border-radius: 4px; line-height: 1.5;">
           <strong>📍 Cuello:</strong> Por debajo de la nuez de Adán. Cinta horizontal.<br>
-          <strong>📍 Cintura (Hombres):</strong> A la altura del ombligo.<br>
+          <strong>📍 Cintura (H):</strong> A la altura del ombligo.<br>
           <strong>📍 Cadera (Solo mujeres):</strong> Talones juntos, parte más ancha de los glúteos.
         </div>
         
@@ -381,7 +389,7 @@
             </div>
           </div>
 
-          <div id="calc-hip-container" style="width: 100%; display: ${hipDisplay};">
+          <div id="calc-hip-container" style="width: 100%; display: ${initialHipDisplay};">
             <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Cadera (cm) <span style="font-size:10px; color:#ff0055;">(Obligatorio Mujeres)</span>:</label>
             <input type="number" id="calc-hip" step="0.5" value="${p.hip || ''}" placeholder="95" style="width:100%; box-sizing:border-box; padding:10px; background:#1a1f35; color:white; border:1px solid #2a314d; border-radius:6px;" />
           </div>
@@ -445,7 +453,7 @@
       el("button", { class: "icon-btn", html: "🗑️", title: "Eliminar", onclick: () => {
         UI.confirmBox("Eliminar revisión", "¿Eliminar el registro del " + dLbl + "?", () => {
           const arr = history(); const i = arr.indexOf(h); if (i >= 0) arr.splice(i, 1);
-          Store.commit(); if (Audio) Audio.play("delete"); toast({ icon: "🗑️", msg: "Peso eliminado" }); 
+          Store.commit(); if (Audio) Audio.play("delete"); toast({ icon: "🗑️", msg: "Registro eliminado" }); 
           render(document.getElementById("view-health"), true);
         }, "Eliminar");
       } })
