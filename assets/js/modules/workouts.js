@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Entrenamientos (Diseño Neón + Base de Datos Ampliada)
+   OCTANAJE · Módulo Entrenamientos (Deportes Completos + Favoritos ⭐)
    ===================================================================== */
 (function () {
   "use strict";
@@ -54,6 +54,7 @@
     '<path d="M8 16c3.314 0 6-2 6-5.5 0-1.5-.5-4-2-6 .25 1.5-1.25 2-1.25 2C11 4 9 .5 6 0c.357 2 .5 4-2 6-1.25 1-2 2.729-2 4.5C2 14 4.686 16 8 16Zm0-1c-1.657 0-3-1-3-2.75 0-.75.25-2 1-2.75.25 1.25-1 2.5-1 2.5S6.5 12 6.5 10.5c0-1.5 1-3.5 1.5-4C7.5 8 7 6 6 4c0 0 3.5 1 3.5 4.5V9c0 1.5 1.5 2.5 1.5 4.25S9.657 15 8 15Z"/>' +
     '</svg>';
 
+  // LISTA RESTAURADA Y COMPLETA
   const TYPES = [
     { value: "fuerza", name: "Fuerza / Pesas", icon: "🏋️" },
     { value: "cardio", name: "Cardio", icon: "🏃" },
@@ -61,18 +62,57 @@
     { value: "crossfit", name: "Crossfit", icon: "🔥" },
     { value: "calistenia", name: "Calistenia", icon: "🔥", svg: CALISTENIA_SVG },
     { value: "yoga", name: "Yoga / Movilidad", icon: "🧘" },
-    { value: "otro", name: "Otro", icon: "💪" }
+    { value: "estiramiento", name: "Estiramiento", icon: "🤸" },
+    { value: "caminata", name: "Caminata", icon: "🚶" },
+    { value: "correr", name: "Running", icon: "🏃‍♂️" },
+    { value: "ciclismo", name: "Ciclismo", icon: "🚴" },
+    { value: "natacion", name: "Natación", icon: "🏊" },
+    { value: "remo", name: "Remo", icon: "🚣" },
+    { value: "futbol", name: "Fútbol", icon: "⚽" },
+    { value: "basquet", name: "Baloncesto", icon: "🏀" },
+    { value: "tenis", name: "Tenis", icon: "🎾" },
+    { value: "voleibol", name: "Voleibol", icon: "🏐" },
+    { value: "beisbol", name: "Béisbol", icon: "⚾" },
+    { value: "americano", name: "Fútbol americano", icon: "🏈" },
+    { value: "rugby", name: "Rugby", icon: "🏉" },
+    { value: "boxeo", name: "Boxeo", icon: "🥊" },
+    { value: "artesmarciales", name: "Artes marciales", icon: "🥋" },
+    { value: "escalada", name: "Escalada", icon: "🧗" },
+    { value: "golf", name: "Golf", icon: "⛳" },
+    { value: "pingpong", name: "Ping pong", icon: "🏓" },
+    { value: "badminton", name: "Bádminton", icon: "🏸" },
+    { value: "hockey", name: "Hockey", icon: "🏒" },
+    { value: "patinaje", name: "Patinaje", icon: "⛸️" },
+    { value: "esqui", name: "Esquí", icon: "🎿" },
+    { value: "snowboard", name: "Snowboard", icon: "🏂" },
+    { value: "surf", name: "Surf", icon: "🏄" },
+    { value: "senderismo", name: "Senderismo", icon: "🥾" },
+    { value: "baile", name: "Baile", icon: "💃" },
+    { value: "deporte", name: "Otro deporte", icon: "🏅" },
+    { value: "otro", name: "Otro (Personalizado)", icon: "💪" }
   ];
 
-  function typeIconNode(type) {
-    const t = TYPES.find((x) => x.value === type);
+  function workouts() { return Store.get().workouts; }
+
+  // Detectores Dinámicos (Leen si elegiste "Otro" y pusiste tu propio icono/nombre)
+  function getWorkoutName(w) {
+    if (w.type === "otro" && w.customName) return w.customName;
+    const t = TYPES.find((x) => x.value === w.type);
+    return t ? t.name : (w.type || "Otro");
+  }
+
+  function getWorkoutIconNode(w) {
+    if (w.type === "otro" && w.customIcon) return el("span", { style: "font-size:22px", text: w.customIcon });
+    const t = TYPES.find((x) => x.value === w.type);
     if (t && t.svg) return el("span", { class: "tico-svg", html: t.svg });
     return el("span", { style: "font-size:22px", text: (t && t.icon) || "💪" });
   }
 
-  function workouts() { return Store.get().workouts; }
-  function typeName(v) { const t = TYPES.find((x) => x.value === v); return t ? t.name : (v || "Otro"); }
-  function typeEmoji(v) { const t = TYPES.find((x) => x.value === v); return t ? t.icon : "💪"; }
+  function getWorkoutEmoji(w) {
+    if (w.type === "otro" && w.customIcon) return w.customIcon;
+    const t = TYPES.find((x) => x.value === w.type);
+    return t ? t.icon : "💪";
+  }
 
   // ---------------- CALENDARIO Y GOOGLE CALENDAR ----------------
   let currentCalWorkouts = new Date();
@@ -125,7 +165,7 @@
     else {
       list.forEach((w) => {
         const exs = (w.exercises || []).map((e) => {
-          let txt = esc(e.name);
+          let txt = e.isFav ? "⭐ " + esc(e.name) : esc(e.name);
           if (e.sets || e.reps) txt += " " + (e.sets || "?") + "×" + (e.reps || "?");
           if (e.weight) txt += " @ " + e.weight + "kg";
           return txt;
@@ -134,7 +174,7 @@
         rows += "<tr>" +
           "<td>" + DateUtil.parse(w.date).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" }) + "</td>" +
           "<td><b>" + esc(w.name) + "</b></td>" +
-          "<td>" + typeEmoji(w.type) + " " + esc(typeName(w.type)) + "</td>" +
+          "<td>" + getWorkoutEmoji(w) + " " + esc(getWorkoutName(w)) + "</td>" +
           "<td style='text-align:center'>" + (w.duration || 0) + " min</td>" +
           "<td style='text-align:center'>" + (w.calories || 0) + "</td>" +
           "<td>" + (exs || "—") + (w.volume ? "<div style='color:#00b3c4;font-size:10px;'>💪 Vol: " + esc(w.volume) + "</div>" : "") + "</td>" +
@@ -173,7 +213,7 @@
     setTimeout(() => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {} setTimeout(() => iframe.remove(), 1500); }, 500);
   }
 
-  // ---------------- FORMULARIO DE EJERCICIOS CON VOLUMEN ----------------
+  // ---------------- FORMULARIO DE EJERCICIOS CON VOLUMEN Y FAVORITOS ⭐ ----------------
   function buildExerciseSection() {
     if (!document.getElementById("ex-datalist")) {
       const dlist = el("datalist", { id: "ex-datalist" });
@@ -182,9 +222,28 @@
     }
 
     const list = el("div", { style: "display:flex; flex-direction:column; gap:8px;" });
+    
     function addRow(ex) {
-      const nameI = el("input", { class: "input", placeholder: "Ejercicio (ej. Press)", style: "width:100%; box-sizing:border-box; margin-bottom:6px;" });
+      let isFav = ex ? (ex.isFav || false) : false;
+      
+      const favBtn = el("button", { 
+        type: "button", 
+        html: isFav ? "⭐" : "☆", 
+        title: "Marcar como Favorito",
+        style: "background:transparent; border:none; cursor:pointer; font-size:16px; padding:0 8px 0 0;", 
+        onclick: () => { 
+          isFav = !isFav; 
+          favBtn.innerHTML = isFav ? "⭐" : "☆"; 
+        }
+      });
+
+      const nameI = el("input", { class: "input", placeholder: "Ejercicio (ej. Press)", style: "flex:1; background:transparent; border:none; padding:8px; color:white; outline:none;" });
       nameI.setAttribute("list", "ex-datalist");
+      
+      const nameWrap = el("div", { style: "display:flex; align-items:center; margin-bottom:6px; background:#1a1f35; border:1px solid #2a314d; border-radius:6px; padding-left:8px;" }, [
+        favBtn, nameI
+      ]);
+
       const setsI = el("input", { class: "input", type: "number", min: 0, placeholder: "Series", style: "flex:1; text-align:center;" });
       const repsI = el("input", { class: "input", type: "number", min: 0, placeholder: "Reps", style: "flex:1; text-align:center;" });
       const weightI = el("input", { class: "input", type: "number", step: "0.5", min: 0, placeholder: "Peso kg", style: "flex:1.5; text-align:center;" });
@@ -192,13 +251,13 @@
       if (ex) { nameI.value = ex.name || ""; setsI.value = ex.sets || ""; repsI.value = ex.reps || ""; weightI.value = ex.weight || ""; }
       
       const row = el("div", { style: "background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 8px; border-radius: 8px;" }, [
-        nameI,
+        nameWrap,
         el("div", { style: "display:flex; gap:6px; align-items:center;" }, [
           setsI, el("span", { class: "text-faint", text: "×" }), repsI, el("span", { class: "text-faint", text: "@" }), weightI,
-          el("button", { class: "icon-btn", type: "button", html: "🗑️", onclick: () => { if (list.children.length > 1) row.remove(); else { nameI.value = ""; setsI.value = ""; repsI.value = ""; weightI.value = ""; } }})
+          el("button", { class: "icon-btn", type: "button", html: "🗑️", onclick: () => { if (list.children.length > 1) row.remove(); else { nameI.value = ""; setsI.value = ""; repsI.value = ""; weightI.value = ""; isFav = false; favBtn.innerHTML = "☆"; } }})
         ])
       ]);
-      row._get = () => ({ name: nameI.value.trim(), sets: Number(setsI.value) || 0, reps: Number(repsI.value) || 0, weight: Number(weightI.value) || 0 });
+      row._get = () => ({ name: nameI.value.trim(), sets: Number(setsI.value) || 0, reps: Number(repsI.value) || 0, weight: Number(weightI.value) || 0, isFav: isFav });
       list.appendChild(row);
     }
     addRow(null);
@@ -212,7 +271,11 @@
     const ex = buildExerciseSection();
     const body = UI.form([
       { name: "name", label: "Nombre de la sesión", placeholder: "Ej. Pecho y tríceps pesados", required: true },
-      { name: "type", label: "Tipo", type: "select", value: "fuerza", options: TYPES.map((t) => ({ value: t.value, label: t.icon + " " + t.name })) },
+      { name: "type", label: "Tipo principal", type: "select", value: "fuerza", options: TYPES.map((t) => ({ value: t.value, label: t.icon + " " + t.name })) },
+      { type: "row", fields: [
+        { name: "customName", label: "Actividad (Si elegiste 'Otro')", placeholder: "Ej. Parkour" },
+        { name: "customIcon", label: "Icono (Emoji)", placeholder: "Ej. 🥷" }
+      ]},
       { type: "row", fields: [
         { name: "date", label: "Fecha", type: "date", value: DateUtil.todayKey(), required: true },
         { name: "duration", label: "Duración (min)", type: "number", min: 0, placeholder: "45", required: true }
@@ -235,7 +298,12 @@
       else if (finalVolume && autoVolume > 0) finalVolume = autoVolume.toLocaleString() + " kg · " + finalVolume;
 
       const xp = Math.min(30, 10 + Math.round(dur / 5));
-      workouts().push({ id: Store.uid(), name: data.name, type: data.type, date: data.date, duration: dur, calories: Number(data.calories) || 0, volume: finalVolume, notes: data.notes, exercises: exData, xpEarned: xp });
+      workouts().push({ 
+        id: Store.uid(), name: data.name, type: data.type, 
+        customName: data.customName, customIcon: data.customIcon, // Guardamos los datos de "Otro"
+        date: data.date, duration: dur, calories: Number(data.calories) || 0, 
+        volume: finalVolume, notes: data.notes, exercises: exData, xpEarned: xp 
+      });
       Store.commit(); Audio.play("complete"); Gami.award(xp, "Entrenamiento registrado 💪");
       UI.closeModal(); render(document.getElementById("view-workouts")); N.App && N.App.refreshTop();
     }, "Registrar entrenamiento", () => ex.node);
@@ -273,7 +341,7 @@
   function createWorkoutItem(w) {
     const item = el("div", { class: "item", style: "flex-direction:column;align-items:stretch" });
     item.appendChild(el("div", { class: "flex items-center gap-12" }, [
-      typeIconNode(w.type),
+      getWorkoutIconNode(w),
       el("div", { class: "item-main" }, [
         el("div", { class: "item-title", text: w.name }),
         el("div", { class: "item-meta" }, [
@@ -289,7 +357,7 @@
     if (w.exercises && w.exercises.length) {
       const exWrap = el("div", { style: "display:flex;flex-wrap:wrap;gap:6px;margin-top:10px" });
       w.exercises.forEach((e) => {
-        let txt = e.name;
+        let txt = e.isFav ? "⭐ " + e.name : e.name; // Agregamos la estrella si es favorito
         if (e.sets || e.reps) txt += `  ${e.sets||0}×${e.reps||0}`;
         if (e.weight) txt += ` @ ${e.weight}kg`;
         if (e.sets && e.reps && e.weight) {
