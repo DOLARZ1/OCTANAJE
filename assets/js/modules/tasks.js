@@ -114,12 +114,48 @@
     ]);
     container.appendChild(head);
 
-    container.appendChild(el("div", { class: "grid cols-4 mb-16" }, [
-      kpi("Pendientes", st.pending + "", "por hacer", "accent"),
-      kpi("Completadas", st.done + "", "en total", "good"),
-      kpi("Vencidas", st.overdue + "", "atrasadas", st.overdue ? "bad" : ""),
-      kpi("Progreso", fmt.pct(st.pct), "completado", st.pct >= 70 ? "good" : "warn")
-    ]));
+    // --- NUEVAS PALETAS NEÓN DINÁMICAS ---
+    const pendColor = st.pending > 0 ? '#ff0055' : '#00ff88';
+    const pendBg = st.pending > 0 ? 'rgba(255,0,85,0.05)' : 'rgba(0,255,136,0.05)';
+    const pendBorder = st.pending > 0 ? 'rgba(255,0,85,0.3)' : 'rgba(0,255,136,0.3)';
+    const pendShadow = st.pending > 0 ? 'rgba(255,0,85,0.4)' : 'rgba(0,255,136,0.4)';
+
+    const overColor = st.overdue > 0 ? '#ff0055' : '#00f3ff';
+    const overBg = st.overdue > 0 ? 'rgba(255,0,85,0.05)' : 'rgba(0,243,255,0.05)';
+    const overBorder = st.overdue > 0 ? 'rgba(255,0,85,0.3)' : 'rgba(0,243,255,0.3)';
+    const overShadow = st.overdue > 0 ? 'rgba(255,0,85,0.4)' : 'rgba(0,243,255,0.4)';
+
+    const kpiHtml = document.createElement('div');
+    kpiHtml.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 24px;">
+        
+        <div style="background:${pendBg}; border:1px solid ${pendBorder}; border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">📋 PENDIENTES</span>
+          <span style="font-size:36px; font-weight:900; color:${pendColor}; line-height:1; text-shadow: 0 0 15px ${pendShadow};">${st.pending}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">por hacer</span>
+        </div>
+
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">✅ COMPLETADAS</span>
+          <span style="font-size:36px; font-weight:900; color:#00ff88; line-height:1; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${st.done}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">en total</span>
+        </div>
+
+        <div style="background:${overBg}; border:1px solid ${overBorder}; border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">⚠️ VENCIDAS</span>
+          <span style="font-size:36px; font-weight:900; color:${overColor}; line-height:1; text-shadow: 0 0 15px ${overShadow};">${st.overdue}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">atrasadas</span>
+        </div>
+
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">📈 PROGRESO</span>
+          <span style="font-size:36px; font-weight:900; color:#00ff88; line-height:1; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${st.pct}%</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">completado</span>
+        </div>
+
+      </div>
+    `;
+    container.appendChild(kpiHtml);
 
     // gráfica
     const chartCard = el("div", { class: "card mb-16" }, [
