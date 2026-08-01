@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Metas
+   OCTANAJE · Módulo Metas (Paletas Neón Dinámicas)
    ===================================================================== */
 (function () {
   "use strict";
@@ -114,11 +114,32 @@
       el("button", { class: "btn primary", onclick: () => addOrEdit(null), html: "＋ Nueva meta" })
     ]));
 
-    container.appendChild(el("div", { class: "grid cols-3 mb-16" }, [
-      kpi("Activas", st.active + "", "en progreso", "accent"),
-      kpi("Completadas", st.completed + "", "logradas", "good"),
-      kpi("Progreso medio", fmt.pct(st.avg), "global", st.avg >= 60 ? "good" : "warn")
-    ]));
+    // --- NUEVAS PALETAS NEÓN DE METAS ---
+    const kpiHtml = document.createElement('div');
+    kpiHtml.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 24px;">
+        
+        <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">⚡ ACTIVAS</span>
+          <span style="font-size:36px; font-weight:900; color:#00f3ff; line-height:1; text-shadow: 0 0 15px rgba(0,243,255,0.4);">${st.active}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">en progreso</span>
+        </div>
+
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🏆 COMPLETADAS</span>
+          <span style="font-size:36px; font-weight:900; color:#00ff88; line-height:1; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${st.completed}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">logradas</span>
+        </div>
+
+        <div style="background:rgba(255,215,0,0.05); border:1px solid rgba(255,215,0,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">📈 PROGRESO MEDIO</span>
+          <span style="font-size:36px; font-weight:900; color:#ffd700; line-height:1; text-shadow: 0 0 15px rgba(255,215,0,0.4);">${st.avg}%</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">global</span>
+        </div>
+
+      </div>
+    `;
+    container.appendChild(kpiHtml);
 
     const arr = goals();
     if (!arr.length) {
