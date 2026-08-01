@@ -24,6 +24,16 @@
   <meta name="apple-mobile-web-app-title" content="OCTANAJE" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
 </head>
+  <script>
+  setTimeout(function() {
+    var bootScreen = document.querySelector('.boot-screen');
+    if (bootScreen && !bootScreen.classList.contains('hide')) {
+      bootScreen.classList.add('hide');
+      console.warn('Pantalla de inicio retirada por tiempo límite de emergencia.');
+    }
+  }, 3500);
+  </script>
+  
 <body>
   <!-- Fondo animado -->
   <div class="bg-grid" aria-hidden="true"></div>
