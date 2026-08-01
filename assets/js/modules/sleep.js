@@ -1,8 +1,7 @@
 /* =====================================================================
-   OCTANAJE · Módulo Sueño
+   OCTANAJE · Módulo Sueño (Paletas Neón + Reseteo Mensual Gráfica)
    Registro manual de horas de sueño: periodo (día/tarde/noche), hora
-   exacta de inicio y fin (calcula las horas solas, incluso cruzando
-   medianoche), notas, historial editable, gráfica diaria/semanal/mensual,
+   exacta de inicio y fin, notas, historial editable, gráfica,
    calendario de actividad, y XP por cada registro.
    ===================================================================== */
 (function () {
@@ -32,8 +31,7 @@
 
   function r1(x) { return Math.round(x * 10) / 10; }
 
-  // horas entre "HH:MM" de inicio y fin, soportando que el fin caiga al
-  // día siguiente (ej. dormir 23:00 -> despertar 07:00 = 8 horas)
+  // horas entre "HH:MM" de inicio y fin
   function calcHours(start, end) {
     const [sh, sm] = (start || "0:0").split(":").map(Number);
     const [eh, em] = (end || "0:0").split(":").map(Number);
@@ -75,12 +73,22 @@
   function hasLog(key) { return log().some((e) => e.date === key); }
 
   function rangeSeries(period) {
-    // devuelve {labels, values} de horas de sueño totales por día
-    let days;
-    if (period === "weekly") days = DateUtil.lastNDays(7);
-    else if (period === "monthly") days = DateUtil.lastNDays(30);
-    else days = [today()]; // daily: solo hoy, se detalla por entrada
+    let days = [];
+    if (period === "weekly") {
+      days = DateUtil.lastNDays(7);
+    } else if (period === "monthly") {
+      // Días exactos del mes actual (reinicia la gráfica cada mes)
+      const now = new Date();
+      const y = now.getFullYear(), mo = now.getMonth();
+      const daysInMonth = new Date(y, mo + 1, 0).getDate();
+      for (let d = 1; d <= daysInMonth; d++) {
+        days.push(DateUtil.key(new Date(y, mo, d)));
+      }
+    } else {
+      days = [today()];
+    }
     return {
+      keys: days,
       labels: days.map((d) => period === "monthly" ? DateUtil.parse(d).getDate() + "" : DateUtil.weekday(d)),
       values: days.map((d) => r1(dayTotal(d)))
     };
@@ -217,7 +225,7 @@
   }
 
   // ---------------- Gráfica con vista diaria/semanal/mensual ----------------
-  let chartMode = "weekly"; // "daily" | "weekly" | "monthly"
+  let chartMode = "weekly"; 
 
   function buildChartCard(container) {
     function segBtn(mode, label) {
@@ -241,7 +249,7 @@
         card.appendChild(el("div", { class: "chart-box" }, [cv]));
         setTimeout(() => Charts.bars(cv, {
           labels: items.map((e) => periodInfo(e.period).label.slice(0, 2)),
-          series: [{ values: items.map((e) => e.hours), color: "--accent" }]
+          series: [{ values: items.map((e) => e.hours), color: "#bc84ee" }] // Morado Neón
         }, { height: 170 }), 30);
         card.appendChild(el("div", { class: "fs-12 text-faint mt-8", text: "Total hoy: " + r1(items.reduce((s, e) => s + e.hours, 0)) + " horas en " + items.length + " registro(s)." }));
       }
@@ -249,9 +257,12 @@
       const data = rangeSeries(chartMode);
       const cv = el("canvas");
       card.appendChild(el("div", { class: "chart-box" }, [cv]));
-      setTimeout(() => Charts.bars(cv, { labels: data.labels, series: [{ values: data.values, color: "--good" }] }, { height: 170 }), 30);
-      const avg = data.values.length ? r1(data.values.reduce((a, b) => a + b, 0) / data.values.length) : 0;
-      card.appendChild(el("div", { class: "fs-12 text-faint mt-8", text: "Promedio " + (chartMode === "weekly" ? "de los últimos 7 días" : "de los últimos 30 días") + ": " + avg + " horas/noche." }));
+      setTimeout(() => Charts.bars(cv, { labels: data.labels, series: [{ values: data.values, color: "#bc84ee" }] }, { height: 170 }), 30); // Morado Neón
+      
+      const todayK = today();
+      const pastVals = data.values.filter((v, i) => data.keys[i] <= todayK); // Solo saca el promedio de días que ya pasaron
+      const avg = pastVals.length ? r1(pastVals.reduce((a, b) => a + b, 0) / pastVals.length) : 0;
+      card.appendChild(el("div", { class: "fs-12 text-faint mt-8", text: "Promedio " + (chartMode === "weekly" ? "de los últimos 7 días" : "de este mes") + ": " + avg + " horas/noche." }));
     }
     return card;
   }
@@ -263,6 +274,10 @@
     const todayHours = r1(todayItems.reduce((s, e) => s + e.hours, 0));
     const last7 = rangeSeries("weekly").values;
     const avg7 = last7.length ? r1(last7.reduce((a, b) => a + b, 0) / last7.length) : 0;
+    
+    // Contar los registros solo del MES ACTUAL
+    const currentMonthPrefix = DateUtil.monthKey(); // "2026-08"
+    const monthLogsCount = log().filter(e => e.date.startsWith(currentMonthPrefix)).length;
 
     container.appendChild(el("div", { class: "view-head" }, [
       el("div", {}, [
@@ -275,11 +290,32 @@
       ])
     ]));
 
-    container.appendChild(el("div", { class: "grid cols-3 mb-16" }, [
-      kpi("Sueño hoy", todayHours + " h", todayItems.length + " registro(s)", "accent"),
-      kpi("Promedio 7 días", avg7 + " h", "por noche", "good"),
-      kpi("Total registros", log().length + "", "acumulados", "warn")
-    ]));
+    // --- NUEVAS PALETAS NEÓN DE SUEÑO ---
+    const kpiHtml = document.createElement('div');
+    kpiHtml.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 24px;">
+        
+        <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🌙 SUEÑO HOY</span>
+          <span style="font-size:36px; font-weight:900; color:#00f3ff; line-height:1; text-shadow: 0 0 15px rgba(0,243,255,0.4);">${todayHours}<span style="font-size:18px; color:#555;">h</span></span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">${todayItems.length} registro(s)</span>
+        </div>
+
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">📊 PROMEDIO 7 DÍAS</span>
+          <span style="font-size:36px; font-weight:900; color:#00ff88; line-height:1; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${avg7}<span style="font-size:18px; color:#555;">h</span></span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">por noche</span>
+        </div>
+
+        <div style="background:rgba(255,215,0,0.05); border:1px solid rgba(255,215,0,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">📅 REGISTROS MES</span>
+          <span style="font-size:36px; font-weight:900; color:#ffd700; line-height:1; text-shadow: 0 0 15px rgba(255,215,0,0.4);">${monthLogsCount}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">este mes</span>
+        </div>
+
+      </div>
+    `;
+    container.appendChild(kpiHtml);
 
     container.appendChild(buildChartCard(container));
     container.appendChild(buildCalendar());
@@ -296,12 +332,6 @@
       todayItems.slice().reverse().forEach((e) => listCard.appendChild(entryRow(e, () => render(container))));
     }
     container.appendChild(listCard);
-  }
-
-  function kpi(label, val, sub, cls) {
-    return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
-      el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
-    ])]);
   }
 
   N.Sleep = { render, dayTotal };
