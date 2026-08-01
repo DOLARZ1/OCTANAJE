@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Hábitos
+   OCTANAJE · Módulo Hábitos (Original + Paletas Neón + Reseteo Mensual)
    Soporta hábitos simples (1 check) y hábitos con META DIARIA de N veces
    (se rellenan N cuadritos; el hábito se completa solo al llenarlos todos).
    ===================================================================== */
@@ -71,6 +71,7 @@
   function tgt(h) { return Math.max(1, Math.min(MAX_BOXES, parseInt(h.count, 10) || 1)); }
   // cantidad hecha en un día (compatible con formato antiguo: true = completo)
   function dayVal(h, key) {
+    if (!h.history) h.history = {}; // Failsafe
     const v = h.history[key];
     if (v === true) return tgt(h);
     if (typeof v === "number") return v;
@@ -108,7 +109,7 @@
   }
   function bestStreak(h) {
     const set = activeSet(h);
-    const done = Object.keys(h.history).filter((k) => doneOn(h, k)).sort();
+    const done = Object.keys(h.history || {}).filter((k) => doneOn(h, k)).sort();
     if (!done.length) return 0;
     let day = done[0]; const end = today(); let cur = 0, best = 0;
     for (let i = 0; i < 4000 && day <= end; i++) {
@@ -126,8 +127,33 @@
     return Math.round((done / active.length) * 100);
   }
 
+  // Calcula el porcentaje de cumplimiento estricto del MES ACTUAL para la nueva paleta
+  function getMonthCompliance() {
+    const arr = habits();
+    const tKey = today();
+    const prefix = tKey.slice(0, 7); // ej: "2026-08"
+    let expected = 0;
+    let done = 0;
+    const parts = prefix.split('-');
+    const daysInMonth = new Date(parts[0], parts[1], 0).getDate();
+
+    arr.forEach(h => {
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dayStr = String(d).padStart(2, '0');
+            const fullDate = `${prefix}-${dayStr}`;
+            // Solo contamos los días hasta "hoy" y que el hábito estuviera activo
+            if (fullDate <= tKey && activeOn(h, fullDate)) {
+                expected++;
+                if (doneOn(h, fullDate)) done++;
+            }
+        }
+    });
+    return expected === 0 ? 0 : Math.round((done / expected) * 100);
+  }
+
   // fija la cantidad de hoy y gestiona XP según se complete o no el día
   function applyDay(h, n) {
+    if (!h.history) h.history = {};
     const key = today();
     const target = tgt(h);
     n = Math.max(0, Math.min(target, n));
@@ -242,6 +268,8 @@
   function render(container) {
     const arr = habits();
     const prog = todayProgress();
+    const compPct = getMonthCompliance(); // Nuevo cálculo de porcentaje estricto mensual
+    
     container.innerHTML = "";
 
     const head = el("div", { class: "view-head" }, [
@@ -253,12 +281,32 @@
     ]);
     container.appendChild(head);
 
-    const summary = el("div", { class: "grid cols-3 mb-16" }, [
-      statCard("Hoy", `${prog.done}/${prog.total}`, "completados", "accent"),
-      statCard("Cumplimiento", fmt.pct(prog.pct), "del día", prog.pct >= 100 ? "good" : "warn"),
-      statCard("Hábitos activos", arr.length + "", "en seguimiento", "accent")
-    ]);
-    container.appendChild(summary);
+    // --- NUEVAS PALETAS NEÓN REEMPLAZANDO EL VIEJO SUMMARY ---
+    const kpiHtml = document.createElement('div');
+    kpiHtml.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🟢 HOY</span>
+          <span style="font-size:36px; font-weight:900; color:#00ff88; line-height:1; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${prog.done}<span style="font-size:18px; color:#555;">/${prog.total}</span></span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">Realizados</span>
+        </div>
+
+        <div style="background:rgba(188,132,238,0.08); border:1px solid rgba(188,132,238,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">📈 CUMPLIMIENTO</span>
+          <span style="font-size:36px; font-weight:900; color:#bc84ee; line-height:1; text-shadow: 0 0 15px rgba(188,132,238,0.4);">${compPct}%</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">Mes Actual</span>
+        </div>
+
+        <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">⚡ ACTIVOS</span>
+          <span style="font-size:36px; font-weight:900; color:#00f3ff; line-height:1; text-shadow: 0 0 15px rgba(0,243,255,0.4);">${arr.length}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">Rutinas fijas</span>
+        </div>
+
+      </div>
+    `;
+    container.appendChild(kpiHtml);
 
     const chartCard = el("div", { class: "card mb-16" }, [
       el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Hábitos completados · últimos 7 días"])])
@@ -281,16 +329,6 @@
     container.appendChild(list);
   }
 
-  function statCard(label, val, sub, cls) {
-    return el("div", { class: "card" }, [
-      el("div", { class: "kpi" }, [
-        el("div", { class: "kpi-lbl", text: label }),
-        el("div", { class: "kpi-val " + (cls || ""), text: val }),
-        el("div", { class: "kpi-sub", text: sub })
-      ])
-    ]);
-  }
-
   function habitCard(h, idx, total) {
     const st = streak(h);
     const done = doneToday(h);
@@ -299,15 +337,6 @@
     const cur = dayVal(h, today());
     const active = activeToday(h);
     const pr = HPRIO[prioOf(h)];
-
-    // heatmap 35 días (completo = brillante, parcial = tenue)
-    const heat = el("div", { class: "heat mt-8" });
-    DateUtil.lastNDays(35).forEach((d) => {
-      const cell = el("i", { title: DateUtil.label(d) });
-      if (doneOn(h, d)) cell.classList.add("l3");
-      else if (dayVal(h, d) > 0) cell.classList.add("l1");
-      heat.appendChild(cell);
-    });
 
     const card = el("div", {
       class: "card habit-prio" + (active ? "" : " habit-off"),
@@ -359,13 +388,66 @@
       ]));
     }
 
-    // cumplimiento 30 días
+    // cumplimiento 30 días original (Mantenido intacto)
     card.appendChild(el("div", { class: "flex items-center justify-between mt-16", style: "margin-bottom:6px" }, [
       el("span", { class: "fs-12 text-dim", text: "Cumplimiento 30 días" }),
       el("span", { class: "fs-12 fw-700 text-accent", text: fmt.pct(comp) })
     ]));
     card.appendChild(el("div", { class: "progress" + (comp >= 70 ? " good" : "") }, [el("span", { style: `width:${comp}%` })]));
-    card.appendChild(heat);
+    
+    // --- NUEVO HEATMAP EXACTO DEL MES EN CURSO (Reemplaza la tira original) ---
+    const tKey = today();
+    const parts = tKey.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const dateObj = new Date(year, month - 1, 1);
+    const monthName = dateObj.toLocaleDateString("es-MX", { month: "long" });
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const monthPrefix = tKey.slice(0, 7); // ej: "2026-08"
+
+    let doneThisMonth = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+        if (doneOn(h, `${monthPrefix}-${String(d).padStart(2, '0')}`)) doneThisMonth++;
+    }
+
+    const heatHeader = el("div", { class: "flex items-center justify-between mt-16", style: "font-size: 11px; color: #aaa; text-transform: uppercase; margin-bottom: 8px; font-weight: bold;" });
+    heatHeader.appendChild(el("span", { text: `Cumplimiento de ${monthName}` }));
+    heatHeader.appendChild(el("span", { style: "color: #00f3ff;", text: `${doneThisMonth} / ${daysInMonth} DÍAS` }));
+    card.appendChild(heatHeader);
+
+    const heatGrid = el("div", { style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(18px, 1fr)); gap: 4px;" });
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayStr = String(d).padStart(2, '0');
+      const fullDateStr = `${monthPrefix}-${dayStr}`;
+      const box = el("div", { style: "aspect-ratio: 1/1; border-radius: 4px; display: grid; place-items: center; font-size: 9px; font-weight: bold; transition: all 0.3s ease;", text: d, title: DateUtil.label(fullDateStr) });
+
+      if (doneOn(h, fullDateStr)) {
+        // Cumplido: Cian Neón
+        box.style.background = "rgba(0, 243, 255, 0.2)";
+        box.style.color = "#00f3ff";
+        box.style.border = "1px solid #00f3ff";
+        box.style.boxShadow = "0 0 8px rgba(0, 243, 255, 0.4)";
+      } else if (fullDateStr > tKey) {
+        // Futuro: Gris tenue
+        box.style.background = "rgba(255, 255, 255, 0.03)";
+        box.style.color = "#444";
+        box.style.border = "1px solid rgba(255, 255, 255, 0.05)";
+      } else {
+        // Pasado: Verificar si estaba activo ese día para marcar falla
+        if (activeOn(h, fullDateStr)) {
+            box.style.background = "rgba(255, 0, 85, 0.05)";
+            box.style.color = "rgba(255, 0, 85, 0.5)";
+            box.style.border = "1px dashed rgba(255, 0, 85, 0.3)";
+        } else {
+            // Día de descanso en el pasado
+            box.style.background = "transparent";
+            box.style.color = "#555";
+            box.style.border = "1px solid transparent";
+        }
+      }
+      heatGrid.appendChild(box);
+    }
+    card.appendChild(heatGrid);
 
     return card;
   }
