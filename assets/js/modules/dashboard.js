@@ -1,5 +1,6 @@
 /* =====================================================================
    OCTANAJE · Dashboard — resumen general con gráficas en tiempo real
+   (Paletas Neón + Quote Fuego)
    ===================================================================== */
 (function () {
   "use strict";
@@ -30,16 +31,41 @@
       ])
     ]));
 
-    // Frase motivacional del día (se puede refrescar manualmente)
+    // Frase motivacional del día (rojo neón + fuego)
     container.appendChild(buildQuoteCard(container));
 
-    // KPIs principales
-    container.appendChild(el("div", { class: "grid cols-4 mb-16" }, [
-      kpi("Hábitos hoy", `${hp.done}/${hp.total}`, fmt.pct(hp.pct) + " completado", "accent"),
-      kpi("Tareas", ts.pending + "", "pendientes", ts.overdue ? "bad" : "accent"),
-      kpi("Balance mes", fmt.money(bal), bal >= 0 ? "ahorro" : "déficit", bal >= 0 ? "good" : "bad"),
-      kpi("Metas", `${gs.completed}/${gs.total}`, "completadas", "good")
-    ]));
+    // ---------- PALETAS NEÓN DE INICIO ----------
+    const kpiHtml = document.createElement('div');
+    kpiHtml.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 24px;">
+        
+        <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">✓ HÁBITOS HOY</span>
+          <span style="font-size:32px; font-weight:900; color:#00f3ff; line-height:1; text-shadow: 0 0 15px rgba(0,243,255,0.4);">${hp.done}<span style="font-size:18px; color:#555;">/${hp.total}</span></span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">${fmt.pct(hp.pct)} completado</span>
+        </div>
+
+        <div style="background:rgba(255,215,0,0.05); border:1px solid rgba(255,215,0,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">📋 TAREAS</span>
+          <span style="font-size:32px; font-weight:900; color:#ffd700; line-height:1; text-shadow: 0 0 15px rgba(255,215,0,0.4);">${ts.pending}</span>
+          <span style="font-size:11px; color:${ts.overdue ? '#ff5470' : '#888'}; display:block; margin-top:8px;">pendientes</span>
+        </div>
+
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">💰 BALANCE MES</span>
+          <span style="font-size:26px; font-weight:900; color:#00ff88; line-height:1.2; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${fmt.money(bal)}</span>
+          <span style="font-size:11px; color:${bal >= 0 ? '#888' : '#ff5470'}; display:block; margin-top:8px;">${bal >= 0 ? "ahorro" : "déficit"}</span>
+        </div>
+
+        <div style="background:rgba(188,132,238,0.08); border:1px solid rgba(188,132,238,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🎯 METAS</span>
+          <span style="font-size:32px; font-weight:900; color:#bc84ee; line-height:1; text-shadow: 0 0 15px rgba(188,132,238,0.4);">${gs.completed}<span style="font-size:18px; color:#555;">/${gs.total}</span></span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">completadas</span>
+        </div>
+
+      </div>
+    `;
+    container.appendChild(kpiHtml);
 
     // Calendario de actividad del mes
     container.appendChild(buildCalendarCard(s));
@@ -124,14 +150,19 @@
   function buildQuoteCard(container) {
     const todayKey = DateUtil.todayKey();
     const q = N.pickQuote(todayKey, quoteOverride);
-    const card = el("div", { class: "card quote-card mb-16" }, [
+    const card = el("div", { 
+        class: "card quote-card mb-16", 
+        style: "background: linear-gradient(135deg, rgba(255, 0, 85, 0.15), rgba(255, 85, 0, 0.05)); border: 1px solid rgba(255, 0, 85, 0.4); box-shadow: inset 0 0 20px rgba(255, 0, 85, 0.1);" 
+    }, [
       el("div", { class: "quote-ico", text: "🔥" }),
       el("div", { class: "quote-body" }, [
-        el("div", { class: "quote-text", text: "“" + q.text + "”" }),
-        el("div", { class: "quote-author", text: "— " + q.author })
+        el("div", { class: "quote-text", style: "color: #fff1ee; text-shadow: 0 0 10px rgba(255, 0, 85, 0.5);", text: "“" + q.text + "”" }),
+        el("div", { class: "quote-author", style: "color: #ff5500;", text: "— " + q.author })
       ]),
       el("button", {
-        class: "icon-btn quote-refresh", title: "Otra frase",
+        class: "icon-btn quote-refresh", 
+        title: "Otra frase",
+        style: "background: rgba(255,0,85,0.1); border-color: rgba(255,0,85,0.3); color: #ff0055;",
         onclick: () => {
           const n = N.QUOTES.length;
           let idx;
@@ -144,12 +175,6 @@
       })
     ]);
     return card;
-  }
-
-  function kpi(label, val, sub, cls) {
-    return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
-      el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
-    ])]);
   }
 
   // ---------- Ingresos y gastos (medidor radial) ----------
@@ -284,6 +309,7 @@
   // estado de un hábito en un día concreto
   function habitDayStatus(h, key) {
     const target = Math.max(1, parseInt(h.count, 10) || 1);
+    if(!h.history) h.history = {}; // Failsafe
     const v = h.history[key];
     const cur = v === true ? target : (typeof v === "number" ? v : 0);
     return { done: cur >= target, cur, target };
@@ -317,7 +343,7 @@
     const dLabel = DateUtil.parse(key).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const body = el("div", {});
 
-    // Hábitos (solo los programados ese día; los de descanso no cuentan como pendientes)
+    // Hábitos
     const dayHabits = s.habits.filter((h) => N.Habits.activeOn(h, key));
     if (dayHabits.length) {
       const sec = section("✦ Hábitos");
@@ -334,7 +360,7 @@
       body.appendChild(sec);
     }
 
-    // Tareas (vencen ese día o se completaron ese día)
+    // Tareas
     const dayTasks = s.tasks.filter((t) => t.due === key || t.doneAt === key);
     if (dayTasks.length) {
       const sec = section("✓ Tareas");
