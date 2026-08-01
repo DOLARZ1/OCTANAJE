@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Foco / Pomodoro
+   OCTANAJE · Módulo Foco / Pomodoro (Diseño Neón y Botón de Alarma)
    Temporizador de trabajo/descanso configurable, con ciclos, anillo,
    XP, sonido y notificación al terminar cada fase.
    ===================================================================== */
@@ -10,7 +10,7 @@
   const { el, fmt } = UI;
   const DateUtil = Store.DateUtil;
 
-  // ---------- estado del temporizador (vive entre renders) ----------
+  // ---------- estado del temporizador ----------
   let mode = "work";           // "work" | "break" | "long"
   let running = false;
   let remaining = null;        // segundos restantes
@@ -29,7 +29,7 @@
   }
   function ensureRemaining() { if (remaining == null) remaining = secondsFor(mode); }
   function modeInfo(m) {
-    return m === "work" ? { label: "Enfoque", color: "--accent", ico: "◷" }
+    return m === "work" ? { label: "Enfoque", color: "--accent-2", ico: "◷" }
       : m === "long" ? { label: "Descanso largo", color: "--good", ico: "☕" }
       : { label: "Descanso", color: "--good", ico: "🌿" };
   }
@@ -37,12 +37,15 @@
     s = Math.max(0, Math.round(s));
     return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
   }
-  function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || "#00e5ff"; }
+  
+  // Modificado para usar los colores neón específicos en el anillo
+  function cssVar(n) { 
+      if(n === "--accent-2") return "#ff5500"; // Naranja Neón (relleno del anillo)
+      if(n === "--accent") return "#ff5500";
+      return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || "#00e5ff"; 
+  }
 
-  // ---------- Wake Lock: mantiene la pantalla ENCENDIDA mientras corre
-  // una sesión, para que el navegador no congele el temporizador y la
-  // alarma suene exactamente al terminar (evita el "apagado parcial").
-  // Se libera solo al pausar/terminar, o si el propio sistema la quita.
+  // ---------- Wake Lock ----------
   let wakeLock = null;
   async function requestWakeLock() {
     try {
@@ -50,22 +53,19 @@
         wakeLock = await navigator.wakeLock.request("screen");
         wakeLock.addEventListener("release", () => { wakeLock = null; });
       }
-    } catch (e) { wakeLock = null; } // no soportado o permiso denegado: seguimos sin bloquear pantalla
+    } catch (e) { wakeLock = null; } 
   }
   function releaseWakeLock() {
     try { if (wakeLock) wakeLock.release(); } catch (e) {}
     wakeLock = null;
   }
-  // si el sistema quitó el wake lock al ocultar la pestaña, lo recuperamos al volver
   if (typeof document !== "undefined" && document.addEventListener) {
     document.addEventListener("visibilitychange", () => {
       if (running && !document.hidden && !wakeLock) requestWakeLock();
     });
   }
 
-  // ---------- Banner global de alarma (visible en cualquier pestaña) ----------
-  // Se conecta una sola vez al cargar el módulo; funciona sin importar en
-  // qué vista esté el usuario cuando la alarma empieza a sonar.
+  // ---------- Banner global de alarma ----------
   function paintBanner() {
     if (typeof document === "undefined") return;
     const banner = document.getElementById("alarm-banner");
@@ -83,7 +83,7 @@
 
   // ---------- controles ----------
   function start() {
-    if (ringing) return; // primero hay que apagar la alarma que está sonando
+    if (ringing) return; 
     ensureRemaining();
     if (running) return;
     running = true;
@@ -102,14 +102,9 @@
     Audio.play("tap");
     paint();
   }
-  // el temporizador solo necesita actualizar la pantalla una vez por
-  // segundo (no 4x/seg); además se pausa por completo mientras la app
-  // está en segundo plano (pantalla apagada/otra app) para no gastar
-  // batería redibujando un canvas con brillo sin que nadie lo vea. Al
-  // volver, se resincroniza contra endAt (que no se ve afectado).
   function startTicking() {
     clearInterval(handle);
-    if (typeof document !== "undefined" && document.hidden) return; // se activará al volver a estar visible
+    if (typeof document !== "undefined" && document.hidden) return; 
     handle = setInterval(tick, 1000);
   }
   function stopTicking() { clearInterval(handle); handle = null; }
@@ -117,7 +112,7 @@
     document.addEventListener("visibilitychange", () => {
       if (!running) return;
       if (document.hidden) { clearInterval(handle); handle = null; }
-      else { tick(); startTicking(); } // resincroniza de inmediato al volver
+      else { tick(); startTicking(); } 
     });
   }
   function reset() {
@@ -131,8 +126,6 @@
     Audio.play("tap");
     nextPhase(false);
   }
-  // vibración corta como respaldo del sonido (útil si el volumen está bajo
-  // o en silencio); no falla si el dispositivo/navegador no la soporta
   function buzz(pattern) {
     try { if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
   }
@@ -144,9 +137,8 @@
 
   function complete() {
     running = false; stopTicking(); releaseWakeLock();
-    ringMode = mode; // recordamos qué fase terminó, para el mensaje del banner
+    ringMode = mode; 
     if (mode === "work") {
-      // registrar sesión
       const c = cfg();
       const today = DateUtil.todayKey();
       c.sessionsCompleted = (c.sessionsCompleted || 0) + 1;
@@ -161,15 +153,12 @@
     } else {
       if (N.Notify) N.Notify.send("Descanso terminado ☕", "Hora de volver al enfoque.", { tag: "nexus-focus" });
     }
-    startRinging(); // la alarma sigue sonando en bucle hasta apagarla manualmente
+    startRinging(); 
     N.App && N.App.refreshTop();
   }
-  // sonido de alarma configurable (guardado en Ajustes del temporizador)
   function alarmSoundName() { return cfg().alarmSound || "alarmLoud"; }
 
-  // ---------- Alarma en bucle: suena repetidamente + vibra hasta que el
-  // usuario la apague a mano (botón "Detener alarma" en el banner) — ya
-  // no se detiene sola tras un único sonido.
+  // ---------- Alarma en bucle ----------
   function ringOnce() {
     Audio.play(alarmSoundName());
     buzz([300, 150, 300, 150, 300]);
@@ -178,7 +167,7 @@
     ringing = true;
     ringOnce();
     clearInterval(ringHandle);
-    ringHandle = setInterval(ringOnce, 2600); // se repite cada ~2.6s hasta apagarla
+    ringHandle = setInterval(ringOnce, 2600); 
     paintBanner();
     paint();
   }
@@ -187,11 +176,10 @@
     clearInterval(ringHandle); ringHandle = null;
     paintBanner();
     Audio.play("tap");
-    nextPhase(false); // avanza a la siguiente fase (sin autoiniciar) al apagar la alarma
+    nextPhase(false); 
     paint();
   }
 
-  // pasa a la siguiente fase; autostart=true la inicia automáticamente
   function nextPhase(autostart) {
     if (mode === "work") {
       const c = cfg();
@@ -209,16 +197,17 @@
     mode = m; remaining = secondsFor(m); paint();
   }
 
-  // ---------- pintar estado en el DOM ----------
+  // ---------- pintar estado ----------
   function paint() {
     ensureRemaining();
     paintBanner();
     const info = modeInfo(mode);
     const t = document.getElementById("focus-time");
-    if (!t) return; // la vista no está montada
+    if (!t) return; 
     t.textContent = fmtTime(remaining);
     const ml = document.getElementById("focus-mode");
-    if (ml) { ml.textContent = info.ico + "  " + info.label; ml.style.color = cssVar(info.color); }
+    // Forzando el color Morado Neón Brillante para el texto del modo
+    if (ml) { ml.textContent = info.ico + "  " + info.label; ml.style.color = "#bc84ee"; ml.style.textShadow = "0 0 10px rgba(188,132,238,0.5)"; }
     const btn = document.getElementById("focus-start");
     if (btn) {
       btn.innerHTML = ringing ? "🔇 Detén la alarma primero" : (running ? "⏸ Pausar" : (remaining < secondsFor(mode) ? "▶ Reanudar" : "▶ Iniciar"));
@@ -226,7 +215,7 @@
     }
     const ring = document.getElementById("focus-ring");
     if (ring) drawRing(ring, remaining / secondsFor(mode), info.color);
-    // pestañas de modo
+    
     ["work", "break", "long"].forEach((m) => {
       const b = document.getElementById("fmode-" + m);
       if (b) b.classList.toggle("on", m === mode);
@@ -242,19 +231,19 @@
     const cx = size / 2, cy = size / 2, r = size / 2 - 16;
     ctx.clearRect(0, 0, size, size);
     ctx.lineWidth = 14; ctx.lineCap = "round";
-    ctx.strokeStyle = cssVar("--border");
+    ctx.strokeStyle = "rgba(188, 132, 238, 0.1)"; // Fondo sutil morado
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
     pct = Math.max(0, Math.min(1, pct));
     if (pct > 0) {
       const g = ctx.createLinearGradient(0, 0, size, size);
-      g.addColorStop(0, cssVar(color)); g.addColorStop(1, cssVar("--accent-2"));
-      ctx.strokeStyle = g; ctx.shadowColor = cssVar(color); ctx.shadowBlur = 18;
+      // Naranja Neón (Cambiado de Azul)
+      g.addColorStop(0, "#ff5500"); g.addColorStop(1, "#ff8800");
+      ctx.strokeStyle = g; ctx.shadowColor = "#ff5500"; ctx.shadowBlur = 18;
       ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct); ctx.stroke();
       ctx.shadowBlur = 0;
     }
   }
 
-  // ---------- stats ----------
   function todayStats() {
     const c = cfg();
     const today = DateUtil.todayKey();
@@ -276,19 +265,39 @@
       ])
     ]));
 
-    // KPIs
-    container.appendChild(el("div", { class: "grid cols-3 mb-16" }, [
-      kpi("Sesiones hoy", st.sessions + "", "completadas", "accent"),
-      kpi("Minutos hoy", fmt.num(st.minutes), "enfocado", "good"),
-      kpi("Total sesiones", fmt.num(st.total), "histórico", "accent")
-    ]));
+    // --- NUEVAS PALETAS NEÓN DE ENFOQUE ---
+    const kpiHtml = document.createElement('div');
+    kpiHtml.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 24px;">
+        
+        <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">✓ SESIONES HOY</span>
+          <span style="font-size:36px; font-weight:900; color:#00f3ff; line-height:1; text-shadow: 0 0 15px rgba(0,243,255,0.4);">${st.sessions}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">completadas</span>
+        </div>
+
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">⏳ MINUTOS HOY</span>
+          <span style="font-size:36px; font-weight:900; color:#00ff88; line-height:1; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${fmt.num(st.minutes)}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">enfocado</span>
+        </div>
+
+        <div style="background:rgba(255,215,0,0.05); border:1px solid rgba(255,215,0,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🎯 TOTAL SESIONES</span>
+          <span style="font-size:36px; font-weight:900; color:#ffd700; line-height:1; text-shadow: 0 0 15px rgba(255,215,0,0.4);">${fmt.num(st.total)}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">histórico</span>
+        </div>
+
+      </div>
+    `;
+    container.appendChild(kpiHtml);
 
     const grid = el("div", { class: "grid cols-2 mb-16" });
 
-    // ---- Tarjeta del temporizador ----
-    const timerCard = el("div", { class: "card pomo" });
-    // selector de modo
-    const seg = el("div", { class: "seg", style: "align-self:center" }, [
+    // ---- Tarjeta del temporizador (MORADO NEÓN) ----
+    const timerCard = el("div", { class: "card pomo", style: "border: 1px solid rgba(188,132,238,0.4); background: rgba(188,132,238,0.05); box-shadow: inset 0 0 20px rgba(188,132,238,0.1);" });
+    
+    const seg = el("div", { class: "seg", style: "align-self:center; background: rgba(0,0,0,0.2); border-color: rgba(188,132,238,0.3);" }, [
       segBtn("work", "Enfoque"), segBtn("break", "Descanso"), segBtn("long", "Largo")
     ]);
     timerCard.appendChild(seg);
@@ -297,26 +306,26 @@
     const timeWrap = el("div", { class: "pomo-ring" }, [
       ring,
       el("div", { class: "pomo-center" }, [
-        el("div", { class: "pomo-mode", id: "focus-mode" }),
-        el("div", { class: "pomo-time", id: "focus-time", text: fmtTime(remaining) })
+        el("div", { class: "pomo-mode", id: "focus-mode", style: "color: #bc84ee; text-shadow: 0 0 10px rgba(188,132,238,0.5);" }),
+        el("div", { class: "pomo-time", id: "focus-time", style: "color: #fff; text-shadow: 0 0 15px rgba(255,255,255,0.5);", text: fmtTime(remaining) })
       ])
     ]);
     timerCard.appendChild(timeWrap);
 
-    const labelInput = el("input", { class: "input", id: "focus-label", placeholder: "¿En qué te enfocas? (opcional)", value: focusLabel, style: "text-align:center;max-width:320px;margin:0 auto" });
+    const labelInput = el("input", { class: "input", id: "focus-label", placeholder: "¿En qué te enfocas? (opcional)", value: focusLabel, style: "text-align:center;max-width:320px;margin:0 auto; background: rgba(188,132,238,0.1); border-color: rgba(188,132,238,0.4); color: #fff;" });
     labelInput.addEventListener("input", () => { focusLabel = labelInput.value; });
     timerCard.appendChild(el("div", { style: "margin:14px 0" }, [labelInput]));
 
     const controls = el("div", { class: "flex gap-8", style: "justify-content:center" }, [
-      el("button", { class: "btn primary", id: "focus-start", onclick: () => (running ? pause() : start()) }),
-      el("button", { class: "btn", id: "focus-reset", html: "↺ Reiniciar", onclick: reset }),
-      el("button", { class: "btn ghost", id: "focus-skip", html: "⏭ Saltar", onclick: skip })
+      el("button", { class: "btn primary", style: "background: linear-gradient(135deg, #bc84ee, #8a2be2); box-shadow: 0 0 15px rgba(188,132,238,0.4); color: white;", id: "focus-start", onclick: () => (running ? pause() : start()) }),
+      el("button", { class: "btn", id: "focus-reset", style: "border-color: rgba(188,132,238,0.3); color: #bc84ee;", html: "↺ Reiniciar", onclick: reset }),
+      el("button", { class: "btn ghost", id: "focus-skip", style: "color: #bc84ee;", html: "⏭ Saltar", onclick: skip })
     ]);
     timerCard.appendChild(controls);
     if (ringing) {
       timerCard.appendChild(el("div", { class: "insight bad mt-8", style: "justify-content:center;text-align:center" }, [
         el("span", { class: "ico", text: "⏰" }),
-        el("div", { class: "txt", html: "La alarma está sonando. Usa el botón rojo de arriba de la pantalla para detenerla." })
+        el("div", { class: "txt", html: "La alarma está sonando. Usa el botón rojo de arriba para detenerla." })
       ]));
     }
     grid.appendChild(timerCard);
@@ -329,7 +338,7 @@
       durField("Descanso largo (min)", "longBreak", c.longBreak),
       durField("Largo cada N sesiones", "longEvery", c.longEvery, 1, 12),
       alarmField(c),
-      el("p", { class: "fs-12 text-faint mt-8", text: "La pantalla se mantiene encendida durante una sesión activa para que la alarma suene puntual (se apaga sola al pausar/terminar)." }),
+      el("p", { class: "fs-12 text-faint mt-8", text: "La pantalla se mantiene encendida durante una sesión para la alarma (se apaga sola al pausar/terminar)." }),
       el("div", { class: "card-title mt-16", style: "margin-bottom:10px" }, [el("span", { class: "dot" }), "Foco · últimos 7 días"]),
     ]);
     const spark = el("canvas", { id: "focus-spark" });
@@ -338,25 +347,45 @@
 
     container.appendChild(grid);
 
-    // consejo
     container.appendChild(el("div", { class: "insight info" }, [
       el("span", { class: "ico", text: "💡" }),
       el("div", { class: "txt", html: "Consejo: elige una sola tarea, silencia distracciones y trabaja hasta que suene la alarma. Cada sesión completa suma <b>+20 XP</b>." })
     ]));
 
-    // aclaración de funcionamiento (letras pequeñas, al final de la vista)
-    // para evitar confundir estas limitaciones con un mal funcionamiento
-    container.appendChild(el("p", {
-      class: "fs-12 text-faint mt-16",
-      style: "line-height:1.6",
+    // ---- BOTÓN EXPANDIBLE PARA LAS INSTRUCCIONES DE ALARMA ----
+    const infoContainer = el("div", { class: "mt-16" });
+    
+    const toggleBtn = el("button", { 
+        class: "btn ghost block", 
+        style: "color: #bc84ee; border: 1px dashed rgba(188,132,238,0.4); border-radius: 12px; padding: 10px;",
+        html: "ℹ️ ¿Cómo funciona la alarma? (Ver detalles)",
+        onclick: function() {
+            const textDiv = document.getElementById("alarm-instructions-text");
+            if(textDiv.style.display === "none") {
+                textDiv.style.display = "block";
+                this.innerHTML = "🔼 Ocultar detalles de la alarma";
+            } else {
+                textDiv.style.display = "none";
+                this.innerHTML = "ℹ️ ¿Cómo funciona la alarma? (Ver detalles)";
+            }
+        }
+    });
+
+    const infoText = el("p", {
+      id: "alarm-instructions-text",
+      class: "fs-12 text-faint mt-8 card",
+      style: "line-height:1.6; display: none; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); padding: 14px;",
       html:
-        "ℹ️ <b>Cómo funciona la alarma:</b> mientras una sesión está activa, OCTANAJE mantiene la pantalla encendida (Wake Lock) para que la cuenta no se congele y la alarma suene puntual. " +
-        "Esto solo aplica si la app permanece visible en la pantalla, aunque esté \"en reposo\"/atenuada. " +
-        "Si bloqueas el teléfono manualmente, cambias a otra app, o el sistema cierra la pestaña en segundo plano para ahorrar batería, el temporizador puede pausarse y la alarma sonará hasta que vuelvas a abrir la app — esto lo controla el sistema operativo, no OCTANAJE. " +
-        "La alarma <b>suena en bucle sin detenerse sola</b> hasta que la apagues con el botón rojo del banner que aparece arriba de la pantalla — así no se te pasa por alto. " +
-        "Revisa también que el volumen del dispositivo no esté en silencio y que el sonido esté activado en Ajustes; hay varias alarmas para elegir (Timbre, Sirena, Campana, Despertador digital/clásico, Bocina, Xilófono) y una vibración de respaldo para que sea difícil pasarlas por alto. " +
-        "Para recordatorios críticos que deban sonar con el teléfono bloqueado o la app cerrada, usa el botón \"Añadir a Google Calendar\" (Hábitos/Tareas/Metas) o \"Configurar horario\" en Ajustes: esos sí usan la alarma nativa de tu calendario/sistema."
-    }));
+        "Mientras una sesión está activa, OCTANAJE mantiene la pantalla encendida (Wake Lock) para que la cuenta no se congele y la alarma suene puntual. " +
+        "Esto solo aplica si la app permanece visible en la pantalla. " +
+        "Si bloqueas el teléfono manualmente o cambias a otra app, el temporizador puede pausarse (esto lo controla tu sistema operativo, no OCTANAJE). " +
+        "<br><br>La alarma <b>suena en bucle sin detenerse sola</b> hasta que la apagues con el botón rojo del banner superior. " +
+        "Asegúrate de que el volumen no esté en silencio. Para recordatorios críticos que deban sonar con el teléfono bloqueado, usa el botón \"Añadir a Google Calendar\" en Ajustes."
+    });
+
+    infoContainer.appendChild(toggleBtn);
+    infoContainer.appendChild(infoText);
+    container.appendChild(infoContainer);
 
     paint();
     const days = DateUtil.lastNDays(7);
