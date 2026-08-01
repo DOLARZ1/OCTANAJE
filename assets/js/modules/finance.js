@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Finanzas con IA
+   OCTANAJE · Módulo Finanzas con IA (Paletas Neón Superiores)
    Motor de análisis por reglas: detecta patrones, sobregasto, tasa de
    ahorro, proyecciones y genera recomendaciones personalizadas.
    ===================================================================== */
@@ -482,13 +482,38 @@
     ]);
     container.appendChild(head);
 
-    // KPIs
-    container.appendChild(el("div", { class: "grid cols-4 mb-16" }, [
-      kpi("Ingresos", fmt.money(inc), "este mes", "good"),
-      kpi("Gastos", fmt.money(exp), "este mes", "bad"),
-      kpi("Balance", fmt.money(bal), bal >= 0 ? "ahorro" : "déficit", bal >= 0 ? "good" : "bad"),
-      kpi("Salud", result.score == null ? "—" : result.score + "/100", "financiera", healthClass(result.score))
-    ]));
+    // --- NUEVAS PALETAS NEÓN DE FINANZAS ---
+    const kpiHtml = document.createElement('div');
+    kpiHtml.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 24px;">
+        
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">💰 INGRESOS</span>
+          <span style="font-size:26px; font-weight:900; color:#00ff88; line-height:1.2; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${fmt.money(inc)}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">este mes</span>
+        </div>
+
+        <div style="background:rgba(255,0,85,0.05); border:1px solid rgba(255,0,85,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">💸 GASTOS</span>
+          <span style="font-size:26px; font-weight:900; color:#ff0055; line-height:1.2; text-shadow: 0 0 15px rgba(255,0,85,0.4);">${fmt.money(exp)}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">este mes</span>
+        </div>
+
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">⚖️ BALANCE</span>
+          <span style="font-size:26px; font-weight:900; color:#00ff88; line-height:1.2; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${fmt.money(bal)}</span>
+          <span style="font-size:11px; color:${bal >= 0 ? '#888' : '#ff5470'}; display:block; margin-top:8px;">${bal >= 0 ? "ahorro" : "déficit"}</span>
+        </div>
+
+        <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🩺 SALUD</span>
+          <span style="font-size:32px; font-weight:900; color:#00f3ff; line-height:1; text-shadow: 0 0 15px rgba(0,243,255,0.4);">${result.score == null ? "—" : result.score}<span style="font-size:18px; color:#555;">/100</span></span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">financiera</span>
+        </div>
+
+      </div>
+    `;
+    container.appendChild(kpiHtml);
 
     // Panel de ahorro (alcancía) — acumulado diario del mes
     container.appendChild(savingsCard());
@@ -599,13 +624,6 @@
     container.appendChild(listCard);
   }
 
-  function kpi(label, val, sub, cls) {
-    return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
-      el("div", { class: "kpi-lbl", text: label }),
-      el("div", { class: "kpi-val " + (cls || ""), text: val }),
-      el("div", { class: "kpi-sub", text: sub })
-    ])]);
-  }
   function healthClass(s) { if (s == null) return ""; return s >= 70 ? "good" : s >= 45 ? "warn" : "bad"; }
   function healthChip(s) { return s >= 70 ? "good" : s >= 45 ? "warn" : "bad"; }
 
