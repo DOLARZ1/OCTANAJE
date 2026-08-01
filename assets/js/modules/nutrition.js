@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Alimentación
+   OCTANAJE · Módulo Alimentación (Paletas Neón Superiores)
    Base de datos de alimentos + registro diario con gramos.
    Medidor radial de anillos (calorías/proteínas/carbohidratos vs metas)
    y exportación de resumen detallado a PDF (diario/semanal/mensual).
@@ -179,11 +179,6 @@
     return DateUtil.parse(dateKey).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
   }
   // ---------------- Unidad según el tipo de alimento (bebidas = mililitros) ----------------
-  // Un alimento se mide en mililitros si:
-  //  a) tiene el campo explícito unit:"ml" (ej. la leche, que vive en "Lácteos"), o
-  //  b) su categoría es "Bebidas" (o la categoría personalizada marcada como bebida).
-  // Se acepta tanto el objeto alimento completo como solo su .cat (para registros
-  // ya guardados en el historial, que no conservan el objeto alimento original).
   const DRINK_CAT = "Bebidas";
   function isDrinkFood(food) {
     if (food && typeof food === "object" && food.unit === "ml") return true;
@@ -192,8 +187,6 @@
   }
   function unitWord(food) { return isDrinkFood(food) ? "ml" : "g"; }
   function unitLabel(food) { return isDrinkFood(food) ? "mililitros" : "gramos"; }
-  // marca/desmarca una categoría completa como "de bebidas" (todo lo que
-  // esté en esa categoría se mide en ml, útil para categorías nuevas del usuario)
   function isDrinkCategory(catKey) { return catKey === DRINK_CAT || nut().drinkCats.includes(catKey); }
   function toggleDrinkCategory(catKey) {
     const arr = nut().drinkCats; const i = arr.indexOf(catKey);
@@ -209,8 +202,6 @@
     N.App && N.App.refreshTop();
   }
 
-  // elimina un registro y refresca el detalle de ESE día (para el historial,
-  // donde puede no ser el día de hoy) además del fondo de la vista principal
   function removeEntryFromDay(e, dateKey) {
     const a = log(); const i = a.indexOf(e); if (i >= 0) a.splice(i, 1);
     Audio.play("delete");
@@ -226,7 +217,6 @@
       t.kcal += x.kcal; t.prot += x.prot; t.carb += x.carb; t.fat += (x.fat || 0); return t;
     }, { kcal: 0, prot: 0, carb: 0, fat: 0 });
   }
-  // lista de días (más reciente primero) que tienen al menos un alimento registrado
   function historyDays() {
     const set = new Set(log().map((x) => x.date));
     return Array.from(set).sort().reverse();
@@ -328,7 +318,7 @@
     ]);
   }
 
-  // ---------------- Registrar un día anterior (olvidaste anotar a tiempo) ----------------
+  // ---------------- Registrar un día anterior ----------------
   function openBackdatePicker() {
     const dateI = el("input", { class: "input", type: "date", value: DateUtil.addDays(today(), -1), max: today() });
     const body = el("div", {}, [
@@ -343,9 +333,7 @@
     UI.openModal("🕐 Registrar día anterior", body);
   }
 
-  // ---------------- Gestor de categorías: agregar nuevas / renombrar cualquiera / cambiar ícono ----------------
-  // selector visual de emoji: un botón que muestra el ícono actual y despliega
-  // una cuadrícula de opciones para elegir otro
+  // ---------------- Gestor de categorías ----------------
   function iconPicker(initialIcon, onPick) {
     const btn = el("button", { type: "button", class: "btn sm", html: initialIcon + " Cambiar ícono" });
     const grid = el("div", { class: "flex gap-8", style: "flex-wrap:wrap;margin-top:8px;display:none" });
@@ -433,16 +421,7 @@
   }
 
   // ---------------- Crear / editar un alimento personalizado ----------------
-  // Soporta 2 modos de captura, según lo que sepas del alimento:
-  //  · "por pieza/porción": metes el peso de 1 pieza + sus kcal/prot/carb TAL
-  //    CUAL (ej. "1 huevo = 50 g, 70 kcal"), y la app calcula solo el
-  //    equivalente por 100 g que se guarda internamente.
-  //  · "por 100 g": el modo clásico, para ingredientes crudos tipo báscula.
-  // En ambos casos el resultado queda guardado igual en tu lista, y podrás
-  // agregarlo después eligiendo porciones o gramos como cualquier otro.
   function openCustomFoodForm(existing) {
-    // si el alimento ya tiene una porción típica, por comodidad partimos en
-    // modo "pieza" con los valores ya convertidos de vuelta a esa porción
     let mode = existing && existing.portion ? "piece" : "per100";
     let initPieceGrams = "", initPieceLabel = "1 pieza", initKcalPiece = "", initProtPiece = "", initCarbPiece = "", initFatPiece = "";
     if (existing && existing.portion) {
@@ -462,7 +441,6 @@
       return o;
     }));
 
-    // --- campos modo "por 100 g / 100 ml" ---
     const kcal100I = el("input", { class: "input", type: "number", min: 0, step: 1, value: existing ? existing.kcal : "" });
     const prot100I = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: existing ? existing.prot : "" });
     const carb100I = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: existing ? existing.carb : "" });
@@ -470,7 +448,6 @@
     const portionGramsI = el("input", { class: "input", type: "number", min: 0, step: 1, value: existing && existing.portion ? existing.portion.grams : "", placeholder: "Opcional" });
     const portionLabelI = el("input", { class: "input", value: existing && existing.portion ? existing.portion.label : "", placeholder: "Ej. 1 vaso (~250 ml)" });
 
-    // --- campos modo "por pieza / porción" ---
     const pieceGramsI = el("input", { class: "input", type: "number", min: 1, step: 1, value: initPieceGrams, placeholder: "Ej. 250" });
     const pieceLabelI = el("input", { class: "input", value: initPieceLabel, placeholder: "Ej. 1 vaso" });
     const kcalPieceI = el("input", { class: "input", type: "number", min: 0, step: 1, value: initKcalPiece, placeholder: "Ej. 70" });
@@ -478,7 +455,6 @@
     const carbPieceI = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: initCarbPiece, placeholder: "Ej. 0.5" });
     const fatPieceI = el("input", { class: "input", type: "number", min: 0, step: 0.1, value: initFatPiece, placeholder: "Ej. 5" });
 
-    // --- etiquetas dinámicas: cambian a "ml"/"mililitros" si la categoría es Bebidas ---
     const lblKcal100 = el("label", {}); const lblProt100 = el("label", {}); const lblCarb100 = el("label", {}); const lblFat100 = el("label", {});
     const lblPortionGrams = el("label", {}); const lblPieceGrams = el("label", {});
     const lblKcalPiece = el("label", {}); const lblProtPiece = el("label", {}); const lblCarbPiece = el("label", {}); const lblFatPiece = el("label", {});
@@ -622,8 +598,7 @@
     const isBackdate = targetDate !== today();
     const hasPortion = !!food.portion;
     const isDrink = isDrinkFood(food);
-    const u = unitWord(food); // "ml" para bebidas, "g" para el resto
-    // modo "porciones" (platillos: tacos, tortas, caldos, sushi...) vs modo "gramos/mililitros" (ingredientes/bebidas sueltas)
+    const u = unitWord(food); 
     let mode = hasPortion ? "portion" : "grams";
 
     const gramsI = el("input", { class: "input", type: "number", min: 1, step: 1, value: isDrink ? 250 : 100 });
@@ -714,7 +689,6 @@
     ]);
   }
 
-  // ---------------- Aplicar metas desde otro módulo (p.ej. el plan de Salud) ----------------
   function setGoals(data) {
     const gg = goals();
     if (data.kcal != null) gg.kcal = Math.max(0, Number(data.kcal) || 0);
@@ -725,7 +699,6 @@
     return gg;
   }
 
-  // ---------------- Editar metas diarias ----------------
   function openGoals() {
     const g = goals();
     const body = UI.form([
@@ -750,7 +723,6 @@
     UI.openModal("🎯 Metas diarias", body);
   }
 
-  // ---------------- Historial: ver/revisar un día específico ----------------
   function openHistory() {
     const days = historyDays();
     const dateI = el("input", { class: "input", type: "date", value: today(), max: today() });
@@ -789,7 +761,6 @@
     UI.openModal("📖 Historial de alimentación", body);
   }
 
-  // detalle de UN solo día: totales de ese día exclusivamente + lista de alimentos
   function openDayDetail(dateKey) {
     const t = dayTotals(dateKey);
     const g = goals();
@@ -832,7 +803,6 @@
     UI.openModal("📖 " + dLbl, body);
   }
 
-  // ---------------- Exportar resumen a PDF ----------------
   function openPdfModal() {
     const dateI = el("input", { class: "input", type: "date", value: today(), max: today() });
     const body = el("div", {}, [
@@ -875,7 +845,6 @@
     const list = log().filter((x) => x.date >= r.from && x.date <= r.to)
       .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
 
-    // agrupar por día
     const byDay = {};
     list.forEach((x) => { (byDay[x.date] = byDay[x.date] || []).push(x); });
     const dayKeys = Object.keys(byDay).sort();
@@ -995,13 +964,38 @@
       ])
     ]));
 
-    // KPIs de hoy (4 macros + alimentos registrados)
-    container.appendChild(el("div", { class: "grid cols-4 mb-16" }, [
-      kpi("Calorías hoy", fmt.num(t.kcal), "meta " + fmt.num(g.kcal) + " kcal", "warn"),
-      kpi("Proteínas", fmt.num(r1(t.prot)) + " g", "meta " + g.prot + " g", "good"),
-      kpi("Carbohidratos", fmt.num(r1(t.carb)) + " g", "meta " + g.carb + " g", "accent"),
-      kpi("Grasas", fmt.num(r1(t.fat)) + " g", "meta " + (g.fat != null ? g.fat : DEFAULT_GOALS.fat) + " g", "bad")
-    ]));
+    // --- NUEVAS PALETAS NEÓN DE ALIMENTACIÓN ---
+    const kpiHtml = document.createElement('div');
+    kpiHtml.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 24px;">
+
+        <div style="background:rgba(255,215,0,0.05); border:1px solid rgba(255,215,0,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🔥 CALORÍAS</span>
+          <span style="font-size:32px; font-weight:900; color:#ffd700; line-height:1; text-shadow: 0 0 15px rgba(255,215,0,0.4);">${fmt.num(t.kcal)}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">meta ${fmt.num(g.kcal)} kcal</span>
+        </div>
+
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🍗 PROTEÍNAS</span>
+          <span style="font-size:32px; font-weight:900; color:#00ff88; line-height:1; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${fmt.num(r1(t.prot))}g</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">meta ${g.prot} g</span>
+        </div>
+
+        <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🍞 CARBOHIDRATOS</span>
+          <span style="font-size:32px; font-weight:900; color:#00f3ff; line-height:1; text-shadow: 0 0 15px rgba(0,243,255,0.4);">${fmt.num(r1(t.carb))}g</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">meta ${g.carb} g</span>
+        </div>
+
+        <div style="background:rgba(255,0,85,0.05); border:1px solid rgba(255,0,85,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🥑 GRASAS</span>
+          <span style="font-size:32px; font-weight:900; color:#ff0055; line-height:1; text-shadow: 0 0 15px rgba(255,0,85,0.4);">${fmt.num(r1(t.fat))}g</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">meta ${g.fat != null ? g.fat : DEFAULT_GOALS.fat} g</span>
+        </div>
+
+      </div>
+    `;
+    container.appendChild(kpiHtml);
 
     // Medidor radial de anillos + leyenda
     const ringCard = el("div", { class: "card mb-16" }, [
@@ -1103,12 +1097,6 @@
       ]),
       el("div", { style: "font-size:20px;font-weight:800;color:" + cvar, text: pct + "%" })
     ]);
-  }
-
-  function kpi(label, val, sub, cls) {
-    return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
-      el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
-    ])]);
   }
 
   N.Nutrition = { render, dayTotals, exportPDF, setGoals };
