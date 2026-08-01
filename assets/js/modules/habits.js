@@ -1,374 +1,257 @@
 /* =====================================================================
-   OCTANAJE · Módulo Hábitos
-   Soporta hábitos simples (1 check) y hábitos con META DIARIA de N veces
-   (se rellenan N cuadritos; el hábito se completa solo al llenarlos todos).
+   OCTANAJE · Módulo Hábitos (Paletas Neón + Reseteo Mensual Exacto)
    ===================================================================== */
 (function () {
   "use strict";
-  const N = window.NEXUS;
-  const { Store, UI, Audio, Gami, Charts } = N;
-  const { el, fmt, toast } = UI;
+  const N = window.NEXUS = window.NEXUS || {};
+  const { Store, UI, Audio, Gami } = N;
+  const { el, toast } = UI;
   const DateUtil = Store.DateUtil;
 
-  const ICONS = [
-    // generales
-    "✦", "✅", "⭐", "🌟", "🔥", "⚡", "❤️", "☀️", "🌙", "⏰",
-    // salud / ejercicio
-    "💪", "🏃", "🚴", "🏋️", "🧘", "🚶", "🥗", "💧", "😴", "💊", "🩺", "🦷", "🚿", "🚭",
-    // mente / estudio
-    "📚", "🧠", "📝", "🎓", "💡", "✍️", "🙏",
-    // trading / dinero
-    "📈", "📉", "📊", "💹", "🕯️", "💲", "💰", "💵", "💸", "🪙", "🏦", "💳", "🤑", "💱",
-    // metas
-    "🎯", "🏆", "🥇", "🏁", "🚀",
-    // vacaciones / viajes
-    "🏖️", "🏝️", "🌴", "✈️", "⛱️", "🧳", "🗺️", "🏔️", "🏕️", "🚗",
-    // calaveras
-    "💀", "☠️",
-    // hobbies / vida
-    "🎨", "🎮", "📷", "🍳", "☕", "🧹", "🌱", "🌍", "🛌", "🧴",
-    // comida
-    "🍎", "🍌", "🫐", "🥑", "🥦", "🥕", "🍗", "🍚", "🍞", "🍳", "🥗", "🍕", "🍔", "🍫", "🍩", "🥤", "🥛", "🍺",
-    // mascotas
-    "🐶", "🐱", "🐰", "🐹", "🐦", "🐠", "🐢", "🐾",
-    // trabajo / oficina
-    "💼", "💻", "🖥️", "⌨️", "🖱️", "📅", "📎", "🖊️", "📞", "📧", "🗂️", "📌", "📁",
-    // música / instrumentos
-    "🎵", "🎧", "🎸", "🎹", "🥁", "🎺", "🎷", "🎻", "🎤", "🎼"
-  ];
-  const MAX_BOXES = 50;
-  // prioridad visual del hábito (color de borde/etiqueta, no afecta XP)
-  const HPRIO = {
-    high: { label: "Alta", chip: "bad", color: "var(--bad)" },
-    medium: { label: "Media", chip: "warn", color: "var(--warn)" },
-    low: { label: "Baja", chip: "accent", color: "var(--accent)" }
-  };
-  function prioOf(h) { return HPRIO[h.priority] ? h.priority : "medium"; }
-
-  function habits() { return Store.get().habits; }
   const today = () => DateUtil.todayKey();
 
-  // orden visual guardado por el usuario (arriba = primero). Si no existe
-  // aún en hábitos viejos, se asigna al vuelo según su posición actual.
-  function sortedHabits() {
-    const arr = habits();
-    arr.forEach((h, i) => { if (h.order == null) h.order = i; });
-    return arr.slice().sort((a, b) => (a.order - b.order));
-  }
-  function moveHabit(h, dir) {
-    const arr = sortedHabits();
-    const i = arr.indexOf(h);
-    const j = i + dir;
-    if (j < 0 || j >= arr.length) return;
-    // intercambia el "order" con el vecino para moverlo una posición
-    const tmp = arr[j].order; arr[j].order = h.order; h.order = tmp;
-    Audio.play("tap");
-    Store.commit();
-    render(document.getElementById("view-habits"));
+  // Inicializar base de datos de hábitos si no existe
+  function habits() {
+    const s = Store.get();
+    if (!s.habits) s.habits = [];
+    return s.habits;
   }
 
-  // meta diaria (nº de veces). 1 = hábito simple
-  function tgt(h) { return Math.max(1, Math.min(MAX_BOXES, parseInt(h.count, 10) || 1)); }
-  // cantidad hecha en un día (compatible con formato antiguo: true = completo)
-  function dayVal(h, key) {
-    const v = h.history[key];
-    if (v === true) return tgt(h);
-    if (typeof v === "number") return v;
-    return 0;
-  }
-  function doneOn(h, key) { return dayVal(h, key) >= tgt(h); }
-  function doneToday(h) { return doneOn(h, today()); }
-  function pctToday(h) { return Math.round((dayVal(h, today()) / tgt(h)) * 100); }
+  // ---------------- ESTADÍSTICAS NEÓN ----------------
+  function stats() {
+    const list = habits();
+    const tKey = today();
+    const mKey = DateUtil.monthKey(); // ej: "2026-08"
 
-  // ---------- programación de días activos (0=Dom..6=Sáb) ----------
-  const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
-  function activeDays(h) { return (Array.isArray(h.days) && h.days.length) ? h.days : ALL_DAYS; }
-  function activeSet(h) { return new Set(activeDays(h)); }
-  function activeOn(h, key) { return activeSet(h).has(DateUtil.parse(key).getDay()); }
-  function activeToday(h) { return activeOn(h, today()); }
-  function daysLabel(h) {
-    const s = activeSet(h);
-    if (s.size >= 7) return "Todos los días";
-    if (s.size === 5 && [1, 2, 3, 4, 5].every((d) => s.has(d))) return "Lun a Vie";
-    if (s.size === 2 && s.has(0) && s.has(6)) return "Fin de semana";
-    return [[1, "L"], [2, "M"], [3, "M"], [4, "J"], [5, "V"], [6, "S"], [0, "D"]].filter((x) => s.has(x[0])).map((x) => x[1]).join(" ");
-  }
+    let todayTotal = 0;
+    let todayCompleted = 0;
+    let monthTotalActions = 0;
+    let monthCompletedActions = 0;
 
-  // racha (días activos consecutivos completados; se saltan los días de descanso)
-  function streak(h) {
-    const set = activeSet(h);
-    let s = 0, day = today();
-    if (set.has(DateUtil.parse(day).getDay()) && !doneOn(h, day)) day = DateUtil.addDays(day, -1);
-    for (let i = 0; i < 400; i++) {
-      const wd = DateUtil.parse(day).getDay();
-      if (set.has(wd)) { if (doneOn(h, day)) s++; else break; }
-      day = DateUtil.addDays(day, -1);
-    }
-    return s;
-  }
-  function bestStreak(h) {
-    const set = activeSet(h);
-    const done = Object.keys(h.history).filter((k) => doneOn(h, k)).sort();
-    if (!done.length) return 0;
-    let day = done[0]; const end = today(); let cur = 0, best = 0;
-    for (let i = 0; i < 4000 && day <= end; i++) {
-      const wd = DateUtil.parse(day).getDay();
-      if (set.has(wd)) { if (doneOn(h, day)) { cur++; if (cur > best) best = cur; } else cur = 0; }
-      day = DateUtil.addDays(day, 1);
-    }
-    return best;
-  }
-  function completion30(h) {
-    const set = activeSet(h);
-    const active = DateUtil.lastNDays(30).filter((d) => set.has(DateUtil.parse(d).getDay()));
-    if (!active.length) return 0;
-    const done = active.filter((d) => doneOn(h, d)).length;
-    return Math.round((done / active.length) * 100);
-  }
-
-  // fija la cantidad de hoy y gestiona XP según se complete o no el día
-  function applyDay(h, n) {
-    const key = today();
-    const target = tgt(h);
-    n = Math.max(0, Math.min(target, n));
-    const was = doneToday(h);
-    if (target === 1) { if (n >= 1) h.history[key] = true; else delete h.history[key]; }
-    else { if (n > 0) h.history[key] = n; else delete h.history[key]; }
-    const now = doneToday(h);
-
-    if (now && !was) {
-      Audio.play("complete");
-      const bonus = streak(h) >= 7 ? 6 : 0;
-      const gain = 12 + bonus;
-      h.xpEarned = (h.xpEarned || 0) + gain;
-      Gami.award(gain, bonus ? "Hábito + racha 🔥" : "Hábito completado");
-    } else if (!now && was) {
-      Audio.play("tap");
-      h.xpEarned = Math.max(0, (h.xpEarned || 0) - 12);
-      Gami.remove(12);
-      Store.commit();
-    } else {
-      Audio.play(n > 0 ? "coin" : "tap");
-      Store.commit();
-    }
-    render(document.getElementById("view-habits"));
-    N.App && N.App.refreshTop();
-  }
-
-  function toggleCheck(h) { applyDay(h, doneToday(h) ? 0 : tgt(h)); }
-  function setBox(h, i) {
-    const cur = dayVal(h, today());
-    applyDay(h, (i + 1 <= cur) ? i : i + 1); // clic en lleno = quitar desde ahí; en vacío = llenar hasta ahí
-  }
-
-  function addOrEdit(existing) {
-    const formEl = UI.form([
-      { name: "name", label: "Nombre del hábito", value: existing ? existing.name : "", placeholder: "Beber agua", required: true },
-      { name: "icon", label: "Ícono", type: "select", value: existing ? existing.icon : "✦", options: ICONS },
-      { type: "row", fields: [
-        { name: "count", label: "Meta diaria (nº de veces)", type: "number", min: 1, step: 1, value: existing ? tgt(existing) : 1 },
-        { name: "unit", label: "Unidad (opcional)", value: existing ? existing.unit || "" : "", placeholder: "vasos, páginas…" }
-      ]},
-      { name: "priority", label: "Prioridad (color)", type: "select", value: existing ? prioOf(existing) : "medium", options: [
-        { value: "high", label: "🔴 Alta" }, { value: "medium", label: "🟡 Media" }, { value: "low", label: "🔵 Baja" }
-      ]},
-      { name: "days", label: "Días activos", type: "weekdays", value: existing ? activeDays(existing) : ALL_DAYS }
-    ], (data) => {
-      const cnt = Math.max(1, Math.min(MAX_BOXES, parseInt(data.count, 10) || 1));
-      let days = typeof data.days === "string" ? data.days.split(",").filter((x) => x !== "").map(Number) : (Array.isArray(data.days) ? data.days : []);
-      if (!days.length) days = ALL_DAYS.slice();
-      if (existing) {
-        existing.name = data.name; existing.icon = data.icon; existing.count = cnt; existing.unit = data.unit; existing.days = days; existing.priority = data.priority;
-        delete existing.target;
-        toast({ icon: "✏️", msg: "Hábito actualizado" });
-      } else {
-        const maxOrder = habits().reduce((m, h) => Math.max(m, h.order || 0), -1);
-        habits().push({ id: Store.uid(), name: data.name, icon: data.icon, count: cnt, unit: data.unit, days: days, priority: data.priority, order: maxOrder + 1, history: {}, created: today(), xpEarned: 5 });
-        Audio.play("add");
-        toast({ icon: "✦", title: "Nuevo hábito", msg: data.name });
-        Gami.award(5, "Nuevo hábito creado");
+    list.forEach(h => {
+      // Activos hoy
+      todayTotal++;
+      if (h.history && h.history.includes(tKey)) {
+        todayCompleted++;
       }
-      Store.commit();
-      UI.closeModal();
-      render(document.getElementById("view-habits"));
-      N.App && N.App.refreshTop();
-    }, existing ? "Guardar cambios" : "Crear hábito");
 
-    const wrap = el("div", {}, [
-      el("div", { class: "insight info", style: "margin-bottom:14px" }, [
-        el("span", { class: "ico", text: "🔢" }),
-        el("div", { class: "txt", html: "Si la <b>meta diaria</b> es mayor que 1, aparecerán esos cuadritos para rellenar durante el día (p. ej. 8 vasos = 8 cuadritos). El hábito solo se completa al llenarlos <b>todos</b>." })
-      ]),
-      formEl
-    ]);
-    UI.openModal(existing ? "Editar hábito" : "Nuevo hábito", wrap);
-  }
-
-  function remove(h) {
-    UI.confirmBox("Eliminar hábito", `¿Eliminar "${h.name}"? Se perderá su historial.`, () => {
-      const arr = habits();
-      arr.splice(arr.indexOf(h), 1);
-      Audio.play("delete");
-      if (h.xpEarned) Gami.remove(h.xpEarned); else Store.commit(); // devolver la XP ganada
-      render(document.getElementById("view-habits"));
-      N.App && N.App.refreshTop();
-    }, "Eliminar");
-  }
-
-  function addToCalendar(h) {
-    N.CalExport.open({
-      title: h.name,
-      details: "Hábito diario en OCTANAJE" + (tgt(h) > 1 ? " · meta " + tgt(h) + " " + (h.unit || "veces") : ""),
-      dateKey: today(),
-      recur: "RRULE:FREQ=DAILY"
+      // Cálculo de cumplimiento del mes actual
+      const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+      monthTotalActions += daysInMonth; // Lo que debería cumplir en el mes
+      
+      const doneThisMonth = (h.history || []).filter(d => d.startsWith(mKey)).length;
+      monthCompletedActions += doneThisMonth;
     });
-  }
 
-  // ---------- stats para dashboard ----------
-  function todayProgress() {
-    const arr = habits().filter(activeToday); // solo los programados para hoy
-    if (!arr.length) return { done: 0, total: 0, pct: 0 };
-    const done = arr.filter(doneToday).length;
-    return { done, total: arr.length, pct: Math.round((done / arr.length) * 100) };
-  }
-  function weeklySeries() {
-    const days = DateUtil.lastNDays(7);
+    const compliancePct = monthTotalActions === 0 ? 0 : Math.round((monthCompletedActions / monthTotalActions) * 100);
+
     return {
-      labels: days.map((d) => DateUtil.weekday(d)),
-      values: days.map((d) => habits().filter((h) => doneOn(h, d)).length)
+      todayTotal,
+      todayCompleted,
+      activeHabits: list.length,
+      compliancePct
     };
   }
 
-  function render(container) {
-    const arr = habits();
-    const prog = todayProgress();
-    container.innerHTML = "";
-
-    const head = el("div", { class: "view-head" }, [
-      el("div", {}, [
-        el("h1", { class: "view-title" }, [N.Icons.node("clock"), "Hábitos"]),
-        el("p", { class: "view-desc", text: "Marca tus cuadritos, mantén tu racha y suma XP cada día." })
-      ]),
-      el("button", { class: "btn primary", onclick: () => addOrEdit(null) }, [el("span", { text: "＋" }), "Nuevo hábito"])
-    ]);
-    container.appendChild(head);
-
-    const summary = el("div", { class: "grid cols-3 mb-16" }, [
-      statCard("Hoy", `${prog.done}/${prog.total}`, "completados", "accent"),
-      statCard("Cumplimiento", fmt.pct(prog.pct), "del día", prog.pct >= 100 ? "good" : "warn"),
-      statCard("Hábitos activos", arr.length + "", "en seguimiento", "accent")
-    ]);
-    container.appendChild(summary);
-
-    const chartCard = el("div", { class: "card mb-16" }, [
-      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Hábitos completados · últimos 7 días"])])
-    ]);
-    const cv = el("canvas");
-    chartCard.appendChild(el("div", { class: "chart-box" }, [cv]));
-    container.appendChild(chartCard);
-    setTimeout(() => Charts.bars(cv, { labels: weeklySeries().labels, series: [{ values: weeklySeries().values, color: "--accent" }] }, { height: 170 }), 30);
-
-    if (!arr.length) {
-      container.appendChild(el("div", { class: "card" }, [
-        el("div", { class: "empty" }, [el("span", { class: "big", text: "✦" }), el("div", { text: "Aún no tienes hábitos. ¡Crea el primero!" })])
-      ]));
-      return;
+  // ---------------- LÓGICA DE INTERACCIÓN ----------------
+  function toggleHabit(h) {
+    const tKey = today();
+    if (!h.history) h.history = [];
+    
+    const idx = h.history.indexOf(tKey);
+    if (idx >= 0) {
+      h.history.splice(idx, 1);
+      Audio.play("tap");
+    } else {
+      h.history.push(tKey);
+      Audio.play("levelup");
+      Gami.award(5, `Hábito cumplido: ${h.name}`);
     }
-
-    const ordered = sortedHabits();
-    const list = el("div", { class: "grid cols-2" });
-    ordered.forEach((h, i) => list.appendChild(habitCard(h, i, ordered.length)));
-    container.appendChild(list);
+    Store.commit();
+    render(document.getElementById("view-habits"));
+    if (N.App && N.App.refreshTop) N.App.refreshTop();
   }
 
-  function statCard(label, val, sub, cls) {
-    return el("div", { class: "card" }, [
-      el("div", { class: "kpi" }, [
-        el("div", { class: "kpi-lbl", text: label }),
-        el("div", { class: "kpi-val " + (cls || ""), text: val }),
-        el("div", { class: "kpi-sub", text: sub })
-      ])
-    ]);
+  function add() {
+    const body = UI.form([
+      { name: "name", label: "Nombre del Hábito", placeholder: "Ej. Leer 10 páginas, Tomar 2L de agua", required: true },
+      { name: "icon", label: "Icono (Emoji)", placeholder: "Ej. 💧, 📖, 🧘‍♂️", required: true }
+    ], (data) => {
+      habits().push({
+        id: Store.uid(),
+        name: data.name,
+        icon: data.icon || "⚡",
+        history: [],
+        created: today()
+      });
+      Store.commit();
+      Audio.play("complete");
+      UI.closeModal();
+      render(document.getElementById("view-habits"));
+    }, "Crear Hábito");
+    UI.openModal("Nuevo Hábito", body);
   }
 
-  function habitCard(h, idx, total) {
-    const st = streak(h);
-    const done = doneToday(h);
-    const comp = completion30(h);
-    const target = tgt(h);
-    const cur = dayVal(h, today());
-    const active = activeToday(h);
-    const pr = HPRIO[prioOf(h)];
+  function remove(h) {
+    UI.confirmBox("Eliminar Hábito", `¿Estás seguro de eliminar "${h.name}" y todo su progreso?`, () => {
+      const arr = habits();
+      arr.splice(arr.indexOf(h), 1);
+      Store.commit();
+      Audio.play("delete");
+      render(document.getElementById("view-habits"));
+    }, "Eliminar");
+  }
 
-    // heatmap 35 días (completo = brillante, parcial = tenue)
-    const heat = el("div", { class: "heat mt-8" });
-    DateUtil.lastNDays(35).forEach((d) => {
-      const cell = el("i", { title: DateUtil.label(d) });
-      if (doneOn(h, d)) cell.classList.add("l3");
-      else if (dayVal(h, d) > 0) cell.classList.add("l1");
-      heat.appendChild(cell);
+  // ---------------- UI DE CADA HÁBITO ----------------
+  function createHabitCard(h) {
+    const tKey = today();
+    const isDone = (h.history || []).includes(tKey);
+
+    const card = el("div", { class: `card mb-16 ${isDone ? "habit-done" : ""}`, style: "padding: 16px; border-radius: 16px; border: 1px solid var(--border-strong); background: var(--panel);" });
+    
+    // Cabecera del hábito
+    const header = el("div", { class: "flex items-center justify-between gap-12", style: "margin-bottom: 12px;" });
+    
+    const info = el("div", { class: "flex items-center gap-12", style: "flex: 1; min-width: 0;" });
+    info.appendChild(el("span", { style: "font-size: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));", text: h.icon || "⚡" }));
+    info.appendChild(el("div", { class: "item-title", style: `font-size: 16px; font-weight: 800; ${isDone ? 'color: #00ff88;' : 'color: var(--txt);'}`, text: h.name }));
+    
+    const actions = el("div", { class: "flex items-center gap-8" });
+    const checkBtn = el("button", { 
+      class: `check ${isDone ? "on" : ""}`, 
+      html: isDone ? "✔" : "",
+      style: isDone ? "background: linear-gradient(135deg, #00ff9d, #00cc7a); color: #000; border: none; box-shadow: 0 0 15px rgba(0,255,136,0.4);" : "border: 2px solid var(--border-strong); background: rgba(0,0,0,0.2);",
+      onclick: () => toggleHabit(h) 
     });
+    
+    const delBtn = el("button", { class: "icon-btn", html: "🗑️", style: "width:34px; height:34px; font-size:14px;", onclick: () => remove(h) });
 
-    const card = el("div", {
-      class: "card habit-prio" + (active ? "" : " habit-off"),
-      style: "--prio-color:" + pr.color
-    }, [
-      el("div", { class: "flex items-center gap-12" }, [
-        el("div", { class: "flex", style: "flex-direction:column;gap:2px;flex:none" }, [
-          el("button", { class: "icon-btn sm", title: "Subir", disabled: idx === 0, style: idx === 0 ? "opacity:.3;cursor:default" : "", onclick: () => idx > 0 && moveHabit(h, -1), html: "▲" }),
-          el("button", { class: "icon-btn sm", title: "Bajar", disabled: idx === total - 1, style: idx === total - 1 ? "opacity:.3;cursor:default" : "", onclick: () => idx < total - 1 && moveHabit(h, 1), html: "▼" })
-        ]),
-        el("button", {
-          class: "check" + (done ? " on" : "") + (active ? "" : " check-off"),
-          title: !active ? "Hoy descansa" : (done ? "Marcar como no hecho" : "Completar hoy"),
-          onclick: () => { if (!active) { Audio.play("tap"); toast({ icon: "💤", msg: "Hoy este hábito descansa (" + daysLabel(h) + ")" }); return; } toggleCheck(h); },
-          html: !active ? "💤" : (done ? "✓" : (target > 1 ? String(cur) : ""))
-        }),
-        el("div", { class: "item-main" }, [
-          el("div", { class: "item-title" }, [el("span", { text: h.icon + " " }), h.name]),
-          el("div", { class: "item-meta" }, [
-            el("span", { class: "chip " + pr.chip, html: "● " + pr.label }),
-            el("span", { class: "chip warn", html: "🔥 " + st + " día" + (st === 1 ? "" : "s") }),
-            el("span", { class: "chip", html: "📆 " + daysLabel(h) }),
-            !active ? el("span", { class: "chip", text: "💤 hoy descansa" }) : null,
-            target > 1 ? el("span", { class: "chip accent", text: "🎯 " + target + " " + (h.unit || "/día") }) : null
-          ])
-        ]),
-        el("div", { class: "flex gap-8" }, [
-          el("button", { class: "icon-btn", title: "Recordatorio diario en Google Calendar", onclick: () => addToCalendar(h), html: "📅" }),
-          el("button", { class: "icon-btn", title: "Editar", onclick: () => addOrEdit(h), html: "✏️" }),
-          el("button", { class: "icon-btn", title: "Eliminar", onclick: () => remove(h), html: "🗑️" })
-        ])
-      ])
-    ]);
+    actions.appendChild(delBtn);
+    actions.appendChild(checkBtn);
+    
+    header.appendChild(info);
+    header.appendChild(actions);
+    card.appendChild(header);
 
-    // cuadritos de meta diaria (solo si hoy está activo)
-    if (target > 1 && active) {
-      const boxes = el("div", { class: "hboxes mt-16" });
-      for (let i = 0; i < target; i++) {
-        boxes.appendChild(el("button", {
-          class: "hbox" + (i < cur ? " on" : ""),
-          title: (i + 1) + " de " + target,
-          onclick: () => setBox(h, i)
-        }));
+    // ---------------- HEATMAP MENSUAL (Reseteo Exacto) ----------------
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const monthName = date.toLocaleDateString("es-MX", { month: "long" });
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthPrefix = DateUtil.monthKey(); // Ej: "2026-08"
+
+    const heatmapSection = el("div", { style: "border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;" });
+    
+    const heatHeader = el("div", { class: "flex justify-between", style: "font-size: 11px; color: #aaa; text-transform: uppercase; margin-bottom: 8px; font-weight: bold;" });
+    heatHeader.appendChild(el("span", { text: `Cumplimiento de ${monthName}` }));
+    
+    const doneThisMonth = (h.history || []).filter(d => d.startsWith(monthPrefix)).length;
+    heatHeader.appendChild(el("span", { style: "color: #00f3ff;", text: `${doneThisMonth} / ${daysInMonth} DÍAS` }));
+    
+    heatmapSection.appendChild(heatHeader);
+
+    // Dibuja la cuadrícula estricta del mes actual
+    const heatGrid = el("div", { style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(18px, 1fr)); gap: 6px;" });
+    
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayStr = String(d).padStart(2, '0');
+      const fullDateStr = `${monthPrefix}-${dayStr}`;
+      
+      const box = el("div", { 
+        style: "aspect-ratio: 1/1; border-radius: 4px; display: grid; place-items: center; font-size: 9px; font-weight: bold; transition: all 0.3s ease;",
+        text: d
+      });
+
+      if ((h.history || []).includes(fullDateStr)) {
+        // Cumplido: Cian Neón
+        box.style.background = "rgba(0, 243, 255, 0.2)";
+        box.style.color = "#00f3ff";
+        box.style.border = "1px solid #00f3ff";
+        box.style.boxShadow = "0 0 8px rgba(0, 243, 255, 0.4)";
+      } else if (fullDateStr > tKey) {
+        // Futuro: Gris tenue
+        box.style.background = "rgba(255, 255, 255, 0.03)";
+        box.style.color = "#444";
+        box.style.border = "1px solid rgba(255, 255, 255, 0.05)";
+      } else {
+        // Pasado no cumplido: Rojizo sutil
+        box.style.background = "rgba(255, 0, 85, 0.05)";
+        box.style.color = "rgba(255, 0, 85, 0.5)";
+        box.style.border = "1px dashed rgba(255, 0, 85, 0.3)";
       }
-      card.appendChild(boxes);
-      card.appendChild(el("div", { class: "flex items-center justify-between fs-12 mt-8" }, [
-        el("span", { class: "text-dim", text: `${cur}/${target} ${h.unit || ""}`.trim() }),
-        el("span", { class: "fw-700 " + (cur >= target ? "text-good" : "text-warn"), text: pctToday(h) + "%" })
-      ]));
+
+      heatGrid.appendChild(box);
     }
 
-    // cumplimiento 30 días
-    card.appendChild(el("div", { class: "flex items-center justify-between mt-16", style: "margin-bottom:6px" }, [
-      el("span", { class: "fs-12 text-dim", text: "Cumplimiento 30 días" }),
-      el("span", { class: "fs-12 fw-700 text-accent", text: fmt.pct(comp) })
-    ]));
-    card.appendChild(el("div", { class: "progress" + (comp >= 70 ? " good" : "") }, [el("span", { style: `width:${comp}%` })]));
-    card.appendChild(heat);
+    heatmapSection.appendChild(heatGrid);
+    card.appendChild(heatmapSection);
 
     return card;
   }
 
-  N.Habits = { render, todayProgress, weeklySeries, streak, activeOn, daysLabel };
+  // ---------------- RENDER PRINCIPAL ----------------
+  function render(container) {
+    if (!container) return;
+    container.innerHTML = "";
+    
+    const st = stats();
+
+    // 1. Cabecera y Botón
+    container.appendChild(el("div", { class: "view-head" }, [
+      el("div", {}, [
+        el("h1", { class: "view-title" }, [N.Icons ? N.Icons.node("check") : "✓", "Hábitos"]),
+        el("p", { class: "view-desc", text: "Mantén tu disciplina intacta cada mes." })
+      ]),
+      el("div", { class: "flex gap-4", style: "margin-top: 10px;" }, [
+        el("button", { class: "btn primary", style: "font-size:12px; padding:8px 14px;", onclick: add, html: "＋ Añadir Hábito" })
+      ])
+    ]));
+
+    // 2. Paletas Neón Superiores
+    const kpiHtml = document.createElement('div');
+    kpiHtml.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🟢 HOY</span>
+          <span style="font-size:36px; font-weight:900; color:#00ff88; line-height:1; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${st.todayCompleted}<span style="font-size:18px; color:#555;">/${st.todayTotal}</span></span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">Realizados</span>
+        </div>
+
+        <div style="background:rgba(188,132,238,0.08); border:1px solid rgba(188,132,238,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">📈 CUMPLIMIENTO</span>
+          <span style="font-size:36px; font-weight:900; color:#bc84ee; line-height:1; text-shadow: 0 0 15px rgba(188,132,238,0.4);">${st.compliancePct}%</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">Mes Actual</span>
+        </div>
+
+        <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">⚡ ACTIVOS</span>
+          <span style="font-size:36px; font-weight:900; color:#00f3ff; line-height:1; text-shadow: 0 0 15px rgba(0,243,255,0.4);">${st.activeHabits}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">Rutinas fijas</span>
+        </div>
+
+      </div>
+    `;
+    container.appendChild(kpiHtml);
+
+    // 3. Lista de Hábitos
+    const arr = habits();
+    if (!arr.length) {
+      container.appendChild(el("div", { class: "empty", style: "border: 1px dashed var(--border-strong); border-radius: 16px; padding: 40px 20px;" }, [
+        el("span", { class: "big", text: "🧘" }), 
+        el("div", { text: "No tienes hábitos activos. ¡Inicia con una rutina simple!" })
+      ]));
+    } else {
+      // Ordenar: primero los no cumplidos hoy
+      const sorted = arr.slice().sort((a, b) => {
+        const aDone = (a.history || []).includes(today()) ? 1 : 0;
+        const bDone = (b.history || []).includes(today()) ? 1 : 0;
+        return aDone - bDone;
+      });
+      sorted.forEach(h => container.appendChild(createHabitCard(h)));
+    }
+  }
+
+  N.Habits = { render, stats };
 })();
