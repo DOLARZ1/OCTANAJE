@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Hábitos (Failsafe + Reseteo Mensual Exacto)
+   OCTANAJE · Módulo Hábitos (Sanitización de Datos y Reseteo Exacto)
    ===================================================================== */
 (function () {
   "use strict";
@@ -30,13 +30,15 @@
 
         list.forEach(h => {
           todayTotal++;
-          if (h.history && h.history.includes(tKey)) todayCompleted++;
+          // SANITIZACIÓN: Forzar a que siempre sea una lista
+          const hist = Array.isArray(h.history) ? h.history : []; 
+          if (hist.includes(tKey)) todayCompleted++;
           
           const date = new Date();
           const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
           monthTotalActions += daysInMonth; 
           
-          const doneThisMonth = (h.history || []).filter(d => d.startsWith(mKey)).length;
+          const doneThisMonth = hist.filter(d => typeof d === 'string' && d.startsWith(mKey)).length;
           monthCompletedActions += doneThisMonth;
         });
 
@@ -47,7 +49,8 @@
 
       function toggleHabit(h) {
         const tKey = today();
-        if (!h.history) h.history = [];
+        // SANITIZACIÓN
+        if (!Array.isArray(h.history)) h.history = []; 
         
         const idx = h.history.indexOf(tKey);
         if (idx >= 0) {
@@ -89,7 +92,9 @@
 
       function createHabitCard(h) {
         const tKey = today();
-        const isDone = (h.history || []).includes(tKey);
+        // SANITIZACIÓN: Asegurar que se puede leer sin error
+        const hist = Array.isArray(h.history) ? h.history : []; 
+        const isDone = hist.includes(tKey);
         const card = el("div", { class: `card mb-16 ${isDone ? "habit-done" : ""}`, style: "padding: 16px; border-radius: 16px; border: 1px solid var(--border-strong); background: var(--panel);" });
         
         const header = el("div", { class: "flex items-center justify-between gap-12", style: "margin-bottom: 12px;" });
@@ -117,7 +122,8 @@
         const heatmapSection = el("div", { style: "border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;" });
         const heatHeader = el("div", { class: "flex justify-between", style: "font-size: 11px; color: #aaa; text-transform: uppercase; margin-bottom: 8px; font-weight: bold;" });
         heatHeader.appendChild(el("span", { text: `Cumplimiento de ${monthName}` }));
-        const doneThisMonth = (h.history || []).filter(d => d.startsWith(monthPrefix)).length;
+        
+        const doneThisMonth = hist.filter(d => typeof d === 'string' && d.startsWith(monthPrefix)).length;
         heatHeader.appendChild(el("span", { style: "color: #00f3ff;", text: `${doneThisMonth} / ${daysInMonth} DÍAS` }));
         heatmapSection.appendChild(heatHeader);
 
@@ -127,7 +133,7 @@
           const fullDateStr = `${monthPrefix}-${dayStr}`;
           const box = el("div", { style: "aspect-ratio: 1/1; border-radius: 4px; display: grid; place-items: center; font-size: 9px; font-weight: bold; transition: all 0.3s ease;", text: d });
 
-          if ((h.history || []).includes(fullDateStr)) {
+          if (hist.includes(fullDateStr)) {
             box.style.background = "rgba(0, 243, 255, 0.2)"; box.style.color = "#00f3ff"; box.style.border = "1px solid #00f3ff"; box.style.boxShadow = "0 0 8px rgba(0, 243, 255, 0.4)";
           } else if (fullDateStr > tKey) {
             box.style.background = "rgba(255, 255, 255, 0.03)"; box.style.color = "#444"; box.style.border = "1px solid rgba(255, 255, 255, 0.05)";
@@ -186,8 +192,10 @@
               ]));
             } else {
               const sorted = arr.slice().sort((a, b) => {
-                const aDone = (a.history || []).includes(today()) ? 1 : 0;
-                const bDone = (b.history || []).includes(today()) ? 1 : 0;
+                const aHist = Array.isArray(a.history) ? a.history : [];
+                const bHist = Array.isArray(b.history) ? b.history : [];
+                const aDone = aHist.includes(today()) ? 1 : 0;
+                const bDone = bHist.includes(today()) ? 1 : 0;
                 return aDone - bDone;
               });
               sorted.forEach(h => container.appendChild(createHabitCard(h)));
@@ -197,7 +205,6 @@
         }
       }
 
-      // Evita bloqueos si la app pide inicialización forzada
       N.Habits = { render, stats, init: () => {} };
       
   } catch (fatalErr) {
