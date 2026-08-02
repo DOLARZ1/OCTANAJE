@@ -11,33 +11,20 @@
   const DateUtil = Store.DateUtil;
 
   const ICONS = [
-    // generales
     "✦", "✅", "⭐", "🌟", "🔥", "⚡", "❤️", "☀️", "🌙", "⏰",
-    // salud / ejercicio
     "💪", "🏃", "🚴", "🏋️", "🧘", "🚶", "🥗", "💧", "😴", "💊", "🩺", "🦷", "🚿", "🚭",
-    // mente / estudio
     "📚", "🧠", "📝", "🎓", "💡", "✍️", "🙏",
-    // trading / dinero
     "📈", "📉", "📊", "💹", "🕯️", "💲", "💰", "💵", "💸", "🪙", "🏦", "💳", "🤑", "💱",
-    // metas
     "🎯", "🏆", "🥇", "🏁", "🚀",
-    // vacaciones / viajes
     "🏖️", "🏝️", "🌴", "✈️", "⛱️", "🧳", "🗺️", "🏔️", "🏕️", "🚗",
-    // calaveras
     "💀", "☠️",
-    // hobbies / vida
     "🎨", "🎮", "📷", "🍳", "☕", "🧹", "🌱", "🌍", "🛌", "🧴",
-    // comida
     "🍎", "🍌", "🫐", "🥑", "🥦", "🥕", "🍗", "🍚", "🍞", "🍳", "🥗", "🍕", "🍔", "🍫", "🍩", "🥤", "🥛", "🍺",
-    // mascotas
     "🐶", "🐱", "🐰", "🐹", "🐦", "🐠", "🐢", "🐾",
-    // trabajo / oficina
     "💼", "💻", "🖥️", "⌨️", "🖱️", "📅", "📎", "🖊️", "📞", "📧", "🗂️", "📌", "📁",
-    // música / instrumentos
     "🎵", "🎧", "🎸", "🎹", "🥁", "🎺", "🎷", "🎻", "🎤", "🎼"
   ];
   const MAX_BOXES = 50;
-  // prioridad visual del hábito (color de borde/etiqueta, no afecta XP)
   const HPRIO = {
     high: { label: "Alta", chip: "bad", color: "var(--bad)" },
     medium: { label: "Media", chip: "warn", color: "var(--warn)" },
@@ -48,8 +35,6 @@
   function habits() { return Store.get().habits; }
   const today = () => DateUtil.todayKey();
 
-  // orden visual guardado por el usuario (arriba = primero). Si no existe
-  // aún en hábitos viejos, se asigna al vuelo según su posición actual.
   function sortedHabits() {
     const arr = habits();
     arr.forEach((h, i) => { if (h.order == null) h.order = i; });
@@ -60,18 +45,15 @@
     const i = arr.indexOf(h);
     const j = i + dir;
     if (j < 0 || j >= arr.length) return;
-    // intercambia el "order" con el vecino para moverlo una posición
     const tmp = arr[j].order; arr[j].order = h.order; h.order = tmp;
     Audio.play("tap");
     Store.commit();
     render(document.getElementById("view-habits"));
   }
 
-  // meta diaria (nº de veces). 1 = hábito simple
   function tgt(h) { return Math.max(1, Math.min(MAX_BOXES, parseInt(h.count, 10) || 1)); }
-  // cantidad hecha en un día (compatible con formato antiguo: true = completo)
   function dayVal(h, key) {
-    if (!h.history) h.history = {}; // Failsafe
+    if (!h.history) h.history = {}; 
     const v = h.history[key];
     if (v === true) return tgt(h);
     if (typeof v === "number") return v;
@@ -81,7 +63,6 @@
   function doneToday(h) { return doneOn(h, today()); }
   function pctToday(h) { return Math.round((dayVal(h, today()) / tgt(h)) * 100); }
 
-  // ---------- programación de días activos (0=Dom..6=Sáb) ----------
   const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
   function activeDays(h) { return (Array.isArray(h.days) && h.days.length) ? h.days : ALL_DAYS; }
   function activeSet(h) { return new Set(activeDays(h)); }
@@ -95,7 +76,6 @@
     return [[1, "L"], [2, "M"], [3, "M"], [4, "J"], [5, "V"], [6, "S"], [0, "D"]].filter((x) => s.has(x[0])).map((x) => x[1]).join(" ");
   }
 
-  // racha (días activos consecutivos completados; se saltan los días de descanso)
   function streak(h) {
     const set = activeSet(h);
     let s = 0, day = today();
@@ -120,10 +100,10 @@
     return best;
   }
 
-  // Calcula el porcentaje de cumplimiento estricto del MES ACTUAL para UN hábito
+  // CORRECCIÓN: Calcula el porcentaje sobre TODOS los días del mes actual (para la barra de cada hábito)
   function completionMonth(h) {
     const tKey = today();
-    const prefix = tKey.slice(0, 7); // ej: "2026-08"
+    const prefix = tKey.slice(0, 7); 
     const parts = prefix.split('-');
     const daysInMonth = new Date(parts[0], parts[1], 0).getDate();
     let expected = 0;
@@ -132,8 +112,8 @@
     for (let d = 1; d <= daysInMonth; d++) {
       const dayStr = String(d).padStart(2, '0');
       const fullDate = `${prefix}-${dayStr}`;
-      // Solo contamos los días hasta "hoy" y que el hábito estuviera activo
-      if (fullDate <= tKey && activeOn(h, fullDate)) {
+      // Evaluamos todos los días del mes
+      if (activeOn(h, fullDate)) {
         expected++;
         if (doneOn(h, fullDate)) done++;
       }
@@ -141,11 +121,11 @@
     return expected === 0 ? 0 : Math.round((done / expected) * 100);
   }
 
-  // Calcula el porcentaje de cumplimiento estricto del MES ACTUAL para TODOS los hábitos
+  // CORRECCIÓN: Calcula el porcentaje sobre TODOS los días del mes actual (para la paleta de arriba)
   function getMonthCompliance() {
     const arr = habits();
     const tKey = today();
-    const prefix = tKey.slice(0, 7); // ej: "2026-08"
+    const prefix = tKey.slice(0, 7); 
     let expected = 0;
     let done = 0;
     const parts = prefix.split('-');
@@ -155,8 +135,8 @@
         for (let d = 1; d <= daysInMonth; d++) {
             const dayStr = String(d).padStart(2, '0');
             const fullDate = `${prefix}-${dayStr}`;
-            // Solo contamos los días hasta "hoy" y que el hábito estuviera activo
-            if (fullDate <= tKey && activeOn(h, fullDate)) {
+            // Evaluamos todos los días del mes
+            if (activeOn(h, fullDate)) {
                 expected++;
                 if (doneOn(h, fullDate)) done++;
             }
@@ -165,7 +145,6 @@
     return expected === 0 ? 0 : Math.round((done / expected) * 100);
   }
 
-  // fija la cantidad de hoy y gestiona XP según se complete o no el día
   function applyDay(h, n) {
     if (!h.history) h.history = {};
     const key = today();
@@ -198,7 +177,7 @@
   function toggleCheck(h) { applyDay(h, doneToday(h) ? 0 : tgt(h)); }
   function setBox(h, i) {
     const cur = dayVal(h, today());
-    applyDay(h, (i + 1 <= cur) ? i : i + 1); // clic en lleno = quitar desde ahí; en vacío = llenar hasta ahí
+    applyDay(h, (i + 1 <= cur) ? i : i + 1);
   }
 
   function addOrEdit(existing) {
@@ -249,7 +228,7 @@
       const arr = habits();
       arr.splice(arr.indexOf(h), 1);
       Audio.play("delete");
-      if (h.xpEarned) Gami.remove(h.xpEarned); else Store.commit(); // devolver la XP ganada
+      if (h.xpEarned) Gami.remove(h.xpEarned); else Store.commit(); 
       render(document.getElementById("view-habits"));
       N.App && N.App.refreshTop();
     }, "Eliminar");
@@ -264,9 +243,8 @@
     });
   }
 
-  // ---------- stats para dashboard ----------
   function todayProgress() {
-    const arr = habits().filter(activeToday); // solo los programados para hoy
+    const arr = habits().filter(activeToday); 
     if (!arr.length) return { done: 0, total: 0, pct: 0 };
     const done = arr.filter(doneToday).length;
     return { done, total: arr.length, pct: Math.round((done / arr.length) * 100) };
@@ -282,7 +260,7 @@
   function render(container) {
     const arr = habits();
     const prog = todayProgress();
-    const compPct = getMonthCompliance(); // Nuevo cálculo de porcentaje estricto mensual
+    const compPct = getMonthCompliance(); 
     
     container.innerHTML = "";
 
@@ -295,7 +273,6 @@
     ]);
     container.appendChild(head);
 
-    // --- PALETAS NEÓN SUPERIORES ---
     const kpiHtml = document.createElement('div');
     kpiHtml.innerHTML = `
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 20px;">
@@ -346,7 +323,7 @@
   function habitCard(h, idx, total) {
     const st = streak(h);
     const done = doneToday(h);
-    const comp = completionMonth(h); // Reemplazado por cálculo del mes actual
+    const comp = completionMonth(h); 
     const target = tgt(h);
     const cur = dayVal(h, today());
     const active = activeToday(h);
@@ -385,7 +362,6 @@
       ])
     ]);
 
-    // cuadritos de meta diaria (solo si hoy está activo)
     if (target > 1 && active) {
       const boxes = el("div", { class: "hboxes mt-16" });
       for (let i = 0; i < target; i++) {
@@ -402,14 +378,12 @@
       ]));
     }
 
-    // cumplimiento del mes actual (Reemplaza "Cumplimiento 30 días")
     card.appendChild(el("div", { class: "flex items-center justify-between mt-16", style: "margin-bottom:6px" }, [
       el("span", { class: "fs-12 text-dim", text: "Cumplimiento del mes" }),
       el("span", { class: "fs-12 fw-700 text-accent", text: fmt.pct(comp) })
     ]));
     card.appendChild(el("div", { class: "progress" + (comp >= 70 ? " good" : "") }, [el("span", { style: `width:${comp}%` })]));
     
-    // --- HEATMAP EXACTO DEL MES EN CURSO ---
     const tKey = today();
     const parts = tKey.split('-');
     const year = parseInt(parts[0], 10);
@@ -417,7 +391,7 @@
     const dateObj = new Date(year, month - 1, 1);
     const monthName = dateObj.toLocaleDateString("es-MX", { month: "long" });
     const daysInMonth = new Date(year, month, 0).getDate();
-    const monthPrefix = tKey.slice(0, 7); // ej: "2026-08"
+    const monthPrefix = tKey.slice(0, 7); 
 
     let doneThisMonth = 0;
     for (let d = 1; d <= daysInMonth; d++) {
@@ -436,24 +410,20 @@
       const box = el("div", { style: "aspect-ratio: 1/1; border-radius: 4px; display: grid; place-items: center; font-size: 9px; font-weight: bold; transition: all 0.3s ease;", text: d, title: DateUtil.label(fullDateStr) });
 
       if (doneOn(h, fullDateStr)) {
-        // Cumplido: Cian Neón
         box.style.background = "rgba(0, 243, 255, 0.2)";
         box.style.color = "#00f3ff";
         box.style.border = "1px solid #00f3ff";
         box.style.boxShadow = "0 0 8px rgba(0, 243, 255, 0.4)";
       } else if (fullDateStr > tKey) {
-        // Futuro: Gris tenue
         box.style.background = "rgba(255, 255, 255, 0.03)";
         box.style.color = "#444";
         box.style.border = "1px solid rgba(255, 255, 255, 0.05)";
       } else {
-        // Pasado: Verificar si estaba activo ese día para marcar falla
         if (activeOn(h, fullDateStr)) {
             box.style.background = "rgba(255, 0, 85, 0.05)";
             box.style.color = "rgba(255, 0, 85, 0.5)";
             box.style.border = "1px dashed rgba(255, 0, 85, 0.3)";
         } else {
-            // Día de descanso en el pasado
             box.style.background = "transparent";
             box.style.color = "#555";
             box.style.border = "1px solid transparent";
