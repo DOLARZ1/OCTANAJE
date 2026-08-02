@@ -367,5 +367,25 @@
   <script src="assets/js/profile.js"></script>
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/app.js"></script> 
+  <script>
+  window.addEventListener('load', function() {
+    setTimeout(function() {
+      if (window.NEXUS && window.NEXUS.Store) {
+        const s = window.NEXUS.Store.get();
+        s.activity = s.activity || {};
+        
+        // Marcar activos los días que se borraron
+        const dias = ["2026-07-29", "2026-07-30", "2026-07-31", "2026-08-01", "2026-08-02"];
+        dias.forEach(function(d) { s.activity[d] = true; });
+        
+        // Pon aquí la cantidad de días de racha que llevabas para ser Oro (ej. 15 o 20)
+        s.profile.streak = 15; 
+        
+        window.NEXUS.Store.commit(true);
+        if (window.NEXUS.App && window.NEXUS.App.refreshTop) window.NEXUS.App.refreshTop();
+      }
+    }, 800);
+  });
+</script>
 </body>
 </html>
