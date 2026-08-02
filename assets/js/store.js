@@ -1,10 +1,14 @@
 /* =====================================================================
    OCTANAJE · Store — estado global + persistencia en localStorage y Nube
+   (Con Seguro Anti-Sobrescritura de Firebase)
    ===================================================================== */
 (function () {
   "use strict";
 
   const KEY = "nexus.state.v1";
+
+  // Seguro de sincronización: Evita sobrescribir la nube por accidente
+  let cloudSyncReady = false; 
 
   // ---------- utilidades de fecha ----------
   const DateUtil = {
@@ -117,8 +121,8 @@
         // 1. Guardado local ultra rápido (Offline-First)
         localStorage.setItem(KEY, JSON.stringify(state)); 
         
-        // 2. Sincronización silenciosa con Firebase
-        if (typeof window.saveToFirebase === "function") {
+        // 2. Sincronización silenciosa con Firebase (SOLO SI EL SEGURO ESTÁ DESACTIVADO)
+        if (typeof window.saveToFirebase === "function" && cloudSyncReady) {
           window.saveToFirebase(state);
         }
       }
@@ -145,12 +149,19 @@
       save(); notify();
     },
 
-    // --- NUEVA FUNCIÓN: Recibir datos de la nube ---
+    // --- FUNCIÓN BLINDADA: Recibir datos de la nube ---
     setCloudState(cloudState) {
-      if (!cloudState) return;
-      state = deepMerge(defaultState(), cloudState);
-      localStorage.setItem(KEY, JSON.stringify(state)); // Sobrescribir local
+      if (cloudState) {
+        state = deepMerge(defaultState(), cloudState);
+        localStorage.setItem(KEY, JSON.stringify(state)); // Sobrescribir local
+      }
+      cloudSyncReady = true; // ¡SEGURO DESACTIVADO! A partir de ahora sí se puede guardar en Firebase
       notify(); // Actualizar toda la interfaz de la app
+    },
+
+    // Para forzar la sincronización si es una cuenta nueva sin datos
+    unlockCloudSync() {
+        cloudSyncReady = true;
     },
 
     serialize() {
