@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Metas (Paletas Neón Dinámicas)
+   OCTANAJE · Módulo Metas (Paletas Neón Dinámicas + Completadas Superior)
    ===================================================================== */
 (function () {
   "use strict";
@@ -114,21 +114,29 @@
       el("button", { class: "btn primary", onclick: () => addOrEdit(null), html: "＋ Nueva meta" })
     ]));
 
-    // --- NUEVAS PALETAS NEÓN DE METAS ---
+    // --- NUEVAS PALETAS NEÓN DE METAS (Completadas arriba, dinámico Rojo/Verde) ---
+    
+    // Lógica dinámica para Completadas
+    const isCompletedZero = st.completed === 0;
+    const compColor = isCompletedZero ? '#ff0055' : '#00ff88'; // Rojo si 0, Verde si >=1
+    const compBg = isCompletedZero ? 'rgba(255,0,85,0.08)' : 'rgba(0,255,136,0.08)';
+    const compBorder = isCompletedZero ? 'rgba(255,0,85,0.4)' : 'rgba(0,255,136,0.4)';
+    const compShadow = isCompletedZero ? 'rgba(255,0,85,0.5)' : 'rgba(0,255,136,0.5)';
+
     const kpiHtml = document.createElement('div');
     kpiHtml.innerHTML = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 24px;">
+      <div style="background:${compBg}; border:1px solid ${compBorder}; border-radius:14px; padding:20px; text-align:center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 12px; transition: all 0.3s ease;">
+        <span style="font-size:14px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 1px; font-weight: bold;">🏆 COMPLETADAS</span>
+        <span style="font-size:48px; font-weight:900; color:${compColor}; line-height:1; text-shadow: 0 0 20px ${compShadow};">${st.completed}</span>
+        <span style="font-size:13px; color:#888; display:block; margin-top:8px; font-weight: bold;">Logradas</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px;">
         
         <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
           <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">⚡ ACTIVAS</span>
           <span style="font-size:36px; font-weight:900; color:#00f3ff; line-height:1; text-shadow: 0 0 15px rgba(0,243,255,0.4);">${st.active}</span>
           <span style="font-size:11px; color:#888; display:block; margin-top:8px;">en progreso</span>
-        </div>
-
-        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
-          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🏆 COMPLETADAS</span>
-          <span style="font-size:36px; font-weight:900; color:#00ff88; line-height:1; text-shadow: 0 0 15px rgba(0,255,136,0.4);">${st.completed}</span>
-          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">logradas</span>
         </div>
 
         <div style="background:rgba(255,215,0,0.05); border:1px solid rgba(255,215,0,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease;">
