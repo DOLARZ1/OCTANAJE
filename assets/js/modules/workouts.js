@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Entrenamientos (Alineación de Inputs Corregida)
+   OCTANAJE · Módulo Entrenamientos (Con Paleta Diaria de Calorías Neón Naranja)
    ===================================================================== */
 (function () {
   "use strict";
@@ -308,13 +308,12 @@
       UI.closeModal(); render(document.getElementById("view-workouts")); N.App && N.App.refreshTop();
     }, "Registrar entrenamiento", () => dualWrap);
     
-    // DETECTOR EN TIEMPO REAL (Garantiza el cambio de menú)
     setTimeout(() => {
         const loop = setInterval(() => {
             const stdWrap = document.getElementById("standard-section-wrap");
             const comboWrap = document.getElementById("combo-section-wrap");
             if (!stdWrap || !comboWrap) {
-                clearInterval(loop); // Modal cerrado, se destruye el escáner
+                clearInterval(loop); 
                 return;
             }
             
@@ -334,7 +333,7 @@
                     comboWrap.style.display = "none";
                 }
             }
-        }, 150); // Revisa 6 veces por segundo, sin consumir recursos notables
+        }, 150); 
     }, 100);
 
     UI.openModal("Nuevo entrenamiento", body);
@@ -364,7 +363,19 @@
   }
   function stats() {
     const arr = workouts(), mk = DateUtil.monthKey(), monthSessions = arr.filter(w => w.date.slice(0, 7) === mk);
-    return { total: arr.length, monthCount: monthSessions.length, monthMinutes: monthSessions.reduce((s, w) => s + w.duration, 0), monthCalories: monthSessions.reduce((s, w) => s + w.calories, 0), streak: streak() };
+    // Cálculo exclusivo para el DÍA de hoy
+    const todayStr = DateUtil.todayKey();
+    const todaySessions = arr.filter(w => w.date === todayStr);
+    const todayCalories = todaySessions.reduce((s, w) => s + (Number(w.calories) || 0), 0);
+    
+    return { 
+      total: arr.length, 
+      monthCount: monthSessions.length, 
+      monthMinutes: monthSessions.reduce((s, w) => s + w.duration, 0), 
+      monthCalories: monthSessions.reduce((s, w) => s + w.calories, 0), 
+      todayCalories: todayCalories,
+      streak: streak() 
+    };
   }
 
   function createWorkoutItem(w) {
@@ -485,6 +496,18 @@
       ])
     ]));
 
+    // --- NUEVA PALETA NEÓN NARANJA: CALORÍAS QUEMADAS HOY ---
+    const topKpiHtml = document.createElement('div');
+    topKpiHtml.innerHTML = `
+      <div style="background:rgba(255, 85, 0, 0.08); border:1px solid rgba(255, 85, 0, 0.4); border-radius:14px; padding:20px; text-align:center; box-shadow: 0 4px 15px rgba(255, 85, 0, 0.15); margin-bottom: 12px; transition: all 0.3s ease;">
+        <span style="font-size:14px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 1px; font-weight: bold;">🔥 CALORÍAS</span>
+        <span style="font-size:48px; font-weight:900; color:#ff5500; line-height:1; text-shadow: 0 0 20px rgba(255, 85, 0, 0.5);">${fmt.num(st.todayCalories)}</span>
+        <span style="font-size:13px; color:#888; display:block; margin-top:8px; font-weight: bold;">Quemadas (Día)</span>
+      </div>
+    `;
+    container.appendChild(topKpiHtml);
+
+    // --- PALETAS ORIGINALES ---
     const kpiHtml = document.createElement('div');
     kpiHtml.innerHTML = `
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
