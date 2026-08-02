@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Hábitos (Original + Paletas Neón + Reseteo Mensual)
+   OCTANAJE · Módulo Hábitos (Original + Paletas Neón + Reseteo Mensual Total)
    Soporta hábitos simples (1 check) y hábitos con META DIARIA de N veces
    (se rellenan N cuadritos; el hábito se completa solo al llenarlos todos).
    ===================================================================== */
@@ -119,15 +119,29 @@
     }
     return best;
   }
-  function completion30(h) {
-    const set = activeSet(h);
-    const active = DateUtil.lastNDays(30).filter((d) => set.has(DateUtil.parse(d).getDay()));
-    if (!active.length) return 0;
-    const done = active.filter((d) => doneOn(h, d)).length;
-    return Math.round((done / active.length) * 100);
+
+  // Calcula el porcentaje de cumplimiento estricto del MES ACTUAL para UN hábito
+  function completionMonth(h) {
+    const tKey = today();
+    const prefix = tKey.slice(0, 7); // ej: "2026-08"
+    const parts = prefix.split('-');
+    const daysInMonth = new Date(parts[0], parts[1], 0).getDate();
+    let expected = 0;
+    let done = 0;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayStr = String(d).padStart(2, '0');
+      const fullDate = `${prefix}-${dayStr}`;
+      // Solo contamos los días hasta "hoy" y que el hábito estuviera activo
+      if (fullDate <= tKey && activeOn(h, fullDate)) {
+        expected++;
+        if (doneOn(h, fullDate)) done++;
+      }
+    }
+    return expected === 0 ? 0 : Math.round((done / expected) * 100);
   }
 
-  // Calcula el porcentaje de cumplimiento estricto del MES ACTUAL para la nueva paleta
+  // Calcula el porcentaje de cumplimiento estricto del MES ACTUAL para TODOS los hábitos
   function getMonthCompliance() {
     const arr = habits();
     const tKey = today();
@@ -281,7 +295,7 @@
     ]);
     container.appendChild(head);
 
-    // --- NUEVAS PALETAS NEÓN REEMPLAZANDO EL VIEJO SUMMARY ---
+    // --- PALETAS NEÓN SUPERIORES ---
     const kpiHtml = document.createElement('div');
     kpiHtml.innerHTML = `
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 20px;">
@@ -332,7 +346,7 @@
   function habitCard(h, idx, total) {
     const st = streak(h);
     const done = doneToday(h);
-    const comp = completion30(h);
+    const comp = completionMonth(h); // Reemplazado por cálculo del mes actual
     const target = tgt(h);
     const cur = dayVal(h, today());
     const active = activeToday(h);
@@ -388,14 +402,14 @@
       ]));
     }
 
-    // cumplimiento 30 días original (Mantenido intacto)
+    // cumplimiento del mes actual (Reemplaza "Cumplimiento 30 días")
     card.appendChild(el("div", { class: "flex items-center justify-between mt-16", style: "margin-bottom:6px" }, [
-      el("span", { class: "fs-12 text-dim", text: "Cumplimiento 30 días" }),
+      el("span", { class: "fs-12 text-dim", text: "Cumplimiento del mes" }),
       el("span", { class: "fs-12 fw-700 text-accent", text: fmt.pct(comp) })
     ]));
     card.appendChild(el("div", { class: "progress" + (comp >= 70 ? " good" : "") }, [el("span", { style: `width:${comp}%` })]));
     
-    // --- NUEVO HEATMAP EXACTO DEL MES EN CURSO (Reemplaza la tira original) ---
+    // --- HEATMAP EXACTO DEL MES EN CURSO ---
     const tKey = today();
     const parts = tKey.split('-');
     const year = parseInt(parts[0], 10);
