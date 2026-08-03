@@ -1,11 +1,5 @@
 /* =====================================================================
-   OCTANAJE · Módulo Ayuno intermitente
-   Planes preconfigurados (16:8, 18:6, 20:4, OMAD, 5:2 o personalizado),
-   horario de tu ventana para comer, recordatorios reales en tu
-   calendario (Google Calendar / .ics) para el inicio y fin de tu
-   ventana, calendario con palomita de cumplimiento, racha, gráfica de
-   progreso, interruptor para activar/desactivar el seguimiento, y XP
-   por cada día cumplido.
+   OCTANAJE · Módulo Ayuno intermitente (Orden Neón Personalizado + Timer Suave)
    ===================================================================== */
 (function () {
   "use strict";
@@ -52,7 +46,6 @@
 
   function clampHours(h) { h = Number(h) || 16; return Math.max(1, Math.min(23, h)); }
 
-  // suma horas (puede tener .5) a una hora "HH:MM" y devuelve "HH:MM" (cruza medianoche)
   function addHoursToTime(time, hours) {
     const [hh, mm] = (time || "08:00").split(":").map(Number);
     let total = hh * 60 + mm + Math.round(hours * 60);
@@ -61,7 +54,6 @@
     return String(H).padStart(2, "0") + ":" + String(M).padStart(2, "0");
   }
 
-  // ventana de comer/ayuno según el plan actual (o info especial para 5:2)
   function windowInfo() {
     const st = fasting();
     if (st.plan === "5:2") return { type: "5:2", days: st.fiveTwoDays || [] };
@@ -73,7 +65,6 @@
     return { type: "window", fastH, eatH, eatStart, eatEnd, fastStart: eatEnd, fastEnd: eatStart };
   }
 
-  // ¿este día importa para marcar cumplimiento según el plan? (en 5:2 solo los 2 días elegidos)
   function isRelevantDay(key) {
     const st = fasting();
     if (st.plan !== "5:2") return true;
@@ -139,13 +130,9 @@
     };
   }
 
-  // ---------------- Cronómetro en vivo ----------------
-  // Muestra cuánto llevas en tu fase actual (ayunando o comiendo) y
-  // cuánto falta para que cambie, actualizándose cada segundo mientras
-  // la pestaña de Ayuno esté visible (se detiene si sales de la vista
-  // o la app pasa a segundo plano, para no gastar batería de más).
+  // ---------------- Cronómetro en vivo Mejorado ----------------
   let tickHandle = null;
-  let liveEls = null; // {phase, elapsed, remaining, bar}
+  let liveEls = null;
 
   function msUntil(hhmm) {
     const now = new Date();
@@ -155,18 +142,21 @@
     if (diff < 0) diff += 24 * 3600 * 1000;
     return diff;
   }
+  
   function fmtHM(ms) {
-    const totalMin = Math.max(0, Math.floor(ms / 60000));
-    const h = Math.floor(totalMin / 60), m = totalMin % 60, s = Math.floor((ms % 60000) / 1000);
+    // Calculo estricto para evitar retrasos de redondeo de milisegundos
+    const totalSeconds = Math.floor(ms / 1000);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
     return h + "h " + String(m).padStart(2, "0") + "m " + String(s).padStart(2, "0") + "s";
   }
 
   function liveStatus() {
     const w = windowInfo();
-    if (w.type === "5:2") return null; // el plan 5:2 no tiene ventana horaria fija
+    if (w.type === "5:2") return null; 
     const untilFastStart = msUntil(w.fastStart);
     const untilEatStart = msUntil(w.eatStart);
-    // si falta menos para que empiece el ayuno que para que empiece a comer, estamos en ventana de comer
     const inEatWindow = untilFastStart < untilEatStart;
     const totalMs = (inEatWindow ? w.eatH : w.fastH) * 3600 * 1000;
     const remainingMs = inEatWindow ? untilFastStart : untilEatStart;
@@ -175,25 +165,56 @@
     return { inEatWindow, remainingMs, elapsedMs, pct };
   }
 
+  function updateLiveCardUI() {
+    const st = liveStatus();
+    if (!st || !liveEls) return;
+
+    const isEating = st.inEatWindow;
+    const bgColor = isEating ? 'rgba(0,255,136,0.08)' : 'rgba(255,0,85,0.08)';
+    const borderColor = isEating ? 'rgba(0,255,136,0.4)' : 'rgba(255,0,85,0.4)';
+    const textColor = isEating ? '#00ff88' : '#ff0055';
+    const textShadow = isEating ? 'rgba(0,255,136,0.5)' : 'rgba(255,0,85,0.5)';
+    
+    liveEls.container.style.background = bgColor;
+    liveEls.container.style.border = `1px solid ${borderColor}`;
+    
+    liveEls.title.innerHTML = isEating ? "🍽️ ESTÁS EN TU VENTANA PARA COMER" : "🕐 ESTÁS AYUNANDO";
+    liveEls.remain.style.color = textColor;
+    liveEls.remain.style.textShadow = `0 0 15px ${textShadow}`;
+    
+    liveEls.barFill.style.background = textColor;
+    liveEls.barFill.style.boxShadow = `0 0 10px ${textShadow}`;
+    liveEls.barFill.style.width = st.pct.toFixed(1) + "%";
+    
+    liveEls.remain.textContent = fmtHM(st.remainingMs);
+    liveEls.elapsed.textContent = "Llevas " + fmtHM(st.elapsedMs);
+    liveEls.nextLbl.textContent = isEating ? "Tu ayuno empieza en" : "Tu ventana para comer empieza en";
+  }
+
   function liveCard() {
     const st = liveStatus();
     if (!st) return null;
-    const phaseLbl = st.inEatWindow ? "🍽️ Estás en tu ventana para comer" : "🕐 Estás ayunando";
-    const nextLbl = st.inEatWindow ? "Tu ayuno empieza en" : "Tu ventana para comer empieza en";
 
-    const bar = el("div", { class: "xp-bar", style: "height:10px;margin-top:10px" }, [el("div", { class: "xp-fill", style: "width:" + st.pct.toFixed(1) + "%" })]);
-    const remainNode = el("div", { class: "kpi-val", style: "font-size:26px;color:var(--accent)", text: fmtHM(st.remainingMs) });
-    const card = el("div", { class: "card mb-16" }, [
-      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), phaseLbl])]),
-      el("div", { class: "fs-12 text-faint", text: "Llevas " + fmtHM(st.elapsedMs) }),
-      bar,
-      el("div", { class: "mt-16" }, [
-        el("div", { class: "fs-12 text-faint", text: nextLbl }),
-        remainNode
-      ])
-    ]);
-    liveEls = { bar: bar.children[0], remain: remainNode, elapsed: card.children[1] };
-    return card;
+    const container = el("div", { style: "border-radius:14px; padding:20px; text-align:center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 16px; transition: all 0.3s ease;" });
+    const title = el("span", { style: "font-size:14px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:12px; letter-spacing: 1px; font-weight: bold;" });
+    
+    const elapsed = el("div", { class: "fs-12 text-faint", style: "margin-bottom:8px" });
+    const bar = el("div", { class: "xp-bar", style: "height:12px; border-radius:6px; background:rgba(255,255,255,0.1);" });
+    const barFill = el("div", { class: "xp-fill", style: "border-radius:6px; transition: width 0.5s linear;" });
+    bar.appendChild(barFill);
+
+    const nextLbl = el("div", { class: "fs-12 text-faint", style: "margin-top:16px; margin-bottom:4px;" });
+    const remain = el("div", { style: "font-size:42px; font-weight:900; line-height:1; transition: color 0.3s ease;" });
+
+    container.appendChild(title);
+    container.appendChild(elapsed);
+    container.appendChild(bar);
+    container.appendChild(nextLbl);
+    container.appendChild(remain);
+
+    liveEls = { container, title, elapsed, barFill, nextLbl, remain };
+    updateLiveCardUI();
+    return container;
   }
 
   function viewIsActive() {
@@ -202,28 +223,17 @@
   }
   function liveTick() {
     if (!liveEls) return;
-    // si el usuario cambió de pestaña sin volver a renderizar Ayuno, o la
-    // app pasó a segundo plano, detenemos el cronómetro (ahorro de batería)
     if (!viewIsActive() || (typeof document !== "undefined" && document.hidden)) { stopLiveTicking(); return; }
-    const st = liveStatus();
-    if (!st) return;
-    liveEls.bar.style.width = st.pct.toFixed(1) + "%";
-    liveEls.remain.textContent = fmtHM(st.remainingMs);
-    liveEls.elapsed.textContent = "Llevas " + fmtHM(st.elapsedMs);
+    updateLiveCardUI();
   }
 
-  // Solo detiene el intervalo, SIN borrar liveEls — se usa justo antes de
-  // volver a arrancarlo, para no perder la referencia a los nodos que
-  // liveCard() ya llenó (ese era el bug: llamar aquí a stopLiveTicking()
-  // ponía liveEls en null, y liveTick() salía de inmediato cada segundo
-  // sin actualizar nada hasta el siguiente render completo).
   function pauseLiveTicking() {
     if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
   }
   function startLiveTicking() {
     pauseLiveTicking();
     if (typeof document !== "undefined" && document.hidden) return;
-    tickHandle = setInterval(liveTick, 1000);
+    tickHandle = setInterval(liveTick, 1000); // 1 tick por segundo exacto
   }
   function stopLiveTicking() {
     pauseLiveTicking();
@@ -518,21 +528,19 @@
       ])
     ]));
 
-    // ---- Interruptor activar/desactivar ----
-    const toggle = el("button", { class: "switch" + (st.enabled ? " on" : ""), role: "switch", "aria-checked": st.enabled ? "true" : "false" }, [el("span", { class: "knob" })]);
-    toggle.addEventListener("click", toggleEnabled);
-    container.appendChild(el("div", { class: "card mb-16" }, [
-      el("div", { class: "set-row", style: "padding:0" }, [
-        el("div", {}, [
-          el("div", { class: "set-title", text: "🕐 Ayuno intermitente" }),
-          el("div", { class: "set-desc", text: st.enabled ? "Activado · plan " + planInfo(st.plan).label : "Desactivado" })
-        ]),
-        toggle
-      ])
-    ]));
-
     if (!st.enabled) {
       stopLiveTicking();
+      const toggle = el("button", { class: "switch", role: "switch", "aria-checked": "false" }, [el("span", { class: "knob" })]);
+      toggle.addEventListener("click", toggleEnabled);
+      container.appendChild(el("div", { class: "card mb-16" }, [
+        el("div", { class: "set-row", style: "padding:0" }, [
+          el("div", {}, [
+            el("div", { class: "set-title", text: "🕐 Ayuno intermitente" }),
+            el("div", { class: "set-desc", text: "Desactivado" })
+          ]),
+          toggle
+        ])
+      ]));
       container.appendChild(el("div", { class: "card mb-16" }, [
         el("div", { class: "empty" }, [
           el("span", { class: "big", text: "🕐" }),
@@ -545,11 +553,80 @@
       return;
     }
 
-    const w = windowInfo();
+    // ORDEN 1: Paleta Estás en tu ventana (Cronómetro Vivo)
+    const lc = liveCard();
+    if (lc) { container.appendChild(lc); startLiveTicking(); }
+    else stopLiveTicking();
+
+    // ORDEN 2: Paleta HOY (Marcar cumplimiento)
+    const todEntry = entryOn(today());
+    const todRelevant = isRelevantDay(today());
+    const todayCard = el("div", { class: "card mb-16" }, [
+      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Hoy"])])
+    ]);
+    if (!todRelevant) {
+      todayCard.appendChild(el("div", { class: "insight" }, [el("span", { class: "ico", text: "ℹ️" }), el("div", { class: "txt", text: "Hoy no es uno de tus días de restricción del plan 5:2. ¡Disfruta tu día normal!" })]));
+    } else {
+      todayCard.appendChild(el("div", { class: "row" }, [
+        el("button", { class: "btn" + (todEntry && todEntry.status === "done" ? " primary" : ""), html: "✅ Cumplí mi ayuno hoy", onclick: () => { setStatus(today(), "done"); Audio.play("levelup"); toast({ icon: "✅", title: "¡Racha +1!", msg: "Sigue así" }); render(container); } }),
+        el("button", { class: "btn" + (todEntry && todEntry.status === "failed" ? " danger" : ""), html: "❌ No lo cumplí", onclick: () => { setStatus(today(), "failed"); Audio.play("tap"); toast({ icon: "❌", msg: "Sin problema, mañana lo retomas" }); render(container); } })
+      ]));
+      todayCard.appendChild(el("button", { class: "btn ghost sm mt-8", onclick: () => openDayForm(today()), html: "📝 Agregar nota" }));
+    }
+    container.appendChild(todayCard);
+
+    // ORDEN 3: Racha Actual y Cumplimiento 7 días
     const streak = complianceStreak();
     const pct7 = compliancePct(7);
+    
+    const kpisTop = document.createElement('div');
+    kpisTop.innerHTML = `
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div style="background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">🔥 RACHA ACTUAL</span>
+          <span style="font-size:36px; font-weight:900; color:#00f3ff; line-height:1; text-shadow: 0 0 15px rgba(0,243,255,0.4);">${streak}</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">${streak === 1 ? "día cumplido" : "días cumplidos"}</span>
+        </div>
+        <div style="background:rgba(255,215,0,0.05); border:1px solid rgba(255,215,0,0.3); border-radius:14px; padding:16px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          <span style="font-size:11px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 0.5px;">📈 CUMPLIMIENTO</span>
+          <span style="font-size:36px; font-weight:900; color:#ffd700; line-height:1; text-shadow: 0 0 15px rgba(255,215,0,0.4);">${pct7}%</span>
+          <span style="font-size:11px; color:#888; display:block; margin-top:8px;">últimos 7 días</span>
+        </div>
+      </div>
+    `;
+    container.appendChild(kpisTop);
 
-    // ---- Plan actual ----
+    // ORDEN 4: Total Cumplidos (Súper Paleta Verde Neón Larga)
+    const kpisBottom = document.createElement('div');
+    kpisBottom.innerHTML = `
+      <div style="background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.4); border-radius:14px; padding:20px; text-align:center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 16px;">
+        <span style="font-size:14px; color:#aaa; text-transform:uppercase; display:block; margin-bottom:6px; letter-spacing: 1px; font-weight: bold;">⭐ TOTAL CUMPLIDOS</span>
+        <span style="font-size:48px; font-weight:900; color:#00ff88; line-height:1; text-shadow: 0 0 20px rgba(0,255,136,0.5);">${totalDone()}</span>
+        <span style="font-size:13px; color:#888; display:block; margin-top:8px; font-weight: bold;">días acumulados en total</span>
+      </div>
+    `;
+    container.appendChild(kpisBottom);
+
+    // ORDEN 5: Gráfica
+    container.appendChild(buildChartCard(container));
+    
+    // ORDEN 6: Calendario
+    container.appendChild(buildCalendar());
+
+    // ORDEN 7: Ayuno Intermitente (Interruptor) y Plan Personalizado
+    const toggleOn = el("button", { class: "switch on", role: "switch", "aria-checked": "true" }, [el("span", { class: "knob" })]);
+    toggleOn.addEventListener("click", toggleEnabled);
+    container.appendChild(el("div", { class: "card mb-16" }, [
+      el("div", { class: "set-row", style: "padding:0" }, [
+        el("div", {}, [
+          el("div", { class: "set-title", text: "🕐 Ayuno intermitente" }),
+          el("div", { class: "set-desc", text: "Activado · plan " + planInfo(st.plan).label })
+        ]),
+        toggleOn
+      ])
+    ]));
+
+    const w = windowInfo();
     const planCard = el("div", { class: "card mb-16" }, [
       el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
         el("div", {}, [
@@ -573,51 +650,11 @@
     ]);
     container.appendChild(planCard);
 
-    // ---- Cronómetro en vivo (solo si el plan tiene horario fijo) ----
-    const lc = liveCard();
-    if (lc) { container.appendChild(lc); startLiveTicking(); }
-    else stopLiveTicking();
-
-    // ---- Marcar hoy ----
-    const todEntry = entryOn(today());
-    const todRelevant = isRelevantDay(today());
-    const todayCard = el("div", { class: "card mb-16" }, [
-      el("div", { class: "card-head" }, [el("div", { class: "card-title" }, [el("span", { class: "dot" }), "Hoy"])])
-    ]);
-    if (!todRelevant) {
-      todayCard.appendChild(el("div", { class: "insight" }, [el("span", { class: "ico", text: "ℹ️" }), el("div", { class: "txt", text: "Hoy no es uno de tus días de restricción del plan 5:2. ¡Disfruta tu día normal!" })]));
-    } else {
-      todayCard.appendChild(el("div", { class: "row" }, [
-        el("button", { class: "btn" + (todEntry && todEntry.status === "done" ? " primary" : ""), html: "✅ Cumplí mi ayuno hoy", onclick: () => { setStatus(today(), "done"); Audio.play("levelup"); toast({ icon: "✅", title: "¡Racha +1!", msg: "Sigue así" }); render(container); } }),
-        el("button", { class: "btn" + (todEntry && todEntry.status === "failed" ? " danger" : ""), html: "❌ No lo cumplí", onclick: () => { setStatus(today(), "failed"); Audio.play("tap"); toast({ icon: "❌", msg: "Sin problema, mañana lo retomas" }); render(container); } })
-      ]));
-      todayCard.appendChild(el("button", { class: "btn ghost sm mt-8", onclick: () => openDayForm(today()), html: "📝 Agregar nota" }));
-    }
-    container.appendChild(todayCard);
-
-    // ---- KPIs ----
-    container.appendChild(el("div", { class: "grid cols-3 mb-16" }, [
-      kpi("Racha actual", streak + "", streak === 1 ? "día cumplido" : "días cumplidos", "accent"),
-      kpi("Cumplimiento 7 días", pct7 + "%", "de los días que aplican", pct7 >= 70 ? "good" : pct7 >= 40 ? "warn" : "bad"),
-      kpi("Total cumplidos", totalDone() + "", "acumulados", "warn")
-    ]));
-
-    container.appendChild(buildChartCard(container));
-    container.appendChild(buildCalendar());
+    // ORDEN 8: Recomendaciones
     container.appendChild(tipsCard());
   }
 
-  function kpi(label, val, sub, cls) {
-    return el("div", { class: "card" }, [el("div", { class: "kpi" }, [
-      el("div", { class: "kpi-lbl", text: label }), el("div", { class: "kpi-val " + (cls || ""), text: val }), el("div", { class: "kpi-sub", text: sub })
-    ])]);
-  }
-
   // ---------------- Notificación automática al abrir/cerrar tu ventana ----------------
-  // Revisa cada minuto si es exactamente la hora de empezar a comer o de
-  // empezar a ayunar (o el día de restricción del plan 5:2), y avisa una
-  // sola vez por ocurrencia usando el sistema de notificaciones/toasts
-  // que ya existe en la app (respeta el interruptor general de Ajustes).
   function checkAutoNotify() {
     const st = fasting();
     if (!st.enabled || !N.Notify) return;
