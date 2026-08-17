@@ -1,5 +1,6 @@
 /* =====================================================================
    OCTANAJE · Gamification — XP, niveles, rachas y logros
+   (Sistema de Prestigio: Medallas basadas en Nivel de XP Acumulada)
    ===================================================================== */
 (function () {
   "use strict";
@@ -11,14 +12,15 @@
   // XP necesaria para alcanzar el nivel L (curva progresiva)
   function xpForLevel(L) { return Math.round(100 * Math.pow(L, 1.45)); }
 
+  // Nombres oficiales de los Rangos según el nivel
   const RANKS = [
-    { min: 1, name: "Iniciado" },
-    { min: 4, name: "Aprendiz" },
-    { min: 8, name: "Constante" },
-    { min: 13, name: "Disciplinado" },
-    { min: 20, name: "Élite" },
-    { min: 30, name: "Maestro" },
-    { min: 45, name: "Leyenda" }
+    { min: 1, name: "Bronce" },
+    { min: 3, name: "Plata" },
+    { min: 5, name: "Oro" },
+    { min: 7, name: "Platino" },
+    { min: 9, name: "Diamante" },
+    { min: 11, name: "Heroico" },
+    { min: 16, name: "Gran Maestro" }
   ];
 
   // tier → intensidad visual del logro (común, raro, épico, legendario)
@@ -46,9 +48,9 @@
     { id: "fasting_streak_7", name: "Ayuno constante", icon: "⏳", desc: "Racha de 7 días de ayuno cumplidos", tier: "rare", test: (s) => window.NEXUS.Fasting && window.NEXUS.Fasting.complianceStreak() >= 7 },
     { id: "fasting_streak_30", name: "Disciplina de acero", icon: "🛡️", desc: "Racha de 30 días de ayuno cumplidos", tier: "epic", test: (s) => window.NEXUS.Fasting && window.NEXUS.Fasting.complianceStreak() >= 30 },
     { id: "fasting_total_50", name: "Ayunador experto", icon: "🏅", desc: "Cumple 50 días de ayuno en total", tier: "legendary", test: (s) => Object.values((s.fasting && s.fasting.log) || {}).filter((e) => e.status === "done").length >= 50 },
-    { id: "diamond_rank", name: "Rango Diamante", icon: "💎", desc: "Alcanza el rango Diamante por racha", tier: "epic", test: (s) => Gami.medalForStreak(Gami.globalStreak()).cls === "diamond" },
-    { id: "heroic_rank", name: "Rango Heroico", icon: "⚔️", desc: "Alcanza el rango Heroico por racha", tier: "legendary", test: (s) => Gami.medalForStreak(Gami.globalStreak()).cls === "heroic" },
-    { id: "grandmaster_rank", name: "Gran Maestro", icon: "🎖️", desc: "Alcanza el rango máximo: Gran Maestro", tier: "legendary", test: (s) => Gami.medalForStreak(Gami.globalStreak()).id === "grandmaster" },
+    { id: "diamond_rank", name: "Rango Diamante", icon: "💎", desc: "Alcanza el rango Diamante", tier: "epic", test: (s) => Gami.medalForLevel(s.profile.level).cls === "diamond" },
+    { id: "heroic_rank", name: "Rango Heroico", icon: "⚔️", desc: "Alcanza el rango Heroico", tier: "legendary", test: (s) => Gami.medalForLevel(s.profile.level).cls === "heroic" },
+    { id: "grandmaster_rank", name: "Gran Maestro", icon: "🎖️", desc: "Alcanza el rango máximo: Gran Maestro", tier: "legendary", test: (s) => Gami.medalForLevel(s.profile.level).id === "grandmaster" },
     { id: "all_rounder", name: "Multidisciplinario", icon: "🌐", desc: "Registra actividad en 6 módulos distintos el mismo día", tier: "legendary", test: (s) => {
       const k = DateUtil.todayKey();
       const habitsOk = s.habits.some((h) => h.history && h.history[k]);
@@ -66,19 +68,17 @@
   }
 
   // ---------------------------------------------------------------
-  //  MEDALLAS POR RACHA — escalera estilo "battle pass" (Free Fire)
-  //  Bronce → Plata → Oro → Titanio → Diamante → Heroico → Gran Maestro
-  //  colors: [brillo, base]. shield: forma de escudo (Diamante/Heroico/GM)
-  //  hasWings: rayos eléctricos dorados a los costados (Heroico/Gran Maestro)
+  //  MEDALLAS POR NIVEL (PRESTIGIO ACUMULADO)
+  //  Bronce → Plata → Oro → Platino → Diamante → Heroico → Gran Maestro
   // ---------------------------------------------------------------
   const MEDALS = [
-    { id: "bronze", name: "Bronce", cls: "bronze", minStreak: 0, colors: ["#f0b076", "#5c3418"] },
-    { id: "silver", name: "Plata", cls: "silver", minStreak: 5, colors: ["#f5f9ff", "#8b97ab"] },
-    { id: "gold", name: "Oro", cls: "gold", minStreak: 15, colors: ["#ffe680", "#a8760a"] },
-    { id: "titanium", name: "Titanio", cls: "titanium", minStreak: 30, colors: ["#eef4f8", "#4a5568"] },
-    { id: "diamond", name: "Diamante", cls: "diamond", minStreak: 50, colors: ["#d5f6ff", "#1c6aa8"], shield: true },
-    { id: "heroic", name: "Heroico", cls: "heroic", minStreak: 75, colors: ["#ff8a8a", "#7a0018"], shield: true, hasWings: true, wingScale: 1, blurStd: 2.6 },
-    { id: "grandmaster", name: "Gran Maestro", cls: "grandmaster", minStreak: 100, colors: ["#fff6c8", "#a8760a"], shield: true, hasWings: true, wingScale: 1.55, blurStd: 3.6, hasCrown: true }
+    { id: "bronze", name: "Bronce", cls: "bronze", minLevel: 1, colors: ["#f0b076", "#5c3418"] },
+    { id: "silver", name: "Plata", cls: "silver", minLevel: 3, colors: ["#f5f9ff", "#8b97ab"] },
+    { id: "gold", name: "Oro", cls: "gold", minLevel: 5, colors: ["#ffe680", "#a8760a"] },
+    { id: "platinum", name: "Platino", cls: "titanium", minLevel: 7, colors: ["#eef4f8", "#4a5568"] },
+    { id: "diamond", name: "Diamante", cls: "diamond", minLevel: 9, colors: ["#d5f6ff", "#1c6aa8"], shield: true },
+    { id: "heroic", name: "Heroico", cls: "heroic", minLevel: 11, colors: ["#ff8a8a", "#7a0018"], shield: true, hasWings: true, wingScale: 1, blurStd: 2.6 },
+    { id: "grandmaster", name: "Gran Maestro", cls: "grandmaster", minLevel: 16, colors: ["#fff6c8", "#a8760a"], shield: true, hasWings: true, wingScale: 1.55, blurStd: 3.6, hasCrown: true }
   ];
 
   // ---- contorno de escudo heráldico (Diamante / Heroico / Gran Maestro) ----
@@ -114,7 +114,6 @@
     return d + " Z";
   }
   // abanico de rayos dorados a un costado del escudo (mirror=true → lado izquierdo)
-  // tres capas: dos borrosas (glow dorado intenso, más ancho) + una nítida encima con núcleo blanco.
   function boltWingSvg(cx, cy, mirror, gradId, blurId, scale) {
     scale = scale || 1;
     const angles = [-8, -30, -52, -74];
@@ -158,13 +157,13 @@
     return body + band + jewels + tips;
   }
 
-  // construye el SVG completo de la medalla: escudo/medallón + gema central + brillo (+ rayos si aplica)
+  // construye el SVG completo de la medalla
   function medalBadgeSvg(medal) {
-    const gid = "mg-" + medal.id;     // gradiente principal (metal/escudo)
-    const bgid = "bg-" + medal.id;    // gradiente dorado de los rayos
+    const gid = "mg-" + medal.id;     // gradiente principal
+    const bgid = "bg-" + medal.id;    // gradiente dorado
     const hid = "hl-" + medal.id;     // brillo especular
-    const rid = "rb-" + medal.id;     // listón inferior (solo medallón circular)
-    const flid = "fl-" + medal.id;    // filtro de desenfoque (glow de los rayos)
+    const rid = "rb-" + medal.id;     // listón inferior
+    const flid = "fl-" + medal.id;    // filtro de desenfoque
     const light = medal.colors[0], deep = medal.colors[1];
     const isShield = !!medal.shield;
     const wings = !!medal.hasWings;
@@ -203,7 +202,6 @@
     let wingsMk = "";
     if (wings) { wingsMk = boltWingSvg(cx, cy, false, bgid, flid, wingScale) + boltWingSvg(cx, cy, true, bgid, flid, wingScale); }
 
-    // listón/cinta inferior (solo medallón circular, look "medalla de pecho")
     let ribbon = "";
     if (!isShield) {
       ribbon = '<path d="M' + (cx - 8) + ',' + (cy + R - 4) + ' L' + (cx - 6) + ',' + (cy + R + 13) + ' L' + cx + ',' + (cy + R + 7) + ' L' + (cx + 6) + ',' + (cy + R + 13) + ' L' + (cx + 8) + ',' + (cy + R - 4) + ' Z" fill="url(#' + rid + ')" opacity=".92"/>';
@@ -219,14 +217,14 @@
       body = '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="url(#' + gid + ')" stroke="rgba(0,0,0,.25)" stroke-width="1"/>';
       innerRing = '<circle cx="' + cx + '" cy="' + cy + '" r="' + (R - 4) + '" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1"/>';
     }
-    // gema/estrella central (la "esfera") — misma pieza en medallón o escudo
+    
     const gemCy = isShield ? cy - R * 0.12 : cy;
     const star = starPath(cx, gemCy, R - 8, R - 15, 5);
     const gem = '<path d="' + star + '" fill="rgba(255,255,255,.95)"/>';
-    // brillo especular ovalado
+    
     const glossCy = isShield ? cy - R * 0.5 : cy - R * 0.4;
     const gloss = '<ellipse cx="' + (cx - R * 0.32) + '" cy="' + glossCy + '" rx="' + (R * 0.55) + '" ry="' + (R * 0.34) + '" fill="url(#' + hid + ')" transform="rotate(-28 ' + (cx - R * 0.32) + ' ' + glossCy + ')"/>';
-    // destellos (sparkles) — más notorios junto a los rayos
+    
     let sparkles = "";
     if (wings) {
       const spScale = 1 + (wingScale - 1) * 0.6;
@@ -234,7 +232,7 @@
         sparkle(cx + (R + 10) * spScale, cy - (R + 6) * spScale, 3.8 * spScale) +
         sparkle(cx, cy - (R + 15) * spScale, 3 * spScale);
     }
-    // corona real sobre el escudo (Gran Maestro)
+    
     let crownMk = "";
     if (crown) { crownMk = crownSvg(cx, cy - R * 1.28, R * 0.62, gid); }
 
@@ -256,21 +254,24 @@
       ' L' + (x - s * 2.2) + ',' + y + ' L' + (x - s * 0.5) + ',' + (y - s * 0.5) + ' Z" fill="#fff" opacity=".9"/>';
   }
 
-  function medalForStreak(streak) {
+  // Ahora las medallas se basan estrictamente en el Nivel
+  function medalForLevel(level) {
     let m = MEDALS[0];
-    for (let i = 0; i < MEDALS.length; i++) { if (streak >= MEDALS[i].minStreak) m = MEDALS[i]; else break; }
+    for (let i = 0; i < MEDALS.length; i++) { if (level >= MEDALS[i].minLevel) m = MEDALS[i]; else break; }
     return m;
   }
-  function nextMedal(streak) {
-    for (let i = 0; i < MEDALS.length; i++) { if (streak < MEDALS[i].minStreak) return MEDALS[i]; }
-    return null; // ya está en Gran Maestro
+  function nextMedal(level) {
+    for (let i = 0; i < MEDALS.length; i++) { if (level < MEDALS[i].minLevel) return MEDALS[i]; }
+    return null; // Ya es Gran Maestro
   }
 
   const Gami = {
     xpForLevel,
     allMedals() { return MEDALS; },
-    medalForStreak,
-    nextMedal,
+    medalForLevel,
+    // Puente de compatibilidad: Si tu dashboard pregunta por racha, le damos la medalla de tu Nivel
+    medalForStreak: (streak) => medalForLevel(Store.get().profile.level), 
+    nextMedal: (val) => nextMedal(Store.get().profile.level),
     medalBadgeSvg,
 
     rankName(level) {
@@ -317,7 +318,7 @@
       return leveledTo;
     },
 
-    // quitar XP (al deshacer acciones) sin bajar de nivel bruscamente
+    // quitar XP sin bajar de nivel bruscamente
     remove(amount) {
       const s = Store.get();
       s.profile.xp = Math.max(0, s.profile.xp - amount);
