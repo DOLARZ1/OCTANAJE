@@ -1,6 +1,6 @@
 /* =====================================================================
    OCTANAJE · Dashboard — resumen general con gráficas en tiempo real
-   (Paletas Neón + Quote Fuego)
+   (Paletas Neón + Quote Fuego + Corrección Medallas Prestigio Nivel)
    ===================================================================== */
 (function () {
   "use strict";
@@ -130,8 +130,8 @@
     achCard.appendChild(achGrid);
     container.appendChild(achCard);
 
-    // Medallas por racha (escalera estilo battle-pass)
-    container.appendChild(buildMedalLadderCard(streak));
+    // Medallas de Prestigio (basadas en NIVEL en lugar de racha)
+    container.appendChild(buildMedalLadderCard(s.profile.level));
 
     // dibujar gráficas
     setTimeout(() => {
@@ -145,7 +145,7 @@
   }
 
   // ---------- Frase motivacional ----------
-  let quoteOverride = null; // índice fijo tras presionar "otra frase"
+  let quoteOverride = null;
 
   function buildQuoteCard(container) {
     const todayKey = DateUtil.todayKey();
@@ -178,7 +178,7 @@
   }
 
   // ---------- Ingresos y gastos (medidor radial) ----------
-  let ieDashPeriod = "monthly"; // "daily" | "weekly" | "biweekly" | "monthly"
+  let ieDashPeriod = "monthly";
 
   function ieLegendRow(idx, label, val, maxV, colorVar) {
     const pct = maxV > 0 ? Math.round((val / maxV) * 100) : 0;
@@ -232,27 +232,27 @@
     return card;
   }
 
-  // ---------- Escalera de medallas por racha ----------
-  function buildMedalLadderCard(streak) {
-    const cur = Gami.medalForStreak(streak);
-    const next = Gami.nextMedal(streak);
+  // ---------- Escalera de medallas por PRESTIGIO (Niveles) ----------
+  function buildMedalLadderCard(level) {
+    const cur = Gami.medalForLevel(level);
+    const next = Gami.nextMedal(level);
     const card = el("div", { class: "card mb-16" }, [
       el("div", { class: "card-head", style: "flex-wrap:wrap;gap:8px" }, [
-        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "🎖️ Medallas por racha"]),
-        el("span", { class: "chip accent", text: "🔥 " + streak + " día" + (streak === 1 ? "" : "s") })
+        el("div", { class: "card-title" }, [el("span", { class: "dot" }), "🎖️ Sistema de Prestigio"]),
+        el("span", { class: "chip accent", text: "⭐ Nivel " + level })
       ]),
       el("div", { class: "flex items-center gap-12", style: "margin-bottom:14px" }, [
         el("div", { class: "medal-badge medal-" + cur.cls, html: Gami.medalBadgeSvg(cur) }),
         el("div", {}, [
           el("div", { class: "fw-700", style: "font-size:16px", text: cur.name }),
-          el("div", { class: "fs-12 text-faint", text: next ? ("Faltan " + (next.minStreak - streak) + " día" + ((next.minStreak - streak) === 1 ? "" : "s") + " para " + next.name) : "¡Rango máximo alcanzado!" })
+          el("div", { class: "fs-12 text-faint", text: next ? ("Faltan " + (next.minLevel - level) + " nivel" + ((next.minLevel - level) === 1 ? "" : "es") + " para " + next.name) : "¡Rango máximo alcanzado!" })
         ])
       ])
     ]);
     const strip = el("div", { class: "medal-strip" });
     Gami.allMedals().forEach((m) => {
-      const reached = streak >= m.minStreak;
-      strip.appendChild(el("div", { class: "medal-mini medal-" + m.cls + (reached ? " on" : " off") + (m.id === cur.id ? " active" : ""), title: m.name + " · racha " + m.minStreak + "+", html: Gami.medalBadgeSvg(m) }));
+      const reached = level >= m.minLevel;
+      strip.appendChild(el("div", { class: "medal-mini medal-" + m.cls + (reached ? " on" : " off") + (m.id === cur.id ? " active" : ""), title: m.name + " · Nivel " + m.minLevel + "+", html: Gami.medalBadgeSvg(m) }));
     });
     card.appendChild(strip);
     return card;
@@ -268,10 +268,9 @@
     const y = now.getFullYear(), mo = now.getMonth();
     const monthLabel = now.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
     const daysInMonth = new Date(y, mo + 1, 0).getDate();
-    const startCol = (new Date(y, mo, 1).getDay() + 6) % 7; // lunes primero
+    const startCol = (new Date(y, mo, 1).getDay() + 6) % 7;
     const todayKey = DateUtil.todayKey();
 
-    // contar días activos del mes
     let activos = 0, transcurridos = 0;
     for (let d = 1; d <= daysInMonth; d++) {
       const key = DateUtil.key(new Date(y, mo, d));
@@ -306,16 +305,14 @@
     ]);
   }
 
-  // estado de un hábito en un día concreto
   function habitDayStatus(h, key) {
     const target = Math.max(1, parseInt(h.count, 10) || 1);
-    if(!h.history) h.history = {}; // Failsafe
+    if(!h.history) h.history = {};
     const v = h.history[key];
     const cur = v === true ? target : (typeof v === "number" ? v : 0);
     return { done: cur >= target, cur, target };
   }
 
-  // fila con palomita (✓) o tache (✗)
   function statusRow(label, done, extra) {
     return el("div", { class: "item", style: "padding:10px 12px" }, [
       el("span", { style: "font-size:18px;flex:none;color:" + (done ? "var(--good)" : "var(--bad)"), text: done ? "✓" : "✗" }),
@@ -336,14 +333,12 @@
     ]);
   }
 
-  // Detalle del día al tocar en el calendario
   function showDayDetail(key) {
     const s = Store.get();
     const isFuture = key > DateUtil.todayKey();
     const dLabel = DateUtil.parse(key).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const body = el("div", {});
 
-    // Hábitos
     const dayHabits = s.habits.filter((h) => N.Habits.activeOn(h, key));
     if (dayHabits.length) {
       const sec = section("✦ Hábitos");
@@ -360,7 +355,6 @@
       body.appendChild(sec);
     }
 
-    // Tareas
     const dayTasks = s.tasks.filter((t) => t.due === key || t.doneAt === key);
     if (dayTasks.length) {
       const sec = section("✓ Tareas");
@@ -368,7 +362,6 @@
       body.appendChild(sec);
     }
 
-    // Entrenamientos
     const ws = s.workouts.filter((w) => w.date === key);
     if (ws.length) {
       const sec = section("⚡ Entrenamientos");
@@ -376,7 +369,6 @@
       body.appendChild(sec);
     }
 
-    // Finanzas
     const tx = s.finance.transactions.filter((t) => t.date === key);
     if (tx.length) {
       const sec = section("◈ Finanzas");
@@ -385,7 +377,6 @@
       body.appendChild(sec);
     }
 
-    // Foco
     const fSes = (s.focus.sessionsLog && s.focus.sessionsLog[key]) || 0;
     if (fSes) {
       const sec = section("💡 Enfoque");
