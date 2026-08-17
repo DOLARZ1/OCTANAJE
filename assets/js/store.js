@@ -1,13 +1,11 @@
 /* =====================================================================
    OCTANAJE · Store — estado global + persistencia en localStorage y Nube
-   (Con Seguro Anti-Sobrescritura de Firebase)
+   (Con Seguro Anti-Sobrescritura y Defensa de Modo Offline)
    ===================================================================== */
 (function () {
   "use strict";
 
   const KEY = "nexus.state.v1";
-
-  // Seguro de sincronización: Evita sobrescribir la nube por accidente
   let cloudSyncReady = false; 
 
   // ---------- utilidades de fecha ----------
@@ -41,7 +39,8 @@
   // ---------- estado por defecto ----------
   function defaultState() {
     return {
-      profile: { xp: 0, level: 1, createdAt: DateUtil.todayKey(), avatar: "", nickname: "" },
+      _lastModified: Date.now(), // ⏱️ SELLO DE TIEMPO (Nuevo)
+      profile: { xp: 0, level: 1, createdAt: DateUtil.todayKey(), avatar: "", nickname: "", streak: 0 },
       settings: { theme: "dark", sound: true, notifications: false, currency: "MXN", locale: "es-MX" },
       notifyMeta: { lastReminder: "" },
       reminders: [],
@@ -49,39 +48,15 @@
       xpLog: {},
       achievements: [],
       habits: [],
-      finance: {
-        transactions: [],
-        budget: 0,
-        savingGoal: 0,
-        savings: [],
-        savingsTarget: 0
-      },
+      finance: { transactions: [], budget: 0, savingGoal: 0, savings: [], savingsTarget: 0 },
       tasks: [],
       workouts: [],
       goals: [],
-      focus: {
-        work: 25, break: 5, longBreak: 15, longEvery: 4,
-        sessionsCompleted: 0,
-        focusLog: {},
-        sessionsLog: {}
-      },
+      focus: { work: 25, break: 5, longBreak: 15, longEvery: 4, sessionsCompleted: 0, focusLog: {}, sessionsLog: {} },
       nutrition: { log: [] },
-      health: {
-        profile: { name: "", sex: "F", age: null, weight: null, height: null, activity: "moderate", lastCheck: "" },
-        history: [],
-        weights: []
-      },
+      health: { profile: { name: "", sex: "F", age: null, weight: null, height: null, activity: "moderate", lastCheck: "" }, history: [], weights: [] },
       sleep: { log: [] },
-      fasting: {
-        enabled: false,
-        plan: "16:8",
-        customFastH: 16,
-        eatStart: "13:00",
-        reminders: true,
-        lastEatNotif: "",
-        lastFastNotif: "",
-        log: {}
-      }
+      fasting: { enabled: false, plan: "16:8", customFastH: 16, eatStart: "13:00", reminders: true, lastEatNotif: "", lastFastNotif: "", log: {} }
     };
   }
 
@@ -118,10 +93,13 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       try { 
-        // 1. Guardado local ultra rápido (Offline-First)
+        // 1. Actualizamos la hora de modificación siempre que haya un cambio
+        state._lastModified = Date.now();
+        
+        // 2. Guardado local ultra rápido (Offline-First)
         localStorage.setItem(KEY, JSON.stringify(state)); 
         
-        // 2. Sincronización silenciosa con Firebase (SOLO SI EL SEGURO ESTÁ DESACTIVADO)
+        // 3. Sincronización con Firebase (SOLO si no estamos bloqueados)
         if (typeof window.saveToFirebase === "function" && cloudSyncReady) {
           window.saveToFirebase(state);
         }
@@ -149,17 +127,29 @@
       save(); notify();
     },
 
-    // --- FUNCIÓN BLINDADA: Recibir datos de la nube ---
+    // --- FUNCIÓN BLINDADA: Recibir datos de la nube con lógica Offline ---
     setCloudState(cloudState) {
       if (cloudState) {
-        state = deepMerge(defaultState(), cloudState);
-        localStorage.setItem(KEY, JSON.stringify(state)); // Sobrescribir local
+        const localTime = state._lastModified || 0;
+        const cloudTime = cloudState._lastModified || 0;
+
+        if (localTime > cloudTime) {
+          // 🛡️ DETECTAMOS QUE USASTE LA APP OFFLINE
+          // Tu celular tiene datos más recientes. Bloqueamos la descarga y subimos tus datos a la nube.
+          console.warn("Datos locales más recientes detectados. Actualizando Firebase para evitar pérdida...");
+          if (typeof window.saveToFirebase === "function") {
+            window.saveToFirebase(state);
+          }
+        } else {
+          // La nube es más nueva o igual, descargamos normal.
+          state = deepMerge(defaultState(), cloudState);
+          localStorage.setItem(KEY, JSON.stringify(state)); 
+        }
       }
-      cloudSyncReady = true; // ¡SEGURO DESACTIVADO! A partir de ahora sí se puede guardar en Firebase
-      notify(); // Actualizar toda la interfaz de la app
+      cloudSyncReady = true; 
+      notify(); 
     },
 
-    // Para forzar la sincronización si es una cuenta nueva sin datos
     unlockCloudSync() {
         cloudSyncReady = true;
     },
